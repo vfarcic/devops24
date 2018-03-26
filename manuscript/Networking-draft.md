@@ -10,11 +10,11 @@ Kubernetes solves communication problem in different way for different component
 * All nodes can communicate with all pods (and vice-versa) without NAT
 * The IP that a pod sees itself as is the same IP others see as it is 
 
-Kubernetes default networking driver is kubenet. `kubenet` is very basic network plugin typically useful for single node environments or in cloud environment with routing rules. It has limited features and probably not good for vast majority of implementations, for example, In AWS you are limited to 50 nodes in the cluster as 50 is limit for routing tables. Kubernetes offer another solution through CNI (*Container Network Interface*) which is more practical. 
+Kubernetes default networking driver is kubenet. `kubenet` is very basic network plugin typically useful for single node environments or in cloud environment with routing rules. It has limited features and probably not good for vast majority of implementations, for example,In AWS you are limited to 50 nodes in the cluster as 50 is limit for routing tables. There are other networking drivers available through CNI (*Container Network Interface*) which is more practical. 
 
-`CNI` has two branches, specification which is implemented by different networking providers and libraries and sample plugins. CNI is a standard plugin-based networking solution for application containers on Linux and not specific to kubernetes and it is managed by CNCF. 
+`CNI` has two branches, specification which is implemented by different networking providers and libraries. CNI is a standard plugin-based networking solution for application containers on Linux and not specific to kubernetes and it is managed by CNCF. 
 
-Container runtime will create new network namespace and handover it to set of network plugin(s) to setup interfaces, iptables, routing, etc. A plugin is responsible for setting up a network interface into the container network namespace (for example one end of veth) and modifying the host (attaching other end of veth into a bridge). It should then assign the IP to the interface and setup the routes by invoking appropriate IPAM plugin. The IPAM plugin is expected to determine the interface IP/subnet, Gateway and Routes and return this information to the "main" plugin to apply.
+Container runtimes creates new network namespace and handover it to set of network plugin(s) to setup interfaces, iptables, routing, etc. A plugin is responsible for setting up a network interface into the container network namespace (for example one end of veth) and modifying the host (attaching other end of veth into a bridge). It should then assign the IP to the interface and setup the routes by invoking appropriate IPAM plugin. The IPAM plugin is expected to determine the interface IP/subnet, Gateway and Routes and return this information to the "main" plugin to apply.
 
     
 ![Figure : Basic CNI diagram](images/cni-basic.png)
@@ -41,22 +41,19 @@ How a container gets its network,
 7. Main plugin updates API server with network information for the pod.  
 
 
-where overlays fit in CNI world? 
-
-
 Despite all abstraction you should be wary of networking, It would be mistake if you don't have networking expertise who understand linux namespace, routing, iptables, networking virtualizations, etc.     
 
 
-Providers
+## different Providers, some detail.
     
-Create cluster
+## Create cluster
 
-Explain kubeadmn and advanatges
+### Explain kubeadmn and advantages
 
-Flannel
+### Use Flannel
 
-    why?
-Theory diagram
-Step by step
+### Something went wrong, Troubleshoot
 
-pause pod
+## May be one more provider example 
+
+## Network policy
