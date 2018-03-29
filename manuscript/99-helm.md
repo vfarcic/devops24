@@ -10,8 +10,6 @@ git pull
 minikube start --vm-driver=virtualbox
 
 minikube addons enable ingress
-
-kubectl config current-context
 ```
 
 ## Setup
@@ -23,10 +21,9 @@ open "https://github.com/kubernetes/helm/releases"
 
 helm init
 
-kubectl --namespace kube-system \
-    get pods
+kubectl -n kube-system get pods
 
-kubectl --namespace kube-system \
+kubectl -n kube-system \
     rollout status deploy tiller-deploy
 ```
 
@@ -37,74 +34,149 @@ helm repo update
 
 helm search
 
-helm search mysql
+helm search jenkins
 
-helm inspect stable/mysql
+helm inspect stable/jenkins
 
-helm install stable/mysql
+kubectl create ns jenkins
+
+helm install stable/jenkins \
+    --name jenkins \
+    --namespace jenkins
+
+kubectl -n jenkins \
+    get svc jenkins \
+    -o jsonpath="{.spec.ports[0].nodePort}"
+
+PORT=$(kubectl -n jenkins \
+    get svc jenkins \
+    -o jsonpath="{.spec.ports[0].nodePort}")
+
+kubectl -n jenkins \
+    get secret jenkins \
+    -o jsonpath="{.data.jenkins-admin-password}" \
+    | base64 --decode; echo
+
+open "http://$(minikube ip):$PORT"
+
+# Login with user `admin`
 
 helm ls
 
-helm ls -q
+helm status jenkins
 
-NAME=$(helm ls -q)
+helm delete jenkins
 
-helm status $NAME
+helm status jenkins
 
-helm delete $NAME
+helm delete jenkins --purge
 
-helm inspect values stable/mariadb
+helm status jenkins
 
-echo '{mariadbUser: user0, mariadbDatabase: user0db}' > config.yaml
+helm inspect values stable/jenkins
 
-helm install -f config.yaml stable/mariadb
+helm install stable/jenkins \
+    --name jenkins \
+    --namespace jenkins \
+    --set Master.ImageTag=2.107.1-alpine
 
-# helm install --set name=value ...
+kubectl -n jenkins \
+    get deployment jenkins \
+    -o jsonpath="{.spec.template.spec.containers[0].image}"
 
-# helm upgrade -f panda.yaml happy-panda stable/mariadb
+helm upgrade jenkins stable/jenkins \
+    --namespace jenkins \
+    --set Master.ImageTag=2.112-alpine
 
-helm get values $NAME
+kubectl -n jenkins \
+    get deployment jenkins \
+    -o jsonpath="{.spec.template.spec.containers[0].image}"
 
-# helm rollback $NAME 1
+cat jenkins-config.yml
 
-# helm install --wait
+kubectl -n jenkins \
+    get svc
+
+helm upgrade jenkins stable/jenkins \
+    --namespace jenkins \
+    --set Master.ImageTag=lts-alpine \
+    -f jenkins-config.yml
+
+kubectl -n jenkins \
+    get svc
+
+kubectl -n jenkins \
+    rollout status deploy jenkins
+
+open "http://$(minikube ip):31001"
+
+kubectl -n jenkins \
+    get secret jenkins \
+    -o jsonpath="{.data.jenkins-admin-password}" \
+    | base64 --decode; echo
+    
+helm get values jenkins
 
 helm list
 
-helm list --all
+helm rollback jenkins 2
+
+helm delete jenkins --purge
+
+kubectl delete ns jenkins
 
 helm repo list
 
 # helm repo add dev https://example.com/dev-charts
-
-mkdir tmp
-
-helm create tmp/go-demo-2
-
-helm lint
 ```
 
 ## Creating Charts
 
 ```bash
-cd helm/go-demo-2
+helm create my-app
 
 helm dependency update
 
-cd ..
+helm package my-app
+
+helm lint my-app
+
+helm install ./my-app-0.1.0.tgz \
+    --name my-app
+
+helm delete my-app --purge
+
+# TODO: Update go-demo-2/LICENSE
+
+# TODO: Update go-demo-2/README.md
+
+# TODO: Update go-demo-2/requirements.yaml
+
+# TODO: Update go-demo-2/values.yaml
+
+# TODO: Update go-demo-2/templates
+
+# TODO: Update go-demo-2/Charts
+
+helm dependency update
 
 helm package go-demo-2
 
 helm lint go-demo-2
 
-helm install ./go-demo-2-1.tgz
+helm install ./go-demo-2-0.1.0.tgz \
+    --name go-demo-2
 
 curl -H "Host: go-demo-2.com" \
     "http://$(minikube ip)/demo/hello"
 
-# values.yml
-
-# helm install --values=myvals.yaml wordpress
-
-# helm install --set ...
+helm delete go-demo-2 --purge
 ```
+
+TODO: tiller + RBAC
+
+TODO: Plugins
+
+TODO: Environment variables
+
+TODO: Helm

@@ -22,6 +22,47 @@
 
 Using Deployments for stateful applications served us well when combined with PersistentVolumes. Still, there is a better way to run such applications.
 
+## Cluster
+
+```bash
+cd k8s-specs
+
+git pull
+
+cd cluster
+
+source kops
+
+export BUCKET_NAME=devops23-$(date +%s)
+
+export KOPS_STATE_STORE=s3://$BUCKET_NAME
+
+aws s3api create-bucket \
+    --bucket $BUCKET_NAME \
+    --create-bucket-configuration \
+    LocationConstraint=$AWS_DEFAULT_REGION
+
+kops create cluster \
+    --name $NAME \
+    --master-count 3 \
+    --node-count 2 \
+    --node-size t2.small \
+    --master-size t2.medium \
+    --zones $ZONES \
+    --master-zones $ZONES \
+    --ssh-public-key devops23.pub \
+    --networking kubenet \
+    --authorization RBAC \
+    --yes
+
+kops validate cluster
+
+kubectl create \
+    -f https://raw.githubusercontent.com/kubernetes/kops/master/addons/ingress-nginx/v1.6.0.yaml
+
+cd ..
+```
+
 ```bash
 # TODO: sts_start
 
@@ -31,102 +72,9 @@ Using Deployments for stateful applications served us well when combined with Pe
 
 # TODO: sts
 
+# TODO: mongo
+
 cat sts/jenkins.yml
-```
-
-```yaml
-apiVersion: v1
-kind: Namespace
-metadata:
-  name: jenkins
-
----
-
-apiVersion: extensions/v1beta1
-kind: Ingress
-metadata:
-  name: jenkins
-  namespace: jenkins
-  annotations:
-    ingress.kubernetes.io/ssl-redirect: "false"
-spec:
-  rules:
-  - http:
-      paths:
-      - path: /jenkins
-        backend:
-          serviceName: jenkins
-          servicePort: 8080
-
----
-
-apiVersion: v1
-kind: Service
-metadata:
-  name: jenkins
-  namespace: jenkins
-spec:
-  selector:
-    app: jenkins
-  ports:
-  - name: http
-    port: 8080
-  - name: jnlp
-    port: 50000
-
----
-
-apiVersion: apps/v1beta2
-kind: StatefulSet
-metadata:
-  name: jenkins
-  namespace: jenkins
-spec:
-  selector:
-    matchLabels:
-      app: jenkins
-  serviceName: jenkins
-  template:
-    metadata:
-      labels:
-        app: jenkins
-    spec:
-      containers:
-      - name: jenkins
-        image: vfarcic/jenkins
-        env:
-        - name: JENKINS_OPTS
-          value: --prefix=/jenkins
-        volumeMounts:
-        - name: jenkins-home
-          mountPath: /var/jenkins_home
-        - name: jenkins-creds
-          mountPath: /run/secrets
-        resources:
-          limits:
-            memory: 2Gi
-            cpu: 1
-          requests:
-            memory: 1Gi
-            cpu: 0.5
-      volumes:
-      - name: jenkins-home
-        persistentVolumeClaim:
-          claimName: jenkins
-      - name: jenkins-creds
-        secret:
-          secretName: jenkins-creds
-      securityContext:
-        fsGroup: 1000
-  volumeClaimTemplates:
-  - metadata:
-      name: jenkins-home
-    spec:
-      accessModes:
-      - ReadWriteOnce
-      resources:
-        requests:
-          storage: 1Gi
 ```
 
 ```bash
@@ -174,32 +122,131 @@ pvc-... 1Gi      RWO          Delete         Bound  jenkins/jenkins-home-jenkins
 
 ```bash
 open "http://$CLUSTER_DNS/jenkins"
+
+kubectl delete ns jenkins
+```
+
+## Mongo
+
+```bash
+kubectl create \
+    -f sts/go-demo-2-deploy.yml \
+    --record --save-config
+
+kubectl -n go-demo-2 get pods
+
+DB_1=$(kubectl -n go-demo-2 get pods \
+    -l type=db,app=go-demo-2 \
+    -o jsonpath="{.items[0].metadata.name}")
+
+DB_2=$(kubectl -n go-demo-2 get pods \
+    -l type=db,app=go-demo-2 \
+    -o jsonpath="{.items[2].metadata.name}")
+
+kubectl -n go-demo-2 logs $DB_1
+
+kubectl -n go-demo-2 logs $DB_2
+
+kubectl get pv
+
+kubectl delete ns go-demo-2
+
+kubectl create \
+    -f sts/go-demo-2-sts.yml \
+    --record --save-config
+
+kubectl -n go-demo-2 get pods
+
+kubectl get pv
+
+kubectl -n go-demo-2 \
+    exec -it go-demo-2-db-0 -- sh
+
+mongo
+
+db.inventory.insertOne({item: "test"})
+
+db.inventory.find({item: "test"})
+
+exit
+
+exit
+
+kubectl -n go-demo-2 \
+    exec -it go-demo-2-db-1 -- sh
+
+mongo
+
+db.inventory.find({item: "test"})
+
+exit
+
+exit
+
+kubectl -n go-demo-2 \
+    run -ti \
+    --image busybox dns-test \
+    --restart=Never \
+    --rm /bin/sh
+
+nslookup go-demo-2-db
+
+nslookup go-demo-2-db-0.go-demo-2-db
+
+nslookup go-demo-2-db-1.go-demo-2-db
+
+nslookup go-demo-2-db-2.go-demo-2-db
+
+exit
+
+kubectl -n go-demo-2 \
+    exec -it go-demo-2-db-0 -- sh
+
+mongo
+
+rs.initiate( {
+   _id : "rs0",
+   members: [
+      { _id: 0, host: "go-demo-2-db-0.go-demo-2-db:27017" },
+      { _id: 1, host: "go-demo-2-db-1.go-demo-2-db:27017" },
+      { _id: 2, host: "go-demo-2-db-2.go-demo-2-db:27017" }
+   ]
+})
+
+rs.conf()
+
+rs.status()
+
+db.inventory.insertOne({item: "test"})
+
+db.inventory.find({item: "test"})
+
+exit
+
+exit
+
+kubectl -n go-demo-2 get pods
+
+kubectl -n go-demo-2 \
+    logs go-demo-2-db-0 \
+    -c db-sidecar
+
+kubectl delete ns go-demo-2
 ```
 
 ## What Now?
 
 ```bash
-kubectl delete ns jenkins
-```
+kubectl get pvc
 
-```
-namespace "jenkins" deleted
-```
+kubectl get pv
 
-```bash
+# Wait until pv is removed
+
 kops delete cluster \
     --name $NAME \
     --yes
-```
 
-```
-...
-Deleted kubectl config for devops23.k8s.local
-
-Deleted cluster: "devops23.k8s.local"
-```
-
-```bash
 aws s3api delete-bucket \
     --bucket $BUCKET_NAME
 ```

@@ -1,0 +1,80 @@
+## The DevOps 2.4 Toolkit
+
+- [ ] Write sts.md
+- [ ] Write rbac-service-account.md
+- [ ] Write Windows support
+- [ ] Write persistent-volume.md (EBS, EFS, Rook, GlusterFS, Ceph)
+- [ ] Write `kubectl completion bash`, and `kubectx` appendix
+- [ ] Write horizontal-pod-autoscaler.md
+- [ ] Write daemon-set.md
+- [ ] Write kubeadm.md
+- [ ] Write cd.md
+- [ ] Write daemon-set.md
+- [ ] Write garbage-collection.md
+- [ ] Write job.md
+- [ ] Write cron-job.md
+- [ ] Write architecture.md
+- [ ] Write SETUP.md
+- [ ] Write gce.md
+- [ ] Write networking (Calico)
+- [ ] Write aws.md
+- [ ] Write azure.md
+- [ ] Write digital-ocean.md
+- [ ] Write resources.md
+- [ ] Write security-with-third-party.md (Valut+Consul)
+- [ ] Write pod-spec-affinity.md
+- [ ] Write node-controller.md (https://github.com/kube-node/kube-machine/blob/master/README.md)
+- [ ] Write logging.md
+- [ ] Write metrics.md (Prometheus, https://github.com/kubernetes/kube-state-metrics, https://brancz.com/2018/01/05/prometheus-vs-heapster-vs-kubernetes-metrics-apis/)
+- [ ] Write federation.md
+- [ ] Write helm.md
+- [ ] Write scaled-mongo.md
+- [ ] Write open-shift-origin.md
+- [ ] Write open-shift.md
+- [ ] Write ui.md
+- [ ] Write cncf-projects.md (https://www.cncf.io/, https://github.com/cncf/landscape)
+- [ ] Write addons.md
+- [ ] Write deploy-advanced.md (bg & canary)
+- [ ] Write write-addons.md
+- [ ] Write the-end.md
+- [ ] Publish to Amazon
+- [ ] Write pod-security-policy.md
+- [ ] Change rs YAMLs to v1
+- [ ] Change deployment YAMLs to v1
+- [ ] AWS Fargate
+- [ ] Jenkins X (https://jenkins-x.github.io/jenkins-x-website/)
+- [ ] DockerEE
+- [ ] OpenShift
+- [ ] Rancher
+- [ ] RBAC with LDAP
+- [ ] kubernetes Networking - different CNI plugin/provider (Flannel, Calico, etc)
+- [ ] Pod / Init Containers
+- [ ] Pod / Preset
+- [ ] Pod / Disruptions
+- [ ] Cluster Autoscaler 
+- [ ] create k8s cluster locally (vagrant/virtualbox) / upgrade k8s cluster using kubeadmn
+- [ ] ConfigMap 
+- [ ] https://github.com/jaegertracing/jaeger-kubernetes
+- [ ] Chaos testing (e.g., https://github.com/bloomberg/powerfulseal/blob/master/README.md)
+- [ ] https://medium.com/google-cloud/mgob-a-mongodb-backup-agent-for-kubernetes-cfc9b30c6c92
+- [ ] Serverless, OpenFaas
+- [ ] Service mesh (Istio, https://akomljen.com/kubernetes-service-mesh/, http://philcalcado.com/2017/08/03/pattern_service_mesh.html)
+- [ ] Security tools (https://sysdig.com/blog/20-docker-security-tools/)
+- [ ] CRI and alternative container runtimes (CRI-O, etc)
+- [ ] https://raw.githubusercontent.com/cloudbees/ps-internal/master/K8S/Utils/setup_k8s_user.sh?token=Aftag0fCKRzriAmlYSrLW5-0IUkBUy7vks5avjoWwA%3D%3D
+
+## Chapter
+
+- [ ] Code
+- [ ] Write
+- [ ] Compare with Swarm
+- [ ] Text Review
+- [ ] Diagrams
+- [ ] Code Review
+- [ ] Gist
+- [ ] Review the title
+- [ ] Proofread
+- [ ] Add to slides
+- [ ] Publish on TechnologyConversations.com
+- [ ] Add to Book.txt
+- [ ] Publish on LeanPub.com

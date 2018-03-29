@@ -18,7 +18,7 @@ open "https://$IP:8443"
 
 # Ignore SSL warning
 
-# User/pass = developer/developer
+# User/pass = developer/developer or admin/admin
 
 oc config get-contexts
 
@@ -108,8 +108,7 @@ oc -n build get role,rolebinding
 
 oc -n cje get events -w
 
-oc -n cje \
-    get all
+oc -n cje get all
 
 oc get pv | grep Bound
 

@@ -94,7 +94,10 @@ cat cje.yml \
     create -f - \
     --save-config --record
 
-kubectl --namespace jenkins \
+kubectl -n jenkins \
+    rollout status sts cjoc
+
+kubectl -n jenkins \
     get all
 
 open "http://$CLUSTER_DNS/cjoc"
@@ -195,5 +198,5 @@ kops delete cluster \
     --yes
 
 aws s3api delete-bucket \
-    --bucket devops23-store
+    --bucket $BUCKET_NAME
 ```
