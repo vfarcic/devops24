@@ -1,14 +1,22 @@
 ## The DevOps 2.4 Toolkit
 
-- [ ] Write sts.md
-- [ ] Write rbac-service-account.md
+- [ ] 00-preface.md
+- [ ] 01-sts.md
+- [ ] 02-sa.md
+- [ ] 03-manual-cd.md
+- [ ] Write CD with Jenkins
+- [ ] Write CD with CodeShip
+- [ ] Write CD with JenkinsX
+- [ ] Write CD with CJE
 - [ ] Write Windows support
+
+## The DevOps 2.5 Toolkit
+
 - [ ] Write persistent-volume.md (EBS, EFS, Rook, GlusterFS, Ceph)
 - [ ] Write `kubectl completion bash`, and `kubectx` appendix
 - [ ] Write horizontal-pod-autoscaler.md
 - [ ] Write daemon-set.md
 - [ ] Write kubeadm.md
-- [ ] Write cd.md
 - [ ] Write daemon-set.md
 - [ ] Write garbage-collection.md
 - [ ] Write job.md
@@ -34,7 +42,7 @@
 - [ ] Write ui.md
 - [ ] Write cncf-projects.md (https://www.cncf.io/, https://github.com/cncf/landscape)
 - [ ] Write addons.md
-- [ ] Write deploy-advanced.md (bg & canary)
+- [ ] Write deploy-advanced.md (staged update, canary, phased roll outs, bg)
 - [ ] Write write-addons.md
 - [ ] Write the-end.md
 - [ ] Publish to Amazon
@@ -62,12 +70,12 @@
 - [ ] Security tools (https://sysdig.com/blog/20-docker-security-tools/)
 - [ ] CRI and alternative container runtimes (CRI-O, etc)
 - [ ] https://raw.githubusercontent.com/cloudbees/ps-internal/master/K8S/Utils/setup_k8s_user.sh?token=Aftag0fCKRzriAmlYSrLW5-0IUkBUy7vks5avjoWwA%3D%3D
+- [ ] Operating Systems (CoreOS, )
 
 ## Chapter
 
 - [ ] Code
 - [ ] Write
-- [ ] Compare with Swarm
 - [ ] Text Review
 - [ ] Diagrams
 - [ ] Code Review

@@ -146,31 +146,31 @@ helm install ./my-app-0.1.0.tgz \
 
 helm delete my-app --purge
 
-# TODO: Update go-demo-2/LICENSE
+# TODO: Update go-demo-3/LICENSE
 
-# TODO: Update go-demo-2/README.md
+# TODO: Update go-demo-3/README.md
 
-# TODO: Update go-demo-2/requirements.yaml
+# TODO: Update go-demo-3/requirements.yaml
 
-# TODO: Update go-demo-2/values.yaml
+# TODO: Update go-demo-3/values.yaml
 
-# TODO: Update go-demo-2/templates
+# TODO: Update go-demo-3/templates
 
-# TODO: Update go-demo-2/Charts
+# TODO: Update go-demo-3/Charts
 
 helm dependency update
 
-helm package go-demo-2
+helm package go-demo-3
 
-helm lint go-demo-2
+helm lint go-demo-3
 
-helm install ./go-demo-2-0.1.0.tgz \
-    --name go-demo-2
+helm install ./go-demo-3-0.1.0.tgz \
+    --name go-demo-3
 
-curl -H "Host: go-demo-2.com" \
+curl -H "Host: go-demo-3.com" \
     "http://$(minikube ip)/demo/hello"
 
-helm delete go-demo-2 --purge
+helm delete go-demo-3 --purge
 ```
 
 TODO: tiller + RBAC

@@ -9,7 +9,7 @@ cd cluster
 
 source kops
 
-export BUCKET_NAME=devops24-$(date +%s)
+export BUCKET_NAME=devops23-$(date +%s)
 
 aws s3api create-bucket \
     --bucket $BUCKET_NAME \
@@ -26,7 +26,7 @@ kops create cluster \
     --node-size t2.medium \
     --zones $ZONES \
     --master-zones $ZONES \
-    --ssh-public-key devops24.pub \
+    --ssh-public-key devops23.pub \
     --networking kubenet \
     --authorization RBAC \
     --yes
@@ -220,7 +220,7 @@ cd cluster
 
 source kops
 
-export BUCKET_NAME=devops24-$(date +%s)
+export BUCKET_NAME=devops23-$(date +%s)
 
 aws s3api create-bucket \
     --bucket $BUCKET_NAME \
@@ -237,7 +237,7 @@ kops create cluster \
     --node-size t2.medium \
     --zones $ZONES \
     --master-zones $ZONES \
-    --ssh-public-key devops24.pub \
+    --ssh-public-key devops23.pub \
     --networking kubenet \
     --authorization RBAC \
     --yes

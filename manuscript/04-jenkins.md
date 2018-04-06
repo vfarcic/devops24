@@ -53,57 +53,23 @@ kubectl --namespace kube-ingress \
     get all
 ```
 
-## Deploying CJOC
+## Running Jenkins
 
 ```bash
-CLUSTER_DNS=$(aws elb describe-load-balancers \
-    | jq -r \
-    ".LoadBalancerDescriptions[] \
-    | select(.DNSName \
-    | contains (\"api\") | not)\
-    .DNSName")
-
-echo $CLUSTER_DNS
-
-open "https://downloads.cloudbees.com/cje2/latest/"
-
-RELEASE_URL=[...]
-
-curl -o cje.tgz $RELEASE_URL
-
-tar -xvf cje.tgz
-
-cd cje2-kubernetes
-
-ls -l
-
-kubectl get sc -o yaml
-
-cat cje.yml
-
-kubectl create ns jenkins
-
-cat cje.yml \
-    | sed -e \
-    "s@https://cje.example.com@http://cje.example.com@g" \
-    | sed -e \
-    "s@cje.example.com@$CLUSTER_DNS@g" \
-    | sed -e \
-    "s@ssl-redirect: \"true\"@ssl-redirect: \"false\"@g" \
-    | kubectl --namespace jenkins \
-    create -f - \
+kubectl create -f cd/jenkins.yml \
     --save-config --record
 
 kubectl -n jenkins \
     rollout status sts cjoc
 
-kubectl -n jenkins \
-    get all
+DNS=$(kubectl -n jenkins \
+    get ing master \
+    -o jsonpath="{.status.loadBalancer.ingress[0].hostname}")
 
-open "http://$CLUSTER_DNS/cjoc"
+open "http://$DNS/jenkins"
 
 kubectl --namespace jenkins \
-    exec cjoc-0 -- \
+    exec master-0 -- \
     cat /var/jenkins_home/secrets/initialAdminPassword
 
 # TODO: Wizard steps
@@ -111,26 +77,11 @@ kubectl --namespace jenkins \
 kubectl -n jenkins get pvc
 
 kubectl get pv
+```
 
-# TODO: Create a master called *my-master*
+## Running On-Shot Agents
 
-# TODO: Set *Jenkins Master Memory in MB* to *1024*
-
-# TODO: Set *Jenkins Master CPUs* to *0.5*
-
-kubectl --namespace jenkins \
-    get all
-
-kubectl --namespace jenkins \
-    describe pod my-master-0
-
-kubectl --namespace jenkins \
-    logs my-master-0
-
-# TODO: Go to *my-master*
-
-# TODO: Wizard steps
-
+```bash
 # TODO: Create a new Pipeline job called *my-job*
 ```
 
@@ -166,21 +117,29 @@ podTemplate(
 ```bash
 # TODO: Install BlueOcean
 
-# TODO: Run the job *my-job*
+# TODO: Run the job
 
 kubectl --namespace jenkins \
     get pods
 
-# TODO: Present different stages of the *jenkins-slave-* Pod
-
 # TODO: Display the results in UI
 
-# TODO: Delete a master
-
-kubectl get pvc
-
-kubectl get pv
+# TODO: Delete the job
 ```
+
+## Shared Libraries
+
+TODO: Write
+
+## Multi-Stage Pipeline
+
+```bash
+# TODO: Create a Multi-Stage Pipeline for go-demo-3
+```
+
+## Webhooks
+
+TODO: Write
 
 ## Destroying The Cluster
 

@@ -23,7 +23,7 @@ gcloud auth application-default login
 # TODO: The the available zones
 
 gcloud container clusters \
-    create devops24 \
+    create devops23 \
     --zone us-east1-b \
     --node-locations us-east1-b,us-east1-c,us-east1-d \
     --machine-type n1-standard-2
@@ -78,11 +78,11 @@ gcloud compute addresses create \
 # TODO: Delete the cluster
 
 kubectl config delete-cluster \
-    gke_devops24-book_us-east1_cluster-1
+    gke_devops23-book_us-east1_cluster-1
 
 kubectl config delete-context \
-    gke_devops24-book_us-east1_cluster-1
+    gke_devops23-book_us-east1_cluster-1
 
 kubectl config unset \
-    users.gke_devops24-book_us-east1_cluster-1
+    users.gke_devops23-book_us-east1_cluster-1
 ```
