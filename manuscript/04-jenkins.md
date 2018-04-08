@@ -1,8 +1,14 @@
-# CJE
+# Jenkins
 
 ## Creating A Cluster
 
 ```bash
+cd k8s-specs
+
+git pull
+
+cd cluster
+
 source kops
 
 export BUCKET_NAME=devops23-$(date +%s)
@@ -48,9 +54,6 @@ export \
 
 kubectl create \
     -f https://raw.githubusercontent.com/kubernetes/kops/master/addons/ingress-nginx/v1.6.0.yaml
-
-kubectl --namespace kube-ingress \
-    get all
 ```
 
 ## Running Jenkins

@@ -12,10 +12,11 @@
 
 ## The DevOps 2.5 Toolkit
 
+- [ ] Write daemon-set.md
+- [ ] Write logging.md
 - [ ] Write persistent-volume.md (EBS, EFS, Rook, GlusterFS, Ceph)
 - [ ] Write `kubectl completion bash`, and `kubectx` appendix
 - [ ] Write horizontal-pod-autoscaler.md
-- [ ] Write daemon-set.md
 - [ ] Write kubeadm.md
 - [ ] Write daemon-set.md
 - [ ] Write garbage-collection.md
@@ -32,7 +33,6 @@
 - [ ] Write security-with-third-party.md (Valut+Consul)
 - [ ] Write pod-spec-affinity.md
 - [ ] Write node-controller.md (https://github.com/kube-node/kube-machine/blob/master/README.md)
-- [ ] Write logging.md
 - [ ] Write metrics.md (Prometheus, https://github.com/kubernetes/kube-state-metrics, https://brancz.com/2018/01/05/prometheus-vs-heapster-vs-kubernetes-metrics-apis/)
 - [ ] Write federation.md
 - [ ] Write helm.md
