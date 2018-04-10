@@ -61,48 +61,8 @@ oc get pv | grep Bound
 
 open "http://$CJE_DNS/cjoc"
 
-CJOC_DNS=$(oc -n cje \
-    get route cjoc \
-    -o jsonpath="{.spec.host}")
-
-open "http://$CJOC_DNS/cjoc"
-
 oc -n cje exec cjoc-0 -- \
     cat /var/jenkins_home/secrets/initialAdminPassword
-
-# echo 'kind: Role
-# apiVersion: v1
-# metadata:
-#   name: pods-all
-# rules:
-# - apiGroups: [""]
-#   resources: ["pods"]
-#   verbs: ["create","delete","get","list","patch","update","watch"]
-# - apiGroups: [""]
-#   resources: ["pods/exec"]
-#   verbs: ["create","delete","get","list","patch","update","watch"]
-# - apiGroups: [""]
-#   resources: ["pods/log"]
-#   verbs: ["get","list","watch"]' \
-#     | oc -n build create -f - \
-#     --save-config --record
-
-# echo 'kind: RoleBinding
-# apiVersion: v1
-# metadata:
-#   name: jenkins
-# roleRef:
-#   apiGroup:
-#   kind: Role
-#   name: pods-all
-# subjects:
-# - kind: ServiceAccount
-#   name: jenkins
-#   namespace: cje' \
-#     | oc -n build create -f - \
-#     --save-config --record
-
-oc -n build get role,rolebinding
 
 # TODO: Create a master with 1GB and 0.5 CPU
 

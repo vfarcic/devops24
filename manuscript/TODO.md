@@ -4,7 +4,9 @@
 - [ ] 01-sts.md
 - [ ] 02-sa.md
 - [ ] 03-manual-cd.md
-- [ ] Write CD with Jenkins
+- [ ] 04-helm.md
+- [ ] 05-jenkins.md
+- [ ] Security scanning (Clair)
 - [ ] Write CD with CodeShip
 - [ ] Write CD with JenkinsX
 - [ ] Write CD with CJE
@@ -54,6 +56,7 @@
 - [ ] DockerEE
 - [ ] OpenShift
 - [ ] Rancher
+- [ ] https://kubernetes.io/docs/setup/pick-right-solution/
 - [ ] RBAC with LDAP
 - [ ] kubernetes Networking - different CNI plugin/provider (Flannel, Calico, etc)
 - [ ] Pod / Init Containers
@@ -71,6 +74,15 @@
 - [ ] CRI and alternative container runtimes (CRI-O, etc)
 - [ ] https://raw.githubusercontent.com/cloudbees/ps-internal/master/K8S/Utils/setup_k8s_user.sh?token=Aftag0fCKRzriAmlYSrLW5-0IUkBUy7vks5avjoWwA%3D%3D
 - [ ] Operating Systems (CoreOS, )
+
+## Contributors
+
+* @neerajkothari (confirmed)
+* @djacob (pending)
+* @chengoldbond (pending)
+* @zarbis (pending)
+* @gmlp
+* @joostvdg
 
 ## Chapter
 

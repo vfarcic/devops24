@@ -7,7 +7,9 @@ cd k8s-specs
 
 git pull
 
-minikube start --vm-driver=virtualbox
+minikube start \
+    --vm-driver=virtualbox \
+    --memory 4096
 
 minikube addons enable ingress
 ```
@@ -27,7 +29,19 @@ kubectl -n kube-system \
     rollout status deploy tiller-deploy
 ```
 
-## Example Chart
+## Claire
+
+```bash
+git clone \
+    https://github.com/coreos/clair \
+    ../clair
+
+cd ../clair/contrib/helm
+
+cat clair/values.yaml
+```
+
+## Jenkins
 
 ```bash
 helm repo update
