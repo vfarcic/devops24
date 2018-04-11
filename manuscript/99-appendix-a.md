@@ -6,7 +6,7 @@ The text that follows provides the essential information you'll need to create a
 
 We'll continue using the specifications from the `vfarcic/k8s-specs` repository, so the first thing we'll do is to go inside the directory where we cloned it, and pull the latest version.
 
-I> All the commands from this chapter are available in the [14-aws.sh](https://gist.github.com/04af9efcd1c972e8199fc014b030b134) Gist.
+I> All the commands from this appendix are available in the [99-appendix-a.sh](https://gist.github.com/5fd239bf4052e432daea00397c49b2a5) Gist.
 
 ```bash
 cd k8s-specs
