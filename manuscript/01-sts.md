@@ -733,13 +733,13 @@ We applied the new definition and retrieved the list of Pods inside the Namespac
 The output is as follows.
 
 ```
-NAME                   READY     STATUS              RESTARTS   AGE
-api-649cfb4987-4rsx6   1/1       Running             6          14m
-api-649cfb4987-m7vnd   1/1       Running             6          14m
-api-649cfb4987-z2xgp   1/1       Running             6          14m
-db-0                   1/1       Running             0          6m
-db-1                   1/1       Running             0          6m
-db-2                   0/1       ContainerCreating   0          14s
+NAME                 READY STATUS            RESTARTS AGE
+api-649cfb4987-4rsx6 1/1   Running           6        14m
+api-649cfb4987-m7vnd 1/1   Running           6        14m
+api-649cfb4987-z2xgp 1/1   Running           6        14m
+db-0                 1/1   Running           0        6m
+db-1                 1/1   Running           0        6m
+db-2                 0/1   ContainerCreating 0        14s
 ```
 
 We can see that the StatefulSet chose to update only one of its Pods. Moreover, it picked the one with the highest index.
@@ -747,13 +747,13 @@ We can see that the StatefulSet chose to update only one of its Pods. Moreover, 
 Let's see the output of the same command half a minute later.
 
 ```
-NAME                   READY     STATUS              RESTARTS   AGE
-api-649cfb4987-4rsx6   1/1       Running             6          15m
-api-649cfb4987-m7vnd   1/1       Running             6          15m
-api-649cfb4987-z2xgp   1/1       Running             6          15m
-db-0                   1/1       Running             0          7m
-db-1                   0/1       ContainerCreating   0          5s
-db-2                   1/1       Running             0          32s
+NAME                 READY STATUS            RESTARTS AGE
+api-649cfb4987-4rsx6 1/1   Running           6        15m
+api-649cfb4987-m7vnd 1/1   Running           6        15m
+api-649cfb4987-z2xgp 1/1   Running           6        15m
+db-0                 1/1   Running           0        7m
+db-1                 0/1   ContainerCreating 0        5s
+db-2                 1/1   Running           0        32s
 ```
 
 StatefulSet finished updating the `db-2` Pod and moved to the one before it.

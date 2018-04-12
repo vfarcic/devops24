@@ -1,4 +1,4 @@
-## Cluster And Repo
+## Cluster And Repository
 
 ```bash
 cd k8s-specs
@@ -18,23 +18,12 @@ aws s3api create-bucket \
     --create-bucket-configuration \
     LocationConstraint=$AWS_DEFAULT_REGION
 
-# Windows only
-alias kops="docker run -it --rm \
-    -v $PWD/devops23.pub:/devops23.pub \
-    -v $PWD/config:/config \
-    -e KUBECONFIG=/config/kubecfg.yaml \
-    -e NAME=$NAME -e ZONES=$ZONES \
-    -e AWS_ACCESS_KEY_ID=$AWS_ACCESS_KEY_ID \
-    -e AWS_SECRET_ACCESS_KEY=$AWS_SECRET_ACCESS_KEY \
-    -e KOPS_STATE_STORE=$KOPS_STATE_STORE \
-    vfarcic/kops"
-
 kops create cluster \
     --name $NAME \
     --master-count 3 \
-    --master-size t2.medium \
+    --master-size t2.small \
     --node-count 3 \
-    --node-size t2.small \
+    --node-size t2.medium \
     --zones $ZONES \
     --master-zones $ZONES \
     --ssh-public-key devops23.pub \
@@ -44,10 +33,6 @@ kops create cluster \
 
 kops validate cluster
 ```
-
-W> ## A note to Windows users
-W> 
-W> Kops was executed inside a container. It changed the context inside the container that is now gone. As a result, your local `kubectl` context was left intact. We'll fix that by executing `kops export kubecfg --name ${NAME}` and `export KUBECONFIG=$PWD/config/kubecfg.yaml`. The first command exported the config to `/config/kubecfg.yaml`. That path was specified through the environment variable `KUBECONFIG` and is mounted as `config/kubecfg.yaml` on local hard disk. The latter command exports `KUBECONFIG` locally. Through that variable, `kubectl` is now instructed to use the configuration in `config/kubecfg.yaml` instead of the default one. Before you run those commands, please give AWS a few minutes to create all the EC2 instances and for them to join the cluster. After waiting and executing those commands, you'll be all set.
 
 ```bash
 kubectl create \

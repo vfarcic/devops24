@@ -100,7 +100,7 @@ kubectl -n jenkins \
 kubectl -n jenkins \
     get all
 
-open "http://$CLUSTER_DNS/cjoc"
+open "http://$CLUSTER_DNS"
 
 kubectl --namespace jenkins \
     exec cjoc-0 -- \
@@ -185,14 +185,6 @@ kubectl get pv
 ## Destroying The Cluster
 
 ```bash
-kubectl delete ns jenkins
-
-kubectl get pvc
-
-kubectl get pv
-
-# Wait until pv is removed
-
 kops delete cluster \
     --name $NAME \
     --yes

@@ -1,11 +1,12 @@
 ## The DevOps 2.4 Toolkit
 
 - [ ] 00-preface.md
-- [ ] 01-sts.md
+- [X] 01-sts.md
 - [ ] 02-sa.md
-- [ ] 03-manual-cd.md
-- [ ] 04-helm.md
-- [ ] 05-jenkins.md
+- [ ] 03-jenkins.md 
+- [ ] 04-manual-cd.md
+- [ ] 05-helm.md
+- [ ] 06-jenkins-cd.md
 - [ ] Security scanning (Clair)
 - [ ] Write CD with CodeShip
 - [ ] Write CD with JenkinsX
@@ -18,7 +19,7 @@
 - [ ] Write logging.md
 - [ ] Write persistent-volume.md (EBS, EFS, Rook, GlusterFS, Ceph)
 - [ ] Write `kubectl completion bash`, and `kubectx` appendix
-- [ ] Write horizontal-pod-autoscaler.md
+- [ ] Write horizontal-pod-autoscaler.md (https://itnext.io/opportunistically-mining-cryptocurrencies-in-kubernetes-94934d095c4d)
 - [ ] Write kubeadm.md
 - [ ] Write daemon-set.md
 - [ ] Write garbage-collection.md
