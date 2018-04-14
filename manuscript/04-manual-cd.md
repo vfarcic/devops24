@@ -247,6 +247,8 @@ docker image push $GH_USER/go-demo-3:1.0
 docker image tag $GH_USER/go-demo-3:1.0-beta $GH_USER/go-demo-3:latest
 
 docker image push $GH_USER/go-demo-3:latest
+
+# TODO: Release files to GH
 ```
 
 ## Deploy
