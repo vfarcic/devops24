@@ -20,17 +20,6 @@ aws s3api create-bucket \
     --create-bucket-configuration \
     LocationConstraint=$AWS_DEFAULT_REGION
 
-# Windows only
-alias kops="docker run -it --rm \
-    -v $PWD/devops23.pub:/devops23.pub \
-    -v $PWD/config:/config \
-    -e KUBECONFIG=/config/kubecfg.yaml \
-    -e NAME=$NAME -e ZONES=$ZONES \
-    -e AWS_ACCESS_KEY_ID=$AWS_ACCESS_KEY_ID \
-    -e AWS_SECRET_ACCESS_KEY=$AWS_SECRET_ACCESS_KEY \
-    -e KOPS_STATE_STORE=$KOPS_STATE_STORE \
-    vfarcic/kops"
-
 kops create cluster \
     --name $NAME \
     --master-count 3 \

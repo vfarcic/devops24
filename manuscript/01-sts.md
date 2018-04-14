@@ -14,22 +14,6 @@ We'll skip the theory (for now), and dive straight into examples. To do that, we
 
 ## Creating A Cluster
 
-```bash
-minikube start \
-    --vm-driver=virtualbox \
-    --extra-config=apiserver.Authorization.Mode=RBAC
-
-minikube addons enable ingress
-
-minikube addons enable default-storageclass
-
-minikube addons enable storage-provisioner
-
-# TODO: Verify that the addons are running
-
-kubectl create -f minikube/pv.yml
-```
-
 We'll start the hands-on walk-through by cloning the `vfarcic/k8s-specs` repository that contains all the example definitions we'll use throughout the book.
 
 W> ## A note to Windows users
