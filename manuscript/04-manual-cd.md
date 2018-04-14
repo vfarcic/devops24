@@ -32,9 +32,7 @@ kops create cluster \
     --yes
 
 kops validate cluster
-```
 
-```bash
 kubectl create \
     -f https://raw.githubusercontent.com/kubernetes/kops/master/addons/ingress-nginx/v1.6.0.yaml
 
@@ -44,8 +42,6 @@ cd ..
 ## Preparing build ns
 
 ```bash
-# kubectl create ns go-demo-3
-
 kubectl create \
     -f ../go-demo-3/k8s/build-ns.yml \
     --save-config --record
