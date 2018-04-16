@@ -3,9 +3,9 @@
 - [ ] 00-preface.md
 - [X] 01-sts.md
 - [ ] 02-sa.md
-- [ ] 03-jenkins.md 
-- [ ] 04-manual-cd.md
-- [ ] 05-helm.md
+- [ ] 03-manual-cd.md
+- [ ] 04-helm.md
+- [ ] 05-jenkins-setup.md
 - [ ] 06-jenkins-cd.md
 - [ ] Security scanning (Clair)
 - [ ] Write CD with CodeShip

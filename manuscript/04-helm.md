@@ -62,27 +62,6 @@ kubectl -n kube-system \
 kubectl -n kube-system get pods
 ```
 
-## Claire
-
-```bash
-# git clone \
-#     https://github.com/coreos/clair \
-#     ../clair
-
-# cat ../clair/contrib/helm/clair/values.yaml
-
-# helm dependency update claire
-
-# helm dependency update \
-#     ../clair/contrib/helm/clair/
-
-# ll ../clair/contrib/helm/clair/charts
-
-# helm install --name clair \
-#     ../clair/contrib/helm/clair \
-#     --set image:.repository=quay.io/coreos/clair
-```
-
 ## Jenkins
 
 ```bash
@@ -177,14 +156,26 @@ helm rollback jenkins 1
 
 helm delete jenkins --purge
 
+export LB_ADDR=$(kubectl \
+    -n kube-ingress \
+    get svc ingress-nginx \
+    -o jsonpath="{.status.loadBalancer.ingress[0].hostname}")
+
+LB_IP=$(dig +short $LB_ADDR \
+    | tail -n 1)
+
+JENKINS_ADDR="jenkins.$LB_IP.xip.io"
+
 helm install stable/jenkins \
     --name jenkins \
     --namespace jenkins \
-    --values helm/jenkins-values.yml
+    --values helm/jenkins-values.yml \
+    --set Master.HostName=$JENKINS_ADDR
 
-# TODO: Modify /etc/hosts
+kubectl -n jenkins \
+    rollout status deployment jenkins
 
-open "http://jenkins.acme.com"
+open "http://$JENKINS_ADDR"
 
 kubectl -n jenkins \
     get secret jenkins \
@@ -192,52 +183,6 @@ kubectl -n jenkins \
     | base64 --decode; echo
     
 helm get values jenkins
-
-# Click the *New Item* link in the left-hand menu
-
-# Type *my-k8s-job* in the *item name* field
-
-# Select *Pipeline* as the type
-
-# Click the *OK* button
-
-# Click the *Pipeline* tab
-
-# Write the script that follows in the *Pipeline Script* field
-```
-
-```groovy
-podTemplate(
-    label: 'kubernetes',
-    containers: [
-        containerTemplate(name: 'maven', image: 'maven:alpine', ttyEnabled: true, command: 'cat'),
-        containerTemplate(name: 'golang', image: 'golang:alpine', ttyEnabled: true, command: 'cat')
-    ]
-) {
-    node('kubernetes') {
-        container('maven') {
-            stage('build') {
-                sh 'mvn --version'
-            }
-            stage('unit-test') {
-                sh 'java -version'
-            }
-        }
-        container('golang') {
-            stage('deploy') {
-                sh 'go version'
-            }
-        }
-    }
-}
-```
-
-```bash
-# Click the *Save* button
-
-# Click the *Open Blue Ocean* link from the left-hand menu
-
-# Click the *Run* button
 
 helm delete jenkins --purge
 

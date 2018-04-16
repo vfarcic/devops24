@@ -23,101 +23,75 @@ aws s3api create-bucket \
 kops create cluster \
     --name $NAME \
     --master-count 3 \
-    --node-count 3 \
-    --node-size t2.xlarge \
     --master-size t2.small \
+    --node-count 2 \
+    --node-size t2.medium \
     --zones $ZONES \
     --master-zones $ZONES \
     --ssh-public-key devops23.pub \
     --networking kubenet \
+    --authorization RBAC \
     --yes
 
 kops validate cluster
 
-# Windows only
-kops export kubecfg --name ${NAME}
-
-# Windows only
-export \
-    KUBECONFIG=$PWD/config/kubecfg.yaml
-
 kubectl create \
     -f https://raw.githubusercontent.com/kubernetes/kops/master/addons/ingress-nginx/v1.6.0.yaml
+
+cd ..
+
+kubectl create \
+    -f helm/tiller-rbac.yml \
+    --record --save-config
+
+helm init --service-account tiller
 ```
 
 ## Running Jenkins
 
 ```bash
-kubectl create -f cd/jenkins.yml \
-    --save-config --record
-
-kubectl -n jenkins \
-    rollout status sts cjoc
-
-DNS=$(kubectl -n jenkins \
-    get ing master \
+export LB_ADDR=$(kubectl \
+    -n kube-ingress \
+    get svc ingress-nginx \
     -o jsonpath="{.status.loadBalancer.ingress[0].hostname}")
 
-open "http://$DNS/jenkins"
+dig +short $LB_ADDR
 
-kubectl --namespace jenkins \
-    exec master-0 -- \
-    cat /var/jenkins_home/secrets/initialAdminPassword
+# If empty, LB is still not fully set up. Wait and repeat.
 
-# TODO: Wizard steps
+LB_IP=$(dig +short $LB_ADDR \
+    | tail -n 1)
 
-kubectl -n jenkins get pvc
+JENKINS_ADDR="jenkins.$LB_IP.xip.io"
 
-kubectl get pv
+echo $JENKINS_ADDR
+
+helm install stable/jenkins \
+    --name jenkins \
+    --namespace jenkins \
+    --values helm/jenkins-values.yml \
+    --set Master.HostName=$JENKINS_ADDR
+
+kubectl -n jenkins \
+    rollout status deployment jenkins
+
+open "http://$JENKINS_ADDR"
+
+kubectl -n jenkins \
+    get secret jenkins \
+    -o jsonpath="{.data.jenkins-admin-password}" \
+    | base64 --decode; echo
+
+# Login with user `admin`
 ```
 
-## Running On-Shot Agents
+## Pipeline
 
-```bash
-# TODO: Create a new Pipeline job called *my-job*
-```
+TODO: Write
 
-```groovy
-podTemplate(
-    label: 'kubernetes',
-    containers: [
-        containerTemplate(name: 'maven', image: 'maven:alpine', ttyEnabled: true, command: 'cat'),
-        containerTemplate(name: 'golang', image: 'golang:alpine', ttyEnabled: true, command: 'cat')
-    ]
-) {
-    node('kubernetes') {
-        container('maven') {
-            stage('build') {
-                sh "sleep 5"
-                sh 'mvn --version'
-            }
-            stage('unit-test') {
-                sh "sleep 5"
-                sh 'java -version'
-            }
-        }
-        container('golang') {
-            stage('deploy') {
-                sh "sleep 5"
-                sh 'go version'
-            }
-        }
-    }
-}
-```
+## CD Pipeline
 
-```bash
-# TODO: Install BlueOcean
-
-# TODO: Run the job
-
-kubectl --namespace jenkins \
-    get pods
-
-# TODO: Display the results in UI
-
-# TODO: Delete the job
-```
+TODO: Write
 
 ## Shared Libraries
 
@@ -136,14 +110,6 @@ TODO: Write
 ## Destroying The Cluster
 
 ```bash
-kubectl delete ns jenkins
-
-kubectl get pvc
-
-kubectl get pv
-
-# Wait until pv is removed
-
 kops delete cluster \
     --name $NAME \
     --yes
