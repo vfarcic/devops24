@@ -40,9 +40,13 @@ MACHINE_TYPE=n1-standard-2
 
 gcloud container clusters \
     create devops23 \
+    --project "ps-dev-201405" \
     --zone us-east1-b \
     --node-locations $ZONES \
-    --machine-type $MACHINE_TYPE
+    --machine-type $MACHINE_TYPE \
+    --enable-autoscaling \
+    --max-nodes 6 \
+    --min-nodes 3
 
 kubectl get nodes
 
@@ -50,8 +54,6 @@ kubectl create clusterrolebinding \
     cluster-admin-binding \
     --clusterrole cluster-admin \
     --user $(gcloud config get-value account)
-
-# TODO: Auto-scaling
 ```
 
 ## Ingress
@@ -95,6 +97,8 @@ kubectl -n ingress-nginx \
     get svc ingress-nginx \
     -o json
 
+# .status.loadBalancer.ingress entry musts exist. If it doesn't, repeat.
+
 CJE_IP=$(kubectl -n ingress-nginx \
     get svc ingress-nginx \
     -o jsonpath="{.status.loadBalancer.ingress[0].ip}")
@@ -115,8 +119,6 @@ open "https://downloads.cloudbees.com/cje2/latest/"
 
 # Copy the link address of the `cje2_*_kubernetes.tgz` archive
 
-cd cluster
-
 RELEASE_URL=[...]
 
 curl -o cje.tgz $RELEASE_URL
@@ -127,12 +129,12 @@ cd cje2-kubernetes
 
 cat cje.yml \
     | sed -e \
+    "s@https://cje.example.com@http://cje.example.com@g" \
+    | sed -e \
     s@cje.example.com@$CJE_ADDR@g \
     | sed -e \
     "s@ssl-redirect: \"true\"@ssl-redirect: \"false\"@g" \
     | kubectl apply -f -
-
-kubectl get events
 
 kubectl rollout status sts cjoc
 
@@ -150,11 +152,41 @@ kubectl exec cjoc-0 -- cat \
 # Create a job
 ```
 
+```groovy
+podTemplate(
+    label: 'kubernetes',
+    containers: [
+        containerTemplate(name: 'maven', image: 'maven:alpine', ttyEnabled: true, command: 'cat'),
+        containerTemplate(name: 'golang', image: 'golang:alpine', ttyEnabled: true, command: 'cat')
+    ]
+) {
+    node('kubernetes') {
+        container('maven') {
+            stage('build') {
+                sh "sleep 5"
+                sh 'mvn --version'
+            }
+            stage('unit-test') {
+                sh "sleep 5"
+                sh 'java -version'
+            }
+        }
+        container('golang') {
+            stage('deploy') {
+                sh "sleep 5"
+                sh 'go version'
+            }
+        }
+    }
+}
+```
+
 ## What Now?
 
 ```bash
 gcloud container clusters \
     delete devops23 \
+    --project "ps-dev-201405" \
     --zone us-east1-b \
     --quiet
 ```
