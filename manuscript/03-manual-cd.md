@@ -167,8 +167,6 @@ kubectl -n default \
 
 kubectl auth can-i create ns
 
-# TODO: Continue
-
 cat /tmp/build.yml |
     sed -e \
     "s@:latest@:1.0-beta@g" |

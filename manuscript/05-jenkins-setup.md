@@ -429,19 +429,90 @@ podTemplate(
 }
 ```
 
+```bash
+helm delete jenkins --purge
+```
+
 ## Automate Setup
 
 ```bash
-helm delete jenkins --purge
-
 helm dependency update helm/jenkins
 
 helm install helm/jenkins \
     --name jenkins \
     --namespace jenkins \
-    --set Master.HostName=$JENKINS_ADDR
+    --set jenkins.Master.HostName=$JENKINS_ADDR \
+    --set jenkins.Master.AMI=$AMI_ID
 
 kubectl -n jenkins describe cm jenkins
+
+kubectl -n jenkins \
+    rollout status deployment jenkins
+
+open "http://$JENKINS_ADDR"
+
+kubectl -n jenkins \
+    get secret jenkins \
+    -o jsonpath="{.data.jenkins-admin-password}" \
+    | base64 --decode; echo
+
+# Login with user `admin`
+
+open "http://$JENKINS_ADDR/configure"
+
+# Click *Add* next to *Amazon EC2 Credentials*
+# Choose *Jenkins*
+# Choose *AWS Credentials* as the *Kind*
+# Type *aws* as the *ID*
+# Type *aws* as the *Description*
+
+echo $AWS_ACCESS_KEY_ID
+
+# Copy the output and paste it into the *Access Key ID* field
+
+echo $AWS_SECRET_ACCESS_KEY
+
+# Copy the output and paste it into the *Secret Access Key* field
+# Click the *Add* button
+# Choose the newly created credentials
+
+cat cluster/devops23.pem
+
+# Copy the output and paste it into the *EC2 Key Pair's Private Key* field
+# Click the *Test Connection* button
+```
+
+```groovy
+podTemplate(
+    label: "kubernetes",
+    containers: [
+        containerTemplate(name: "maven", image: "maven:alpine", ttyEnabled: true, command: "cat"),
+        containerTemplate(name: "kubectl", image: "vfarcic/kubectl", ttyEnabled: true, command: "cat")
+    ],
+    namespace: "go-demo-3-build",
+    serviceAccount: "build"
+) {
+    node("docker") {
+        stage("build") {
+            sh "sleep 5"
+            sh "docker version"
+        }    
+    }
+    node("kubernetes") {
+        container("maven") {
+            stage("unit-test") {
+                sh "sleep 5"
+                sh "java -version"
+            }
+        }
+        container("kubectl") {
+            stage("deploy") {
+                sh "sleep 5"
+                sh "kubectl -n go-demo-3 get all"
+            }
+        }
+    }
+}
 ```
 
 ## Destroying The Cluster

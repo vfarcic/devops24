@@ -280,7 +280,7 @@ helm install $HELM_ADDR \
     --set replicaCount=1 \
     --set dbReplicaCount=1 \
     --set service.type=NodePort \
-    --set ingress.enabled=false \
+    --set ingress.enabled=false
 
 kubectl -n default \
     rollout status deployment go-demo-3
