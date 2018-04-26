@@ -20,22 +20,11 @@ aws s3api create-bucket \
     --create-bucket-configuration \
     LocationConstraint=$AWS_DEFAULT_REGION
 
-# Windows only
-alias kops="docker run -it --rm \
-    -v $PWD/devops23.pub:/devops23.pub \
-    -v $PWD/config:/config \
-    -e KUBECONFIG=/config/kubecfg.yaml \
-    -e NAME=$NAME -e ZONES=$ZONES \
-    -e AWS_ACCESS_KEY_ID=$AWS_ACCESS_KEY_ID \
-    -e AWS_SECRET_ACCESS_KEY=$AWS_SECRET_ACCESS_KEY \
-    -e KOPS_STATE_STORE=$KOPS_STATE_STORE \
-    vfarcic/kops"
-
 kops create cluster \
     --name $NAME \
     --master-count 3 \
     --node-count 3 \
-    --node-size t2.xlarge \
+    --node-size t2.medium \
     --master-size t2.small \
     --zones $ZONES \
     --master-zones $ZONES \
@@ -44,13 +33,6 @@ kops create cluster \
     --yes
 
 kops validate cluster
-
-# Windows only
-kops export kubecfg --name ${NAME}
-
-# Windows only
-export \
-    KUBECONFIG=$PWD/config/kubecfg.yaml
 
 kubectl create \
     -f https://raw.githubusercontent.com/kubernetes/kops/master/addons/ingress-nginx/v1.6.0.yaml
@@ -87,11 +69,7 @@ POD_NAME=$(kubectl -n go-demo-3 \
     get pods -l app=api \
     -o jsonpath="{.items[0].metadata.name}")
 
-kubectl -n go-demo-3 \
-    logs $POD_NAME
-
-kubectl -n go-demo-3 \
-    logs sts/db -c db
+kubectl -n go-demo-3 logs $POD_NAME
 ```
 
 ## FluentD + ELK
@@ -113,10 +91,13 @@ kubectl create \
 
 kubectl -n kube-system get pods
 
-KIBANA_POD_NAME=[...]
+KIBANA_POD_NAME=$(kubectl \
+    -n kube-system get pods \
+    -l k8s-app=kibana-logging \
+    -o jsonpath="{.items[0].metadata.name}")
 
 kubectl -n kube-system \
-    logs -f $KIBANA_POD_NAME
+    logs $KIBANA_POD_NAME
 
 DNS=$(kubectl -n kube-system \
     get ing kibana-logging \
@@ -124,11 +105,21 @@ DNS=$(kubectl -n kube-system \
 
 open "http://$DNS"
 
+# kubernetes.namespace_name: "go-demo-3"
+
+# kubernetes.namespace_name: "go-demo-3" AND kubernetes.container_name: "api"
+
+# kubernetes.namespace_name: "go-demo-3" AND kubernetes.container_name: "db"
+
+cat logs/logger.yml
+
 kubectl create -f logs/logger.yml
 
 kubectl logs -f random-logger
 
 open "http://$DNS"
+
+# kubernetes.pod_name: "random-logger"
 ```
 
 ## Something

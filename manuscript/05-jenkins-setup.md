@@ -1,4 +1,4 @@
-# Jenkins
+# Jenkins Setup
 
 ## Creating A Cluster
 
@@ -245,7 +245,8 @@ packer build -machine-readable \
     | tee cluster/docker-packer.log
 
 AMI_ID=$(grep 'artifact,0,id' \
-    cluster/docker-packer.log | cut -d: -f2)
+    cluster/docker-packer.log \
+    | cut -d: -f2)
 
 echo $AMI_ID
 

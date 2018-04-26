@@ -11,6 +11,7 @@
 - [ ] Write CD with CodeShip
 - [ ] Write CD with JenkinsX
 - [ ] Write CD with CJE
+- [ ] Write https://github.com/azure/brigade
 - [ ] Write Windows support
 
 ## The DevOps 2.5 Toolkit

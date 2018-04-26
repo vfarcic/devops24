@@ -1,4 +1,4 @@
-# Jenkins
+# CD With Jenkins
 
 ## Creating A Cluster
 
@@ -176,6 +176,8 @@ open "https://hub.docker.com/r/$GH_USER/go-demo-3/tags/"
 ```
 
 ## Functional Stage
+
+---
 
 ```groovy
 import java.text.SimpleDateFormat
@@ -507,6 +509,14 @@ podTemplate(
 
 open "https://hub.docker.com/r/$GH_USER/go-demo-3/tags/"
 ```
+
+## Shared Libraries
+
+TODO: Code
+
+## Jenkinsfile
+
+TODO: Code
 
 ## Destroying The Cluster
 

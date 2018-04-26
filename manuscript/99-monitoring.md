@@ -1,4 +1,4 @@
-# Logging
+# Monitoring
 
 ## Creating A Cluster
 
@@ -146,6 +146,10 @@ kubectl get secret \
     -n mon grafana \
     -o jsonpath="{.data.admin-password}" \
     | base64 --decode ; echo
+
+echo "http://$MON_ADDR"
+
+# Import dashboards 3131, 1621
 ```
 
 ## Something

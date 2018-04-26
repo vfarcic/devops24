@@ -166,6 +166,8 @@ LB_IP=$(dig +short $LB_ADDR \
 
 JENKINS_ADDR="jenkins.$LB_IP.xip.io"
 
+cat helm/jenkins-values.yml
+
 helm install stable/jenkins \
     --name jenkins \
     --namespace jenkins \
@@ -196,7 +198,7 @@ cd ../go-demo-3
 
 helm create my-app
 
-helm dependency update
+helm dependency update my-app
 
 helm package my-app
 
@@ -209,6 +211,26 @@ helm install ./my-app-0.1.0.tgz \
 
 helm delete my-app --purge
 
+rm -rf my-app-0.1.0.tgz
+
+ls -l helm helm/go-demo-3
+
+cat helm/go-demo-3/Chart.yaml
+
+cat helm/go-demo-3/LICENSE
+
+cat helm/go-demo-3/README.md
+
+cat helm/go-demo-3/values.yaml
+
+ls -l helm/go-demo-3/templates/
+
+cat helm/go-demo-3/templates/NOTES.txt
+
+cat helm/go-demo-3/templates/deployment.yaml
+
+# The rest of the files are following the same logic
+
 helm lint helm/go-demo-3
 
 helm package helm/go-demo-3 -d helm
@@ -219,14 +241,14 @@ helm package helm/go-demo-3 -d helm
 ```bash
 TAG=0.0.1
 
-git tag -a $TAG \
+git tag -f -a $TAG \
     -m 'A new release. Hooray!'
 
 GITHUB_USER=[...]
 
 GITHUB_TOKEN=[...]
 
-git push \
+git push -f \
     https://$GITHUB_USER:$GITHUB_TOKEN@github.com/$GITHUB_USER/go-demo-3.git \
     --tags
 
