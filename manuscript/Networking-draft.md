@@ -1,69 +1,58 @@
 # Kubernetes Networking (chapter 1)
 
-T> Networking is backbone of distributed applications and come with different flavours.
+T> Networking is backbone of distributed applications and implemented in different ways.
 
-kubernetes is pluggable architecure as we have learned in the previous book. Kubernetes team made right decision to keep networking as pluggable module as networking is implemented differently by different organizations. Networking is one of the critical building block of kubernetes cluster.
+kubernetes is pluggable architecure as we have learned in the previous book. Kubernetes team made right decision to keep networking as pluggable module as networking implemented differently by different organizations. Networking is one of the critical building block of kubernetes cluster.
 
-Kubernetes solves communication problem in different way for different components involved i.e services, ingress, etc. For pod-to-pod communication Kubernetes doesn't dictate how networking driver is implemented however it imposes basic requirements which providers need to full fill. Kubernetes networking model requires,
+Kubernetes approaches communication problem in the container world by different means using components like services, ingress, kube-dns, etc. For pod-to-pod communication Kubernetes doesn't dictate how networking is implemented however it imposes basic requirements which providers need to full fill. Kubernetes networking model requires,
 
 * All pods can communicate with all other pods without NAT
 * All nodes can communicate with all pods (and vice-versa) without NAT
 * The IP that a pod sees itself as is the same IP others see as it is 
 
-Kubernetes default networking driver is kubenet. `kubenet` is very basic network plugin typically useful for single node environments or in cloud environment with routing rules. It has limited features and probably not good for vast majority of implementations, for example,In AWS you are limited to 50 nodes in the cluster as 50 is limit for routing tables. There are other networking drivers available through CNI (*Container Network Interface*) which is more practical. 
+Currently, Kubernetes provides networking using either CNI (*Container Network Interface*) plugins or kubenet plugin. Kubernetes uses CNI as an interface between network providers and Kubernetes networking.
 
-`CNI` has two branches, specification which is implemented by different networking providers and libraries. CNI is a standard plugin-based networking solution for application containers on Linux and not specific to kubernetes and it is managed by CNCF. 
+Kubernetes default networking driver is kubenet. `kubenet` is very basic network plugin typically useful for single node environments or in cloud environment with routing rules. It has limited features and probably not good for vast majority of implementations, for example,In AWS you are limited to 50 nodes in the cluster as 50 is limit for routing tables. Also, kubenet deprecating in favour of CNI.  
 
-Container runtimes creates new network namespace and handover it to set of network plugin(s) to setup interfaces, iptables, routing, etc. A plugin is responsible for setting up a network interface into the container network namespace (for example one end of veth) and modifying the host (attaching other end of veth into a bridge). It should then assign the IP to the interface and setup the routes by invoking appropriate IPAM plugin. The IPAM plugin is expected to determine the interface IP/subnet, Gateway and Routes and return this information to the "main" plugin to apply.
+Container Network Interface (CNI), is consists of a specification and libraries for writing plugins to configure network interfaces in containers, along with a number of basic plugins. CNI is a very simple specification which concerns only with network connectivity of containers and removing networking resources when the container is deleted. 
+
+CNI specs originally developed by CoreOS for `rkt` project and now managed by CNCF under `containernetworking` team. It has two branches,first one is CNI specifications which is implemented by different networking providers and basic plugins reference implementation of CNI specs.
+
+The way CNI and container runtime works together is that container runtime creates new network namespace and handover it to set of CNI plugin(s) to setup interfaces, iptables, routing, etc. CNI plugins are categorize into two parts, Main plugin is responsible for setting up a network interface into the container network namespace and then assign the IP to the interface and setup the routes by invoking appropriate IPAM plugin. The IPAM plugin determines the interface IP/subnet, Gateway and Routes and return this information to the `main` plugin to apply. Below is high level diagram,  
+
     
 ![Figure : Basic CNI diagram](images/cni-basic.png)
 
-Below are possible networking implementation options through CNI which setup pod-to-pod communication full fulling Kubernetes requirements:
 
-* layer 2 solution
-* layer 3 solution
-* overlay solution
+`containernetworking` team created several basic plugins as reference implementations, we going to use some of those later in this chapter. For more information on these plugins follow https://github.com/containernetworking/plugins 
 
-How a container gets its network,
+Below diagram and steps go more in detail on How a pod gets its network,
 
 
 ![Figure : CNI Plugin Flow](images/cni-flow.png)
 
 
-1. User supplies network conf file to kubernetes which contains network type and IP related information.
-2. Kubelet creates pod namespace with pause container. Pause container is created for each pod to serve network namespace to other containers in the pod.  
+1. User supplies network conf file to kubernetes which contains plugin type and IP related information.
+2. Kubelet works with CNI pulgins on each host in kubernetes cluster. It creates pod namespace with pause container. Pause container is created for each pod to serve network namespace to other containers in the pod.  
 3. Kubelet has CNI library which invokes CNI main plugin and handover namespace and other network information like ADD or DELETE container to network.
 4. CNI plugin setup network elements like interfaces, iptables, routing, etc. for pod and host network namespace.
 5. CNI main plugin invokes IPAM plugin for IP allocation and IPAM returns IP information in json object to main plugin.
 6. Main plugin uses this information to configure network interface.
 7. Main plugin updates API server with network information for the pod.  
 
+Below are possible networking options which can be implemented through CNI plugins and full fulling Kubernetes requirements for pod-to-pod communication:
 
-Despite all abstraction you should be wary of networking, It would be mistake if you don't have networking expertise who understand linux namespace, routing, iptables, networking virtualizations, etc.     
+* overlay solution
+* layer 3 solution
+* layer 2 solution
 
-## Setup Network Using basic CNI plugins
+There are several third party providers which implements CNI and some more features like NetworkPolicy. You should be evaluating which work best for your infrastructure. Despite all abstraction you should be wary of networking, It would be mistake if you don't have networking expertise who understand linux namespace, routing, iptables, networking virtualizations, etc.     
 
-In this section we going to use basic CNI plugins to setup pod network where pods can communicate across nodes. Let's setup a local kubernetes cluster.
+## Setup Pod Network using basic CNI plugins
 
-Run the commands from `Create local cluster with kubadmn  (Appendix)` to build the kubernetes cluster. To initialize kubernetes master use below command instead,
+In this section we going to use basic CNI plugins to setup pod network where pods can communicate across nodes. Let's setup a local kubernetes cluster. Run the commands from `Create local cluster with kubadmn  (Appendix)` to build the kubernetes cluster. 
 
-```bash
-sudo kubeadm init --apiserver-advertise-address 10.100.198.200
-```
-
-```bash
-kubectl --kubeconfig ./admin.conf get nodes
-
-NAME      STATUS     ROLES     AGE       VERSION
-master    NotReady   master    5m        v1.10.0
-node1     NotReady   <none>    2m        v1.10.0
-node2     NotReady   <none>    1m        v1.10.0
-```
-
-It showing all nodes not ready because `kube-dns` pod is in pending state because we haven't installed pod network yet. 
-
-
-<<write about standard plugins>>
+All basics plugins are available by default at `/opt/cni/bin` and installed by `kubernetes-cni` package. We didn't install this package explicitly, since kubelet package has dependency on this one. Below is CNI conf file plugins going to use. We using bridge and host-local plugins. Bridge plugin creates a bridge and adds the host and the container to it. The host-local is IPAM plugin maintains a local database of allocated IPs. IPAM plugin will assign a IP for a pod from subnet range we define in CNI conf file.
 
 ```
 {
@@ -83,7 +72,7 @@ It showing all nodes not ready because `kube-dns` pod is in pending state becaus
 }
 ```
 
-Since basic CNI plugin can't find pod network range used by other host, We need to supply non-conflicting subnet range ourselves for each node. Below are different subnet values we will use for each node.
+Since basic CNI plugin can't find pod network range used by other hosts, We need to supply non-conflicting subnet range ourselves for each host. Below are different subnet values we will use for each host.
 
 ```
 master -> 10.22.1.0/24
@@ -92,7 +81,6 @@ node2 -> 10.22.3.0/24
 ```
 
 `Vagrantfile` has a `cni` provisioner to configure file 10-mynet.conf needed by basic CNI plugin. Lets use this provisioner,
-
 
 ```bash
 CNI='true' vagrant provision --provision-with cni
@@ -116,6 +104,19 @@ node1     Ready     <none>    4m        v1.10.1
 node2     Ready     <none>    3m        v1.10.1
 ```
 
+We also need to established cross nodes routes manually as basic CNI plugins don't provide this feature. `Vagrantfile` has a `route` provisioner to configure cross host routes. Lets use this provisioner,
+
+```bash
+CNI='true' vagrant provision --provision-with route
+
+==> node1: Running provisioner: route (shell)...
+    node1: configuring route...
+    node1: 10.22.3.0/24 via 10.100.198.202 dev enp0s8
+==> node2: Running provisioner: route (shell)...
+    node2: configuring route...
+    node2: 10.22.2.0/24 via 10.100.198.201 dev enp0s8
+```
+
 ## Testing pod network
 
 Now, we should be deploying some pods to see if kubernetes network working fine or not. We will use simple nginx deployment with two replicas.
@@ -136,18 +137,10 @@ nginx-deployment-75675f5897-b4clx   1/1       Running   0          43s       10.
 nginx-deployment-75675f5897-chm2r   1/1       Running   0          43s       10.22.2.2   node1
 ```
 
-We also need to established cross nodes routes manually as basic CNI plugins don't provide this feature. `Vagrantfile` has a `route` provisioner to configure cross host routes. Lets use this provisioner,
+Lets visualize our pod network,
 
-```bash
-CNI='true' vagrant provision --provision-with route
+![Figure : Pod Network through basic CNI plugin](images/cni-basic-network.png)
 
-==> node1: Running provisioner: route (shell)...
-    node1: configuring route...
-    node1: 10.22.3.0/24 via 10.100.198.202 dev enp0s8
-==> node2: Running provisioner: route (shell)...
-    node2: configuring route...
-    node2: 10.22.2.0/24 via 10.100.198.201 dev enp0s8
-```
 
 With the help of ping we can test whether bridge plugin was able to meet kubernetes network requirements,
 
@@ -184,14 +177,23 @@ PING 10.22.3.3 (10.22.3.3): 48 data bytes
 
 ## What now?
 
-We have explored the standard plugin for pod network and performed various test. Lets delete the cluster,
+We have explored the basic CNI plugin for pod network and performed various test. Lets delete the cluster,
 
 ```bash
 vagrant destroy -f
 ```
 
 
+
+
+
 # Setup Network Using Flannel (chapter 2)
+
+In this chapter we going to use Flannel plugin to setup pod network where pods can communicate across nodes. Lets create kubernetes cluster using our `create local cluster with kubadmn guide`. You need to supply pod network when initializing kubernetes master, Use below command to initialize the master instead.
+
+```bash
+sudo kubeadm init --apiserver-advertise-address 10.100.198.200 --pod-network-cidr 10.244.0.0/16
+```
 
 Next step, we going to create pod network with provider Flannel. Flannel establishes an overlay network using VXLAN that helps to connect containers across multiple hosts. The flannel manifest defines four things:
 
@@ -386,6 +388,11 @@ nginx-deployment-75675f5897-46tfh   1/1       Running   0          12m       10.
 nginx-deployment-75675f5897-rq75g   1/1       Running   0          12m       10.244.1.3   node1
 ```
 
+Lets visualize our pod network,
+
+![Figure : Pod Network through Flannel plugin](images/cni-flannel-network.png)
+
+
 Lets do our ping test again to validate kubernetes network requirement,
 
 * All nodes can communicate with all pods (and vice-versa) without NAT
@@ -422,7 +429,6 @@ PING 10.244.3.4 (10.244.3.4): 48 data bytes
 
 This `ping` test tell us that now pod deployed on node2 is reachable from the pod deployed on node1. 
 
-<<flannel diagram>>
 
 ## What now?
 
@@ -439,7 +445,7 @@ By default, there is no restriction on pods traffic in the kubernetes cluster wh
 
 NetworkPolicy is defined in two parts, set of pods a policy apply to and other pods have access to this pod. NetworkPolicy also has some other features like egress restrictions, IP ranges, port restrictions, etc. 
 
-Lets create kubernetes cluster using our `create local cluster with kubadmn guide`. You need to supply pod network when initializing kubernetes master, Use below command to initialize the master.
+Lets create kubernetes cluster using our `create local cluster with kubadmn guide`. You need to supply pod network when initializing kubernetes master, Use below command to initialize the master instead.
 
 ```bash
 sudo kubeadm init --apiserver-advertise-address 10.100.198.200 --pod-network-cidr 192.168.0.0/16
@@ -682,7 +688,7 @@ vagrant ssh master
 There are several ways you can create a kubernetes cluster like the one we have seen in previous book with kops. In this chapter we will use `kubeadmn`. `kubeadmn` setup minimum viable cluster which makes it very simple. Below command initialized the master with control plane, etcd and API server. Since, we using flaneel as networking provider it require us to pass pod `pod-network-cidr`. We also passing master node IP we configured through vagrant. 
 
 ```bash
-sudo kubeadm init --apiserver-advertise-address 10.100.198.200 --pod-network-cidr 10.244.0.0/16
+sudo kubeadm init --apiserver-advertise-address 10.100.198.200
 ```
 
 This command creates all necessary config for kubernetes to function properly like keys, certificates, RBAC, pod manifest, etc and then kubelet create pods for control plane. This command may take few minutes as pulling the images. The output of above command as follows, removing most of the lines for sake of brevity.   
