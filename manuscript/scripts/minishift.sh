@@ -1,0 +1,46 @@
+######################
+# Create The Cluster #
+######################
+
+# Make sure that your minishift version is v1.15 or higher
+
+minishift start \
+    --vm-driver virtualbox \
+    --cpus 2 \
+    --memory 2048 \
+    --openshift-version 3.9.0
+
+IP=$(minishift ip)
+
+NAME=$(echo $IP | tr '.' '-')
+
+oc config set current-context \
+    default/$NAME:8443/system:admin
+
+#######################
+# Destroy the cluster #
+#######################
+
+minishift delete -f
+
+kubectl config delete-cluster $NAME:8443
+
+kubectl config delete-cluster 127-0-0-1:8443
+
+kubectl config delete-context /$NAME:8443/developer
+
+kubectl config delete-context default/$NAME:8443/system:admin
+
+kubectl config delete-context minishift
+
+kubectl config delete-context myproject/$NAME:8443/developer
+
+kubectl config delete-context myproject/$NAME:8443/system:admin
+
+kubectl config delete-context default/127-0-0-1:8443/system:admin
+
+kubectl config unset users.developer/$NAME:8443
+
+kubectl config unset users.system:admin/$NAME:8443
+
+kubectl config unset users.system:admin/127-0-0-1:8443

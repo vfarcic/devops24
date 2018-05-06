@@ -1,58 +1,27 @@
 # Monitoring
 
-## Creating A Cluster
+## Creating A Cluster with kops
 
 ```bash
-cd k8s-specs
+source cluster/kops
 
-git pull
+chmod +x kops/cluster-setup.sh
 
-cd cluster
+NODE_COUNT=2 \
+    NODE_SIZE=t2.medium \
+    USE_HELM=true \
+    ./kops/cluster-setup.sh
+```
 
-source kops
+## Creating a Cluster with Minikube
 
-export BUCKET_NAME=devops23-$(date +%s)
+```bash
+minikube start \
+    --vm-driver virtualbox \
+    --cpus 3 \
+    --memory 4056
 
-export KOPS_STATE_STORE=s3://$BUCKET_NAME
-
-aws s3api create-bucket \
-    --bucket $BUCKET_NAME \
-    --create-bucket-configuration \
-    LocationConstraint=$AWS_DEFAULT_REGION
-
-kops create cluster \
-    --name $NAME \
-    --master-count 3 \
-    --master-size t2.small \
-    --node-count 2 \
-    --node-size t2.medium \
-    --zones $ZONES \
-    --master-zones $ZONES \
-    --ssh-public-key devops23.pub \
-    --networking kubenet \
-    --authorization RBAC \
-    --yes
-
-kops validate cluster
-
-kubectl create \
-    -f https://raw.githubusercontent.com/kubernetes/kops/master/addons/ingress-nginx/v1.6.0.yaml
-
-kubectl -n kube-ingress \
-    rollout status \
-    deployment ingress-nginx
-
-cd ..
-
-kubectl create \
-    -f helm/tiller-rbac.yml \
-    --record --save-config
-
-helm init --service-account tiller
-
-kubectl -n kube-system \
-    rollout status \
-    deployment tiller-deploy
+minikube addons enable ingress
 ```
 
 ## Prometheus Chart
@@ -77,8 +46,8 @@ kubectl create ns mon
 helm install stable/prometheus \
     --name mon \
     --namespace mon \
-    --set server.ingress.enabled=true \
-    --set server.ingress.hosts={"$MON_ADDR"}
+    --set server.ingress.hosts={"$MON_ADDR"} \
+    --values mon/prom-values.yml
 
 kubectl -n mon \
     rollout status \
@@ -102,6 +71,10 @@ curl http://$LB_DNS/demo/hello
 
 open "http://$MON_ADDR"
 
+# container_memory_usage_bytes{pod_name!=""}
+
+# container_memory_usage_bytes{pod_name!=""} / container_spec_memory_limit_bytes{pod_name!=""}
+
 # container_memory_usage_bytes{namespace="go-demo-3"}
 
 # sum(container_memory_usage_bytes{namespace="go-demo-3"})
@@ -110,13 +83,21 @@ open "http://$MON_ADDR"
 
 # container_memory_usage_bytes{pod_name=~"go-demo-3-db.+", container_name="db"}
 
+# container_memory_usage_bytes{pod_name=~"go-demo-3-db.+", container_name="db"} / container_spec_memory_limit_bytes{pod_name=~"go-demo-3-db.+", container_name="db"}
+
 # node_memory_MemTotal
 
 # node_memory_MemFree
 
 # node_memory_MemAvailable
 
+# up
+
+# sum(up{job="kubernetes-nodes", kubernetes_io_role="master"})
+
 # TODO: Alertmanager
+
+# TODO: Instrumentation
 
 # TODO: PushGateway
 ```

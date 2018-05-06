@@ -1,13 +1,13 @@
 ## The DevOps 2.4 Toolkit
 
 - [ ] 00-preface.md
-- [X] 01-sts.md
+- [ ] 01-sts.md
 - [ ] 02-sa.md
 - [ ] 03-manual-cd.md
 - [ ] 04-helm.md
 - [ ] 05-jenkins-setup.md
 - [ ] 06-jenkins-cd.md
-- [ ] Security scanning (Clair)
+- [ ] Security scanning (Clair, https://github.com/aquasecurity/kube-bench, security/best-practices)
 - [ ] Write CD with CodeShip
 - [ ] Write CD with JenkinsX
 - [ ] Write CD with CJE
@@ -18,7 +18,7 @@
 
 - [ ] Write daemon-set.md
 - [ ] Write logging.md
-- [ ] Write persistent-volume.md (EBS, EFS, Rook, GlusterFS, Ceph)
+- [ ] Write persistent-volume.md (EBS, EFS, Rook, GlusterFS, Ceph, NFS)
 - [ ] Write `kubectl completion bash`, and `kubectx` appendix
 - [ ] Write horizontal-pod-autoscaler.md (https://itnext.io/opportunistically-mining-cryptocurrencies-in-kubernetes-94934d095c4d)
 - [ ] Write kubeadm.md
@@ -50,7 +50,6 @@
 - [ ] Write write-addons.md
 - [ ] Write the-end.md
 - [ ] Publish to Amazon
-- [ ] Write pod-security-policy.md
 - [ ] Change rs YAMLs to v1
 - [ ] Change deployment YAMLs to v1
 - [ ] AWS Fargate
@@ -72,10 +71,10 @@
 - [ ] https://medium.com/google-cloud/mgob-a-mongodb-backup-agent-for-kubernetes-cfc9b30c6c92
 - [ ] Serverless, OpenFaas
 - [ ] Service mesh (Istio, https://akomljen.com/kubernetes-service-mesh/, http://philcalcado.com/2017/08/03/pattern_service_mesh.html)
-- [ ] Security tools (https://sysdig.com/blog/20-docker-security-tools/)
+- [ ] Security tools (https://sysdig.com/blog/20-docker-security-tools/, gVisor)
 - [ ] CRI and alternative container runtimes (CRI-O, etc)
 - [ ] https://raw.githubusercontent.com/cloudbees/ps-internal/master/K8S/Utils/setup_k8s_user.sh?token=Aftag0fCKRzriAmlYSrLW5-0IUkBUy7vks5avjoWwA%3D%3D
-- [ ] Operating Systems (CoreOS, )
+- [ ] Operating Systems (CoreOS, RancherOS)
 
 ## Contributors
 
@@ -90,9 +89,13 @@
 
 - [ ] Code
 - [ ] Write
-- [ ] Text Review
+- [ ] Code review Docker for Mac/Windows
+- [ ] Code review minikube
+- [ ] Code review kops
+- [ ] Code review minishift
+- [ ] Code review GKE
+- [ ] Text review
 - [ ] Diagrams
-- [ ] Code Review
 - [ ] Gist
 - [ ] Review the title
 - [ ] Proofread

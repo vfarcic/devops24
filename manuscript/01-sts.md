@@ -2,13 +2,13 @@
 
 T> Stateless and stateful application are quite different in their architecture. Those differences need to be reflected in Kubernetes as well. The fact that we can use Deployments with PersistentVolumes does not necessarily mean that is the best way to run stateful applications.
 
-Most of the applications are deployed to Kubernetes using Deployments. It is, without a doubt, the most commonly used controller. Deployments provide (almost) everything we might need. We can specify the number of replicas when our applications need to be scaled. We can mount volumes through PersistentVolumeClaims. We can communicate with the Pods controlled by Deployments through Services. We can execute rolling updates that will deploy new releases without downtime. There are quite a few other features enabled by Deployments. Does that mean that Deployments are the preferable way to run all types of applications? Is there a feature we might need that is not already available through Deployments and other resources we can associate with them? food for a thought.
+Most of the applications are deployed to Kubernetes using Deployments. It is, without a doubt, the most commonly used controller. Deployments provide (almost) everything we might need. We can specify the number of replicas when our applications need to be scaled. We can mount volumes through PersistentVolumeClaims. We can communicate with the Pods controlled by Deployments through Services. We can execute rolling updates that will deploy new releases without downtime. There are quite a few other features enabled by Deployments. Does that mean that Deployments are the preferable way to run all types of applications? Is there a feature we might need that is not already available through Deployments and other resources we can associate with them? 
 
 When running stateful applications in Kubernetes, we soon realize that Deployments do not offer everything we need. It's not that we require additional features, but that some of those available in Deployments do not behave just as we might want them to. In many cases, Deployments are an excellent fit for stateless applications. However, we might need to look for a different controller that will allow us to run stateful applications safely and efficiently. That controller is StatefulSet.
 
-Let's experience some of the problems behind stateful applications, and the benefits *StatefulSets* bring to the table. To do that, we need a cluster.
+I> If we are to implement continuous delivery or deployment processes across the whole organization, we cannot ignore the fact that not all the applications are stateless. Having a state is unavoidable, and we need to be sure that we know how to handle stateful applications.
 
-W> I will assume that you are already proficient with Deployments, ReplicaSets, Pods, Ingress, Services, PersistentVolumes, PersistentVolumeClaims, Namespaces and a few other things. This chapter focuses only on StatefulSets, and it assumes the knowledge of the rest of the resource types we'll use. If that's not the case, this chapter might be too confusing and advanced. Please read *The DevOps 2.3 Toolkit: Kubernetes* first or consult the Kubernetes documentation.
+Let's experience some of the problems behind stateful applications, and the benefits *StatefulSets* bring to the table. To do that, we need a cluster.
 
 We'll skip the theory (for now), and dive straight into examples. To do that, we need a cluster.
 
@@ -16,9 +16,9 @@ We'll skip the theory (for now), and dive straight into examples. To do that, we
 
 We'll start the hands-on walk-through by cloning the `vfarcic/k8s-specs` repository that contains all the example definitions we'll use throughout the book.
 
-W> ## A note to Windows users
+W> ## A note to **Windows** users
 W>
-W> Please run all the examples from *GitBash* (installed through *Git*). That way the commands you'll see throughout the book will be same as those that should be executed on *MacOS* or any *Linux* distribution. If you're using Hyper-V instead of VirtualBox, you may need to run the *GitBash* window as an Administrator.
+W> Please run all the examples from *GitBash* (installed through *Git*). That way the commands you'll see throughout the book will be same as those executed on *MacOS* or any *Linux* distribution. If you're using Hyper-V instead of VirtualBox, you may need to run the *GitBash* window as an Administrator.
 
 I> All the commands from this chapter are available in the [01-sts.sh](https://gist.github.com/505aedf2cb268837983132d4e4385fab) Gist.
 
@@ -27,106 +27,21 @@ git clone \
     https://github.com/vfarcic/k8s-specs.git
 
 cd k8s-specs
-
-mkdir -p cluster
-
-cd cluster
 ```
 
-I> If you already have the repository, please execute `git pull` to make sure that your local copy contains the latest commits.
+Now that you have a repository with the examples we'll use throughout the book, we should create a cluster unless you already have one.
 
-If you read the *Creating A Production-Ready Kubernetes Cluster* chapter of *The DevOps 2.3 Toolkit: Kubernetes*, you are already familiar with kops. You learned about the *Kubernetes Operations (kops)* project and the prerequisites you need to create a Kubernetes cluster in AWS. Further on, you become proficient how to create a cluster, and you know the components that constitute it. You learned how to update, upgrade, and access Kubernetes clusters created with kops in AWS. You deployed a few applications and observed fault-tolerance and high-availability.
+For this chapter, I'll assume that you are running a cluster with **Kubernetes version 1.9** or higher. Further on, I'll assume that you already have an **nginx Ingress Controller** deployed, that **RBAC** is set up, and that your cluster has a **default StorageClass**. If you are unsure about some of the requirements, I prepared a few Gists with the commands I used to create different clusters. Feel free to choose whichever suits you the best, or be brave and roll with your own. Ideally, you'll run the commands from every chapter on each of the Kubernetes flavors. That way, you'll not only learn the main subject but also gain experience in running Kubernetes in different combinations and, hopefully, make a more informed decision which flavor to use for your local development as well as for production.
 
-If you haven't read *The DevOps 2.3 Toolkit: Kubernetes*, and you're not planning to, the essential instructions are available in *[Appendix A: Using Kubernetes Operations (kops)](#appendix-a)*. Please read it and execute the commands from it before proceeding further. It'll give you just enough information you need to prepare, create, and destroy a cluster.
+The Gists with the commands I used to create different variations of Kubernetes clusters are as follows.
 
-W> No matter from where you obtained the information about kops, I will assume that you are proficient with it and skip providing detailed information. We'll only list the commands we need to create a cluster that will serve as a playground for this chapter.
+* [docker4mac.sh](https://gist.github.com/06e313db2957e92b1df09fe39c249a14) **Docker for Mac** with 2 CPUs, 2GB RAM, and with nginx Ingress.
+* [minikube.sh](https://gist.github.com/536e6329e750b795a882900c09feb13b) **minikube** with 2 CPUs, 2GB RAM, and with `ingress`, `storage-provisioner`, and `default-storageclass` addons enabled.
+* [kops.sh](https://gist.github.com/2a3e4ee9cb86d4a5a65cd3e4397f48fd) **kops in AWS** with 3 t2.small masters and 2 t2.medium nodes spread in three availability zones, and with nginx Ingress (assumes that the prerequisites are set through [Appendix B](#appendix-b)).
+* [minishift.sh](https://gist.github.com/c9968f23ecb1f7b2ec40c6bcc0e03e4f) **minishift** with 2 CPUs, 2GB RAM, and version 3.9+.
+* [gke.sh](https://gist.github.com/5c52c165bf9c5002fedb61f8a5d6a6d1) **Google Kubernetes Engine (GKE)** with 3 n1-standard-1 (1 CPU, 3.75GB RAM) nodes (one in each zone), and with nginx Ingress controller running on top of the "standard" one that comes with GKE. We'll use nginx Ingress for compatibility with other platforms. Feel free to modify the YAML files if you prefer NOT to install nginx Ingress.
 
-The `cluster` directory should already have the `kops` file. If it doesn't, please refer to the [Appendix A: Using Kubernetes Operations (kops)](#appendix-a). In it, we're creating the file just before we destroy the cluster.
-
-```bash
-cat kops
-```
-
-The output, stripped from the keys, is as follows.
-
-```
-export AWS_ACCESS_KEY_ID=...
-export AWS_SECRET_ACCESS_KEY=...
-export AWS_DEFAULT_REGION=us-east-2
-export ZONES=us-east-2a,us-east-2b,us-east-2c
-export NAME=devops23.k8s.local
-```
-
-We'll `source` the environment variables from the `kops` file.
-
-```bash
-source kops
-```
-
-Next, we'll create an S3 bucket that will be used as kops' state store.
-
-```bash
-export BUCKET_NAME=devops23-$(date +%s)
-
-export KOPS_STATE_STORE=s3://$BUCKET_NAME
-
-aws s3api create-bucket \
-    --bucket $BUCKET_NAME \
-    --create-bucket-configuration \
-    LocationConstraint=$AWS_DEFAULT_REGION
-```
-
-The command that creates the `kops` alias is as follows. Execute it only if you are a **Windows user**.
-
-```bash
-alias kops="docker run -it --rm \
-    -v $PWD/devops23.pub:/devops23.pub \
-    -v $PWD/config:/config \
-    -e KUBECONFIG=/config/kubecfg.yaml \
-    -e NAME=$NAME -e ZONES=$ZONES \
-    -e AWS_ACCESS_KEY_ID=$AWS_ACCESS_KEY_ID \
-    -e AWS_SECRET_ACCESS_KEY=$AWS_SECRET_ACCESS_KEY \
-    -e KOPS_STATE_STORE=$KOPS_STATE_STORE \
-    vfarcic/kops"
-```
-
-Now we're ready to create a cluster.
-
-```bash
-kops create cluster \
-    --name $NAME \
-    --master-count 3 \
-    --master-size t2.small \
-    --node-count 2 \
-    --node-size t2.medium \
-    --zones $ZONES \
-    --master-zones $ZONES \
-    --ssh-public-key devops23.pub \
-    --networking kubenet \
-    --authorization RBAC \
-    --yes
-
-kops validate cluster
-```
-
-If you received an error from `kops validate cluster`, wait a few minutes and repeat the validation. We'll proceed once the cluster is fully operational.
-
-W> ## A note to Windows users
-W> 
-W> Kops was executed inside a container. It changed the context inside the container that is now gone. As a result, your local `kubectl` context was left intact. We'll fix that by executing `kops export kubecfg --name ${NAME}` and `export KUBECONFIG=$PWD/config/kubecfg.yaml`. The first command exported the config to `/config/kubecfg.yaml`. That path was specified through the environment variable `KUBECONFIG` and is mounted as `config/kubecfg.yaml` on local hard disk. The latter command exports `KUBECONFIG` locally. Through that variable, `kubectl` is now instructed to use the configuration in `config/kubecfg.yaml` instead of the default one. Before you run those commands, please give AWS a few minutes to create all the EC2 instances and for them to join the cluster. After waiting and executing those commands, you'll be all set.
-
-Finally, the last step is to deploy Ingress controller.
-
-```bash
-kubectl create \
-    -f https://raw.githubusercontent.com/kubernetes/kops/master/addons/ingress-nginx/v1.6.0.yaml
-```
-
-We're finished with the cluster, and we can return to the repository's root directory.
-
-```bash
-cd ..
-```
+W> The purpose of those Gists is to serve as guidance, not necessarily as a set of steps you should execute blindly. I assume that you already know how to create a cluster with the specified requirements.
 
 ## Using StatefulSets To Run Stateful Applications
 
@@ -140,7 +55,11 @@ cat sts/jenkins.yml
 
 The definition is relatively straightforward. It defines a Namespace for easier organization, a Service for routing traffic, and an Ingress that makes it accessible from outside the cluster. The interesting part is the `StatefulSet` definition.
 
-The only significant difference, when compared to Deployments, is that the `StatefulSet` can use `volumeClaimTemplates`. While Deployments require that we specify PersistentVolumeClaim separately, now we can define a claim template as part of `StatefulSet` definition. Even though that might be a more convenient way to define claims, surely there are other reasons for this difference. Or maybe there isn't. Let's check it out by creating the resources defined in `sts/jenkins.yml`.
+The only significant difference, when compared to Deployments, is that the `StatefulSet` can use `volumeClaimTemplates`. While Deployments require that we specify PersistentVolumeClaim separately, now we can define a claim template as part of the `StatefulSet` definition. Even though that might be a more convenient way to define claims, surely there are other reasons for this difference. Or maybe there isn't. Let's check it out by creating the resources defined in `sts/jenkins.yml`.
+
+W> ## A note to **minishift** users
+W>
+W> OpenShift does not allow setting `fsGroup` in the security context, it uses Routes instead of Ingress, and Services accessible through Routes need to be the `LoadBalancer` type. Due to those changes, I had to prepare a different YAML specification for minishift. Please execute `oc create -f sts/jenkins-oc.yml --record --save-config` instead of the command that follows.
 
 ```bash
 kubectl create \
@@ -148,7 +67,7 @@ kubectl create \
     --record --save-config
 ```
 
-We can see from the output that a Namespace, an Ingress, a Service, and a StatefulSet were created.
+We can see from the output that a Namespace, an Ingress, a Service, and a StatefulSet were created. In case you're using minishift and deployed the YAML defined in `sts/jenkins-oc.yml`, you got a Route instead Ingress.
 
 Let's confirm that the StatefulSet was rolled out correctly.
 
@@ -170,7 +89,7 @@ NAME                   STATUS VOLUME  CAPACITY ACCESS MODES STORAGECLASS AGE
 jenkins-home-jenkins-0 Bound  pvc-... 2Gi      RWO          gp2          2m
 ```
 
-It comes as no surprise that a claim was created. After all, we did specify `volumeClaimTemplates` as part of the StatefulSet definition. However, if we compare it with claims we make as separate resources, the format of the claim we just created is a bit different. It is a combination of the claim name (`jenkins-home`), the Namespace (`jenkins`), and the indexed suffix (`0`). The index is an indication that StatefulSets might create more than one claim. Still, we can see only one so we'll need to stash that thought for a while.
+It comes as no surprise that a claim was created. After all, we did specify `volumeClaimTemplates` as part of the StatefulSet definition. However, if we compare it with claims we make as separate resources (e.g., with Deployments), the format of the claim we just created is a bit different. It is a combination of the claim name (`jenkins-home`), the Namespace (`jenkins`), and the indexed suffix (`0`). The index is an indication that StatefulSets might create more than one claim. Still, we can see only one, so we'll need to stash that thought for a while.
 
 Similarly, we might want to confirm that the claim created a PersistentVolume.
 
@@ -178,13 +97,35 @@ Similarly, we might want to confirm that the claim created a PersistentVolume.
 kubectl -n jenkins get pv
 ```
 
-Finally, as the last verification, we'll open Jenkins in a browser and confirm that it looks like it's working correctly.
+W> ## A note to **minishift** users
+W>
+W> You'll see a hundred volumes instead of one. Minishift does not (yet) uses default storage classes. Instead, we have a hundred volumes without a storage class so that enough volumes are available for testing purposes. Only one of them will be with the status `Bound`.
+
+Finally, as the last verification, we'll open Jenkins in a browser and confirm that it looks like it's working correctly. But, before we do that, we should retrieve the hostname or the IP assigned to us by the Ingress controller.
+
+W> ## A note to **GKE** users
+W>
+W> Please change `hostname` to `ip` in the command that follows. The `jsonpath` should be `{.status.loadBalancer.ingress[0].ip}`.
 
 ```bash
 CLUSTER_DNS=$(kubectl -n jenkins \
     get ing jenkins \
     -o jsonpath="{.status.loadBalancer.ingress[0].hostname}")
 
+echo $CLUSTER_DNS
+```
+
+W> ## A note to **minikube** users
+W>
+W> Please change the command to `CLUSTER_DNS=$(minikube ip)`.
+
+W> ## A note to **minishift** users
+W>
+W> Please change the command to `CLUSTER_DNS=jenkins-jenkins.$(minishift ip).nip.io`.
+
+We retrieved the hostname (or IP) from the Ingress resource, and now we are ready to open Jenkins in a browser.
+
+```bash
 open "http://$CLUSTER_DNS/jenkins"
 ```
 
@@ -192,9 +133,9 @@ T> ## A note to Windows users
 T> 
 T> Git Bash might not be able to use the `open` command. If that's the case, replace the `open` command with `echo`. As a result, you'll get the full address that should be opened directly in your browser of choice.
 
-We retrieved the hostname from the Ingress resource and used it to `open` Jenkins.
+In some cases (e.g., GKE), it might take a few minutes until the external load balancer is created. If you see 40x or 50x error message, please wait for a while and try to open Jenkins in the browser again.
 
-You'll probably see browser's message that the connection is not private. That's normal since we did not specify an SSL certificate. If that's the case, please choose to proceed. In Chrome, you should click the *ADVANCED* link, followed by *Proceed to...* For the rest of the browsers... Well, I'm sure that you already know how to ignore SSL warnings in your favorite browser.
+You might see browser's message that the connection is not private. That's normal since we did not specify an SSL certificate. If that's the case, please choose to proceed. In Chrome, you should click the *ADVANCED* link, followed by *Proceed to...* For the rest of the browsers... Well, I'm sure that you already know how to ignore SSL warnings in your favorite browser.
 
 You should see a wizard. We won't use it to finalize Jenkins setup. All we wanted, for now, is to explore StatefulSets using Jenkins as an example. There are a few things we're missing for Jenkins to be fully operational and we'll explore them in later chapters. For now, we'll remove the whole `jenkins` Namespace.
 
@@ -216,7 +157,7 @@ We need to start somewhere, and our first iteration of the `go-demo-3` applicati
 cat sts/go-demo-3-deploy.yml
 ```
 
-Assuming that you are already familiar with Namespaces, Ingress, PersistentVolumeClaims, Deployments, and Services, the definition is fairly straightforward. We defined a Namespace `go-demo-3` in which all the other resources will reside. Ingress will forward external requests with the base path `/demo` to the Service `api`. The PersistentVolumeClaim does not have a `storageClassName`, so it will claim the default PersistentVolume.
+Assuming that you are already familiar with Namespaces, Ingress, PersistentVolumeClaims, Deployments, and Services, the definition is fairly straightforward. We defined a Namespace `go-demo-3` in which all the other resources will reside. Ingress will forward external requests with the base path `/demo` to the Service `api`. The PersistentVolumeClaim does not have a `storageClassName`, so it will claim a PersistentVolume defined through the default StorageClass.
 
 There are two Deployments, one for the API and the other for the database. Both have a Service associated, and both will create three replicas (Pods).
 
@@ -228,8 +169,7 @@ kubectl create \
     --record --save-config
 
 kubectl -n go-demo-3 \
-    rollout status \
-    deployment api
+    rollout status deployment api
 ```
 
 We created the resources defined in `sts/go-demo-3-deploy.yml` and retrieved the `rollout status` of the `api` Deployment. The API is designed to fail if it cannot access its databases, so the fact that it rolled out correctly seems to give us a reasonable guarantee that everything is working as expected. Still, since I am skeptical by nature, we'll double-check that all the Pods are running. We should see six of them (three for each Deployment) in the `go-demo-3` Namespace.
@@ -253,6 +193,10 @@ db-...  0/1   CrashLoopBackOff 1        55s
 A disaster befell us. Only one of the three `db` Pods is running. We did expect a few restarts of the `api` Pods. They tried to connect to MongoDB and were failing until at least one `db` Pod started running. The failure of the two `db` Pods is a bit harder to explain. They do not depend on other Pods and Services so they should run without restarts.
 
 Let's take a look at the `db` logs. They might give us a clue what went wrong.
+
+W> A note to **GKE** users
+W>
+W> GKE will not be able to mount a volume to more than one Pod. Two of the `db-` Pods with have `ContainerCreating` status. If you `describe` one of those Pods, you'll see `Multi-Attach error for volume "pvc-..." Volume is already exclusively attached to one node and can't be attached to another`. That's a typical behavior since the default PersistentVolumeClass used in GKE creates volumes that can be attached only to one Pod at a time. We'll fix that soon. Until then, remember that you will not be able to see the logs of those Pods.
 
 We need to know the names of the Pods we want to peek into, so we'll use a bit of "creative" formatting of the `kubectl get pods` output.
 
@@ -316,15 +260,15 @@ NAME    CAPACITY ACCESS MODES RECLAIM POLICY STATUS CLAIM           STORAGECLASS
 pvc-... 2Gi      RWO          Delete         Bound  go-demo-3/mongo gp2                 3m
 ```
 
-There is only one PersistentVolume. That is to be expected. Even if we'd want to, we could not tell a Deployment to create a volume for each replica. The Deployment mounted a volume associated with the claim which, in turn, created a PersistentVolume. All the replicas tried to mount the same volume.
+There is only one bound PersistentVolume. That is to be expected. Even if we'd want to, we could not tell a Deployment to create a volume for each replica. The Deployment mounted a volume associated with the claim which, in turn, created a PersistentVolume. All the replicas tried to mount the same volume.
 
 MongoDB is designed in a way that each instance requires exclusive access to a directory where it stores its state. We tried to mount the same volume to all the replicas, and only one of them got the lock. All the others failed.
 
-Moreover, the default `StorageClass` is using the `kubernetes.io/aws-ebs` provisioner. Since EBS can be mounted only by a single entity, our claim has the access mode set to `ReadWriteOnce`. To make thing more complicated, EBS cannot span multiple availability-zones, and we are hoping to spread our MongoDB replicas so that they can survive even failure of a whole zone.
+If you're using kops with AWS, the default `StorageClass` is using the `kubernetes.io/aws-ebs` provisioner. Since EBS can be mounted only by a single entity, our claim has the access mode set to `ReadWriteOnce`. To make thing more complicated, EBS cannot span multiple availability-zones, and we are hoping to spread our MongoDB replicas so that they can survive even failure of a whole zone. The same is true for GKE which also uses block storage by default.
 
 Having a `ReadWriteOnce` PersistentVolumeClaims and EBS not being able to span multiple availability zones is not a problem for our use-case. The real issue is that each MongoDB instance needs a separate volume or at least a different directory. Neither of the solutions can be (easily) solved with Deployments.
 
-![Figure 1-1: Pods created through the Deployment share the same PersistentVolume](images/ch01/sts-deployment.png)
+![Figure 1-1: Pods created through the Deployment share the same PersistentVolume (AWS variation)](images/ch01/sts-deployment.png)
 
 Now we have a good use-case that might show some of the benefits of StatefulSet controllers.
 
@@ -336,7 +280,7 @@ kubectl delete ns go-demo-3
 
 ## Using StatefulSets To Run Stateful Applications At Scale
 
-Let's see whether we can solve the problem with PersistentVolumes through a StatefulSet. As a reminder, we'll need each instance of a MongoDB to get a separate volume.
+Let's see whether we can solve the problem with PersistentVolumes through a StatefulSet. As a reminder, our goal (for now) is for each instance of a MongoDB to get a separate volume.
 
 The updated definition is in the `sts/go-demo-3-sts.yml` file.
 
@@ -398,7 +342,7 @@ spec:
 
 As you already saw with Jenkins, StatefulSet definitions are almost the same as Deployments. The only important difference is that we are not defining PersistentVolumeClaim as a separate resource but letting the StatefulSet take care of it through the specification set inside the `volumeClaimTemplates` entry. We'll see it in action soon.
 
-We also used this opportunity to tweak `mongod` process by specifying a `db` container `command` that creates a ReplicaSet `rs0`. Please note that this replica set is specific to MongoDB and is in no way related to Kubernetes ReplicaSet controller. Creation of a MongoDB replica set is the base for some of the things we'll do later on.
+We also used this opportunity to tweak `mongod` process by specifying the `db` container `command` that creates a ReplicaSet `rs0`. Please note that this replica set is specific to MongoDB and it is in no way related to Kubernetes ReplicaSet controller. Creation of a MongoDB replica set is the base for some of the things we'll do later on.
 
 Another difference is in the `db` Service. It is as follows.
 
@@ -440,7 +384,9 @@ api-... 0/1   Running           0        4s
 db-0    0/1   ContainerCreating 0        5s
 ```
 
-We can see that all three replicas of the `api` Pods are running or, at least, that's how it seems so far. The situation with `db` Pods is different. Kubernetes is creating only one replica, even though we specified three. Let's wait for a bit and retrieve the Pods again.
+We can see that all three replicas of the `api` Pods are running or, at least, that's how it seems so far. The situation with `db` Pods is different. Kubernetes is creating only one replica, even though we specified three.
+
+Let's wait for a bit and retrieve the Pods again.
 
 ```bash
 kubectl -n go-demo-3 get pods
@@ -477,7 +423,9 @@ db-1    1/1   Running           0        1m
 db-2    0/1   ContainerCreating 0        34s
 ```
 
-The second `db` Pod started running, and the system is creating the third one. It seems that our progress with the database is going in the right direction. Let's wait a while longer before we retrieve the Pods one more time.
+The second `db` Pod started running, and the system is creating the third one. It seems that our progress with the database is going in the right direction. 
+
+Let's wait a while longer before we retrieve the Pods one more time.
 
 ```bash
 kubectl -n go-demo-3 get pods
@@ -493,15 +441,15 @@ db-1    1/1   Running          0        2m
 db-2    1/1   Running          0        1m
 ```
 
-Another minute later, the third `db` Pod is also running. Our `api` Pods are still failing. We'll deal with that problem soon.
+Another minute later, the third `db` Pod is also running but our `api` Pods are still failing. We'll deal with that problem soon.
 
-What we just observed is an essential difference between Deployments and StatefulSets. Replicas of the latter are created sequentially. Only after the first replica was running, the StatefulSet started creating the second. Similarly, the creation of the third started solely after the second was running.
+What we just observed is an essential difference between Deployments and StatefulSets. Replicas of the latter are created sequentially. Only after the first replica was running, the StatefulSet started creating the second. Similarly, the creation of the third began solely after the second was running.
 
 Moreover, we can see that the names of the Pods created through the StatefulSet are predictable. Unlike Deployments that create random suffixes for each Pod, StatefulSets create them with indexed suffixes based on integer ordinals. The name of the first Pod will always end with `-0`, the second will be suffixed with `-1`, and so on. That naming will be maintained forever. If we'd initiate rolling updates, Kubernetes would replace the Pods of the `db` StatefulSet, but the names would remain the same.
 
 The nature of the sequential creation of Pods and formatting of their names provides predictability that is often paramount with stateful applications. We can think of StatefulSet replicas as being separate Pods with guaranteed ordering, uniqueness, and predictability.
 
-How about PersistentVolumes? The fact that the `db` Pods did not fail means that MongoDB instances managed to get the locks. That means that they are not sharing the same PersistentVolume, or that they are using different directories with a volume.
+How about PersistentVolumes? The fact that the `db` Pods did not fail means that MongoDB instances managed to get the locks. That means that they are not sharing the same PersistentVolume, or that they are using different directories within the same volume.
 
 Let's take a look at the PersistentVolumes created in the cluster.
 
@@ -518,9 +466,7 @@ pvc-... 2Gi      RWO          Delete         Bound  go-demo-3/mongo-data-db-1 gp
 pvc-... 2Gi      RWO          Delete         Bound  go-demo-3/mongo-data-db-2 gp2                 7m
 ```
 
-Now we can observe the reasoning behind using `volumeClaimTemplates` spec inside the definition of the StatefulSet, instead of a separate PersistentVolumeClaim we used with Deployments.
-
-The StatefulSet used the template to create a claim for each replica. We specified that there should be three replicas, so it created three Pods, as well as three volume claims. The result is three PersistentVolumes.
+Now we can observe the reasoning behind using `volumeClaimTemplates` spec inside the definition of the StatefulSet. It used the template to create a claim for each replica. We specified that there should be three replicas, so it created three Pods, as well as three separate volume claims. The result is three PersistentVolumes.
 
 Moreover, we can see that the claims also follow a specific naming convention. The format is a combination of the name of the claim (`mongo-data`), the name of the StatefulSet `db`, and index (`0`, `1`, and `2`).
 
@@ -528,7 +474,7 @@ Judging by the age of the claims, we can see that they followed the same pattern
 
 If a Pod is (re)scheduled due to a failure or a rolling update, it'll continue using the same PersistentVolumeClaim and, as a result, keep using the same PersistentVolume. Pods and volumes became inseparable.
 
-![Figure 1-2: Each Pod created through the StatefulSet gets its own PersistentVolume](images/ch01/sts.png)
+![Figure 1-2: Each Pod created through the StatefulSet gets a PersistentVolume (AWS variation)](images/ch01/sts.png)
 
 Given that each Pod in a StatefulSet has a unique and a predictable name, we can assume that the same applies to hostnames inside those Pods. Let's check it out.
 
@@ -547,7 +493,7 @@ Just as names of the Pods created by the StatefulSet, hostnames are predictable 
 
 Let's move into the Service related to the StatefulSet. If we take another look at the `db` Service defined in `sts/go-demo-3-sts.yml`, we'll notice that it has `clusterIP` set to `None`. As a result, the Service is headless.
 
-In most cases we want Services to handle load-balancing and forward requests to one of the replicas. Load balancing is often round-robin even though it can be changed to other algorithms. However, sometimes we don't need or want the Service to do load-balancing, nor we want it to provide a single IP for the Service. That is certainly true for MongoDB. If we are to convert its instances into a replica set, we need to have separate and stable IPs for each. So, we disabled Service's load-balancing by setting `spec.clusterIP` to `None`. That converted it into a Headless Service and let StatefulSet take over its algorithm.
+In most cases we want Services to handle load-balancing and forward requests to one of the replicas. Load balancing is often round-robin even though it can be changed to other algorithms. However, sometimes we don't need the Service to do load-balancing, nor we want it to provide a single IP for the Service. That is certainly true for MongoDB. If we are to convert its instances into a replica set, we need to have a separate and stable address for each. So, we disabled Service's load-balancing by setting `spec.clusterIP` to `None`. That converted it into a Headless Service and let StatefulSet take over its algorithm.
 
 We'll explore the effect of combining StatefulSets with Headless Services by creating a new Pod from which we can execute `nslookup` commands.
 
@@ -605,7 +551,7 @@ We can see that the output matches part of the output of the previous `nslookup`
 
 What we got with the combination of a StatefulSet and a Headless Service is a stable network identity. Unless we change the number of replicas of this StatefulSet, CNAME records are permanent. Unlike Deployments, StatefulSets maintain sticky identities for each of their Pods. These pods are created from the same spec, but they are not interchangeable. Each has a persistent identifier that is maintained across any rescheduling.
 
-Pods ordinals, hostnames, SRV records, and A record are never changed. However, the same cannot be said for IP addresses associated with them. They might change. That is why it is crucial not to configure other applications to connect to Pods in a StatefulSet by IP address.
+Pods ordinals, hostnames, SRV records, and A records are never changed. However, the same cannot be said for IP addresses associated with them. They might change. That is why it is crucial not to configure applications to connect to Pods in a StatefulSet by IP address.
 
 Now that we know that the Pods managed with a StatefulSet have a stable network identity, we can proceed and configure MongoDB replica set.
 
@@ -633,7 +579,7 @@ rs.initiate( {
 
 We entered into `mongo` Shell and initiated a ReplicaSet (`rs.initiate`). The members of the ReplicaSet are the addresses of the three Pods combined with the default MongoDB port `27017`.
 
-The output is `{ "ok" : 1 }`, thus confirming that we configured the ReplicaSet correctly.
+The output is `{ "ok" : 1 }`, thus confirming that we (probably) configured the ReplicaSet correctly.
 
 Remember that our goal is not to go deep into MongoDB configuration, but only to explore some of the benefits behind StatefulSets.
 
@@ -707,7 +653,7 @@ If, in your case, `api` Pods are still not `running`, please wait for a few mome
 
 Now that the MongoDB replica set is operational, `api` Pods could connect to it, and Kubernetes changed their statuses to `Running`. The whole application is operational.
 
-There is one more StatefulSets-specific feature we should discuss.
+There is one more StatefulSet-specific feature we should discuss.
 
 Let's see what happens if, for example, we update the image of the `db` container.
 
@@ -762,7 +708,7 @@ And so on, and so forth, all the way until all the Pods that form the StatefulSe
 
 The Pods in the StatefulSet were updated in reverse ordinal order. The StatefulSet terminated one of the Pods, and it waited for its status to become `Running` before it moved to the next one.
 
-All in all, when StatefulSet is created, it, in turn, creates Pods sequentially starting with the index `0`, and moving upwards. Updates to StatefulSets are following the same logic, except that StatefulSet begins with the Pod with the highest index, and it moves downwards.
+All in all, when StatefulSet is created, it, in turn, generates Pods sequentially starting with the index `0`, and moving upwards. Updates to StatefulSets are following the same logic, except that StatefulSet begins updates with the Pod with the highest index, and it flows downwards.
 
 We did manage to make MongoDB replica set running, but the cost was too high. Creating Mongo replica set manually is not a good option. It should be no option at all. 
 
@@ -774,7 +720,7 @@ kubectl delete ns go-demo-3
 
 ## Using Sidecar Containers To Initialize Applications
 
-Even though we managed to deploy MongoDB replica set with three instances, the process was far from optimum. We had to execute manual steps. Since I don't believe that manual hocus-pocus type of intervention is the way to go, we'll try to improve the process by removing human interaction. We'll do that through sidecar containers that will do the work of creating MongoDB replica set (not to be confused it with Kubernetes ReplicaSet).
+Even though we managed to deploy MongoDB replica set with three instances, the process was far from optimum. We had to execute manual steps. Since I don't believe that manual hocus-pocus type of intervention is the way to go, we'll try to improve the process by removing human interaction. We'll do that through sidecar containers that will do the work of creating MongoDB replica set (not to be confused with Kubernetes ReplicaSet).
 
 Let's take a look at yet another iteration of the `go-demo-3` application definition.
 
@@ -811,7 +757,7 @@ spec:
 ...
 ```
 
-When compared with `sts/go-demo-3-sts.yml`, the only difference is the addition of the second container in the StatefulSet `db`. It is based on [cvallance/mongo-k8s-sidecar](https://hub.docker.com/r/cvallance/mongo-k8s-sidecar) Docker image. I won't bore you with the details but only give you the gist of the project. It sets up and maintains MongoDB replica sets.
+When compared with `sts/go-demo-3-sts.yml`, the only difference is the addition of the second container in the StatefulSet `db`. It is based on [cvallance/mongo-k8s-sidecar](https://hub.docker.com/r/cvallance/mongo-k8s-sidecar) Docker image. I won't bore you with the details but only give you the gist of the project. It creates and maintains MongoDB replica sets.
 
 The sidecar will monitor the Pods created through our StatefulSet, and it will reconfigure `db` containers so that MongoDB replica set is (almost) always up to date with the MongoDB instances.
 
@@ -821,6 +767,8 @@ Let's create the resources defined in `sts/go-demo-3.yml` and check whether ever
 kubectl create \
     -f sts/go-demo-3.yml \
     --record --save-config
+
+# Wait for a few moments
 
 kubectl -n go-demo-3 \
     logs db-0 \
@@ -850,6 +798,10 @@ We can see that the `db-sidecar` container is not allowed to list the Pods in th
 
 It is not surprising that the sidecar could not list the Pods. If it could, RBAC would be, more or less, useless. It would not matter that we restrict which resources users can create if any Pod could circumvent that. Just as we learned in *The DevOps 2.3 Toolkit: Kubernetes* how to set up users using RBAC, we need to do something similar with service accounts. We need to extend RBAC rules from human users to Pods. That will be the subject of the next chapter.
 
+W> ## A note to **Docker For Mac** and **Docker For Windows** users
+W>
+W> On Docker for Mac (or Windows), the `db-sidecar` can list the Pods even with RBAC enabled. That is (probably) a bug you should be aware. Truth be told, I haven't spent time searching for the cause of the problem since RBAC is not that important when running a local cluster. Just be aware that even though the sidecar could list the Pods in Docker For Mac/Windows, it will not work in any other cluster with RBAC enabled.
+
 ## To StatefulSet Or Not To StatefulSet
 
 StatefulSets provide a few essential features often required when running stateful applications in a Kubernetes cluster. Still, the division between Deployments and StatefulSets is not always clear. After all, both controllers can attach a PersistentVolume, both can forward requests through Services, and both support rolling updates. When should you choose one over the other? Saying that one is for stateful applications and the other isn't would be an oversimplification that would not fit all the scenarios. As an example, we saw that we got no tangible benefit when we moved Jenkins from a Deployment into a StatefulSet. MongoDB, on the other hand, showcases essential benefits provided by StatefulSets.
@@ -864,19 +816,14 @@ If the answer to any of those questions is *yes*, your application should probab
 
 ## What Now?
 
-We're finished with the exploration of StatefulSets. They will be essential since they will enable us to do a few things that will be critical for our Continuous Deployment processes. For now, we'll destroy the cluster and take a break before we jump into Service Accounts in an attempt to fix the problem with the MongoDB sidecar. Who knows. We might find the usage of Service Account beyond the sidecar.
+We're finished with the exploration of StatefulSets. They will be essential since they will enable us to do a few things that will be critical for our Continuous Deployment processes. For now, we'll remove the resources we created and take a break before we jump into Service Accounts in an attempt to fix the problem with the MongoDB sidecar. Who knows? We might find the usage of Service Account beyond the sidecar.
 
 ```bash
-kops delete cluster \
-    --name $NAME \
-    --yes
-
-aws s3api delete-bucket \
-    --bucket $BUCKET_NAME
+kubectl delete ns go-demo-3
 ```
 
-We deleted the cluster as well as the S3 bucket that stored the state used by kops. We're fulfilling my mission not to pay Amazon more than we use and, at the same time, we'll be able to start the next chapter with a clean slate.
+We deleted the `go-demo-3` Namespace and, with it, all the resources we created. We'll start the next chapter with a clean slate. Feel free to delete the whole cluster if you're not planning to explore the next chapter right away. If it's dedicated to this book, there's no need to waste resources and money on running a cluster that is not doing anything.
 
 Before you leave, please consult the following API references for more information about StatefulSets.
 
-* [StatefulSet v1beta2 apps](https://v1-8.docs.kubernetes.io/docs/api-reference/v1.8/#statefulset-v1beta2-apps)
+* [StatefulSet v1beta2 apps](https://v1-9.docs.kubernetes.io/docs/api-reference/v1.9/#statefulset-v1-apps)

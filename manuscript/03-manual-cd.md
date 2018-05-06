@@ -115,6 +115,8 @@ docker image build \
 
 # The node is logged in
 
+# Explore [kaniko](https://github.com/GoogleContainerTools/kaniko)
+
 exit
 
 kubectl delete ns go-demo-3-1-0-beta

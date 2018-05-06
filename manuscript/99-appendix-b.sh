@@ -88,20 +88,28 @@ aws s3api create-bucket \
 
 export KOPS_STATE_STORE=s3://$BUCKET_NAME
 
+# MacOS only
 brew update && brew install kops
 
+# MacOS only
 curl -Lo kops https://github.com/kubernetes/kops/releases/download/$(curl -s https://api.github.com/repos/kubernetes/kops/releases/latest | grep tag_name | cut -d '"' -f 4)/kops-darwin-amd64
 
+# MacOS only
 chmod +x ./kops
 
+# MacOS only
 sudo mv ./kops /usr/local/bin/
 
+# Linux only
 wget -O kops https://github.com/kubernetes/kops/releases/download/$(curl -s https://api.github.com/repos/kubernetes/kops/releases/latest | grep tag_name | cut -d '"' -f 4)/kops-linux-amd64
 
+# Linux only
 chmod +x ./kops
 
+# Linux only
 sudo mv ./kops /usr/local/bin/
 
+# Windows only
 mkdir config
 
 # Windows only
