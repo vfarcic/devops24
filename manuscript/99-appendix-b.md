@@ -1,6 +1,6 @@
 # Appendix B: Using Kubernetes Operations (kops) {#appendix-b}
 
-The text that follows provides the essential information you'll need to create a Kubernetes cluster in AWS using kops. This appendix contains a few sub-chapters from **The DevOps 2.3 Toolkit: Kubernetes**. Please refer to it for a more detailed information.
+The text that follows provides the essential information you'll need to create a Kubernetes cluster in AWS using kops. This appendix contains a few sub-chapters from [The DevOps 2.3 Toolkit: Kubernetes](https://amzn.to/2GvzDjy). Please refer to it for a more detailed information.
 
 ## Preparing For The Cluster Setup
 

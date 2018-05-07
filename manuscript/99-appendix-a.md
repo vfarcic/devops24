@@ -1,6 +1,6 @@
 # Appendix A: Installing kubectl and Creating A Cluster With minikube {#appendix-a}
 
-The text that follows provides the essential information you'll need to create a local Kubernetes cluster using minikube. This appendix contains a few sub-chapters from **The DevOps 2.3 Toolkit: Kubernetes**. Please refer to it for a more detailed information.
+The text that follows provides the essential information you'll need to create a local Kubernetes cluster using minikube. This appendix contains a few sub-chapters from [The DevOps 2.3 Toolkit: Kubernetes](https://amzn.to/2GvzDjy). Please refer to it for a more detailed information.
 
 ## Running Kubernetes Cluster Locally
 
@@ -148,8 +148,6 @@ A few moments later, a new Minikube VM will be created and set up, and a cluster
 
 When we executed the `minikube start` command, it created a new VM based on the Minikube image. That image contains a few binaries. It has both [Docker](https://www.docker.com/) and [rkt](https://coreos.com/rkt/) container engines as well as *localkube* library. The library includes all the components necessary for running Kubernetes. We'll go into details of all those components later. For now, the important thing is that localkube provides everything we need to run a Kubernetes cluster locally.
 
-![Figure 2-1: Minikube simplified architecture](images/ch02/minikube-simple.png)
-
 Remember that this is a single-node cluster. While that is unfortunate, it is still the easiest way (as far as I know) to "play" with Kubernetes locally. It should do, for now. Later on, we'll explore ways to create a multi-node cluster that will be much closer to a production setup.
 
 Let's take a look at the status of the cluster.
@@ -175,8 +173,6 @@ minikube dashboard
 ```
 
 Feel free to explore the UI but don't take too long. You'll only get confused with concepts that we did not yet study. Once we learn about pods, replica-sets, services, and a myriad of other Kubernetes components, the UI will start making much more sense.
-
-![Figure 2-2: Kubernetes dashboard](images/ch02/dashboard.png)
 
 Another useful Minikube command is `docker-env`.
 

@@ -7,8 +7,7 @@
 minishift start \
     --vm-driver virtualbox \
     --cpus 2 \
-    --memory 2048 \
-    --openshift-version 3.9.0
+    --memory 2048
 
 IP=$(minishift ip)
 
@@ -21,7 +20,13 @@ oc config set current-context \
 # Destroy the cluster #
 #######################
 
-minishift delete -f
+minishift delete -f --clear-cache
+
+# Only if creating the cluster fails with `The server uses a certificate signed by unknown authority` message
+# rm -rf ~/.minishift
+
+# Only if creating the cluster fails with `The server uses a certificate signed by unknown authority` message
+# rm -rf ~/.kube
 
 kubectl config delete-cluster $NAME:8443
 

@@ -35,11 +35,11 @@ For this chapter, I'll assume that you are running a cluster with **Kubernetes v
 
 The Gists with the commands I used to create different variations of Kubernetes clusters are as follows.
 
-* [docker4mac.sh](https://gist.github.com/06e313db2957e92b1df09fe39c249a14) **Docker for Mac** with 2 CPUs, 2GB RAM, and with nginx Ingress.
-* [minikube.sh](https://gist.github.com/536e6329e750b795a882900c09feb13b) **minikube** with 2 CPUs, 2GB RAM, and with `ingress`, `storage-provisioner`, and `default-storageclass` addons enabled.
-* [kops.sh](https://gist.github.com/2a3e4ee9cb86d4a5a65cd3e4397f48fd) **kops in AWS** with 3 t2.small masters and 2 t2.medium nodes spread in three availability zones, and with nginx Ingress (assumes that the prerequisites are set through [Appendix B](#appendix-b)).
-* [minishift.sh](https://gist.github.com/c9968f23ecb1f7b2ec40c6bcc0e03e4f) **minishift** with 2 CPUs, 2GB RAM, and version 3.9+.
-* [gke.sh](https://gist.github.com/5c52c165bf9c5002fedb61f8a5d6a6d1) **Google Kubernetes Engine (GKE)** with 3 n1-standard-1 (1 CPU, 3.75GB RAM) nodes (one in each zone), and with nginx Ingress controller running on top of the "standard" one that comes with GKE. We'll use nginx Ingress for compatibility with other platforms. Feel free to modify the YAML files if you prefer NOT to install nginx Ingress.
+* [docker4mac.sh](https://gist.github.com/06e313db2957e92b1df09fe39c249a14): **Docker for Mac** with 2 CPUs, 2GB RAM, and with nginx Ingress.
+* [minikube.sh](https://gist.github.com/536e6329e750b795a882900c09feb13b): **minikube** with 2 CPUs, 2GB RAM, and with `ingress`, `storage-provisioner`, and `default-storageclass` addons enabled.
+* [kops.sh](https://gist.github.com/2a3e4ee9cb86d4a5a65cd3e4397f48fd): **kops in AWS** with 3 t2.small masters and 2 t2.medium nodes spread in three availability zones, and with nginx Ingress (assumes that the prerequisites are set through [Appendix B](#appendix-b)).
+* [minishift.sh](https://gist.github.com/c9968f23ecb1f7b2ec40c6bcc0e03e4f): **minishift** with 2 CPUs, 2GB RAM, and version 1.16+.
+* [gke.sh](https://gist.github.com/5c52c165bf9c5002fedb61f8a5d6a6d1): **Google Kubernetes Engine (GKE)** with 3 n1-standard-1 (1 CPU, 3.75GB RAM) nodes (one in each zone), and with nginx Ingress controller running on top of the "standard" one that comes with GKE. We'll use nginx Ingress for compatibility with other platforms. Feel free to modify the YAML files if you prefer NOT to install nginx Ingress.
 
 W> The purpose of those Gists is to serve as guidance, not necessarily as a set of steps you should execute blindly. I assume that you already know how to create a cluster with the specified requirements.
 
@@ -103,9 +103,18 @@ W> You'll see a hundred volumes instead of one. Minishift does not (yet) uses de
 
 Finally, as the last verification, we'll open Jenkins in a browser and confirm that it looks like it's working correctly. But, before we do that, we should retrieve the hostname or the IP assigned to us by the Ingress controller.
 
-W> ## A note to **GKE** users
+W> ## A note to GKE users
 W>
 W> Please change `hostname` to `ip` in the command that follows. The `jsonpath` should be `{.status.loadBalancer.ingress[0].ip}`.
+
+W> ## A note to minikube users
+W>
+W> Please change the command that follows to `CLUSTER_DNS=$(minikube ip)`.
+
+W> ## A note to minishift users
+W>
+W> Please change the command that follows to `CLUSTER_DNS=jenkins-jenkins.$(minishift ip).nip.io`.
+
 
 ```bash
 CLUSTER_DNS=$(kubectl -n jenkins \
@@ -114,14 +123,6 @@ CLUSTER_DNS=$(kubectl -n jenkins \
 
 echo $CLUSTER_DNS
 ```
-
-W> ## A note to **minikube** users
-W>
-W> Please change the command to `CLUSTER_DNS=$(minikube ip)`.
-
-W> ## A note to **minishift** users
-W>
-W> Please change the command to `CLUSTER_DNS=jenkins-jenkins.$(minishift ip).nip.io`.
 
 We retrieved the hostname (or IP) from the Ingress resource, and now we are ready to open Jenkins in a browser.
 
@@ -194,7 +195,7 @@ A disaster befell us. Only one of the three `db` Pods is running. We did expect 
 
 Let's take a look at the `db` logs. They might give us a clue what went wrong.
 
-W> A note to **GKE** users
+W> ## A note to GKE users
 W>
 W> GKE will not be able to mount a volume to more than one Pod. Two of the `db-` Pods with have `ContainerCreating` status. If you `describe` one of those Pods, you'll see `Multi-Attach error for volume "pvc-..." Volume is already exclusively attached to one node and can't be attached to another`. That's a typical behavior since the default PersistentVolumeClass used in GKE creates volumes that can be attached only to one Pod at a time. We'll fix that soon. Until then, remember that you will not be able to see the logs of those Pods.
 
@@ -679,13 +680,13 @@ We applied the new definition and retrieved the list of Pods inside the Namespac
 The output is as follows.
 
 ```
-NAME                 READY STATUS            RESTARTS AGE
-api-649cfb4987-4rsx6 1/1   Running           6        14m
-api-649cfb4987-m7vnd 1/1   Running           6        14m
-api-649cfb4987-z2xgp 1/1   Running           6        14m
-db-0                 1/1   Running           0        6m
-db-1                 1/1   Running           0        6m
-db-2                 0/1   ContainerCreating 0        14s
+NAME    READY STATUS            RESTARTS AGE
+api-... 1/1   Running           6        14m
+api-... 1/1   Running           6        14m
+api-... 1/1   Running           6        14m
+db-0    1/1   Running           0        6m
+db-1    1/1   Running           0        6m
+db-2    0/1   ContainerCreating 0        14s
 ```
 
 We can see that the StatefulSet chose to update only one of its Pods. Moreover, it picked the one with the highest index.
@@ -693,13 +694,13 @@ We can see that the StatefulSet chose to update only one of its Pods. Moreover, 
 Let's see the output of the same command half a minute later.
 
 ```
-NAME                 READY STATUS            RESTARTS AGE
-api-649cfb4987-4rsx6 1/1   Running           6        15m
-api-649cfb4987-m7vnd 1/1   Running           6        15m
-api-649cfb4987-z2xgp 1/1   Running           6        15m
-db-0                 1/1   Running           0        7m
-db-1                 0/1   ContainerCreating 0        5s
-db-2                 1/1   Running           0        32s
+NAME    READY STATUS            RESTARTS AGE
+api-... 1/1   Running           6        15m
+api-... 1/1   Running           6        15m
+api-... 1/1   Running           6        15m
+db-0    1/1   Running           0        7m
+db-1    0/1   ContainerCreating 0        5s
+db-2    1/1   Running           0        32s
 ```
 
 StatefulSet finished updating the `db-2` Pod and moved to the one before it.
@@ -798,9 +799,9 @@ We can see that the `db-sidecar` container is not allowed to list the Pods in th
 
 It is not surprising that the sidecar could not list the Pods. If it could, RBAC would be, more or less, useless. It would not matter that we restrict which resources users can create if any Pod could circumvent that. Just as we learned in *The DevOps 2.3 Toolkit: Kubernetes* how to set up users using RBAC, we need to do something similar with service accounts. We need to extend RBAC rules from human users to Pods. That will be the subject of the next chapter.
 
-W> ## A note to **Docker For Mac** and **Docker For Windows** users
+W> ## A note to **Docker For Mac/Windows** users
 W>
-W> On Docker for Mac (or Windows), the `db-sidecar` can list the Pods even with RBAC enabled. That is (probably) a bug you should be aware. Truth be told, I haven't spent time searching for the cause of the problem since RBAC is not that important when running a local cluster. Just be aware that even though the sidecar could list the Pods in Docker For Mac/Windows, it will not work in any other cluster with RBAC enabled.
+W> On Docker for Mac (or Windows), the `db-sidecar` can list the Pods even with RBAC enabled. Even though Docker for Mac/Windows supports RBAC, it allows any internal process inside containers to communicate with Kube API. Be aware that even though the sidecar could list the Pods in Docker For Mac/Windows, it will not work in any other cluster with RBAC enabled.
 
 ## To StatefulSet Or Not To StatefulSet
 

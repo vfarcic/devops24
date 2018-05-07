@@ -6,6 +6,10 @@ Docker for Mac/Windows provides a very transparent experience. It's as if it's n
 
 We did experience a problem with ServiceAccounts in Docker for Mac/Windows. Even though RBAC is set up by default, we could use a sidecar container that communicated with Kube API. For most use cases, that is not a real problem. Docker for Mac/Windows is designed to be a single-user cluster that is accessible only to the owner of the laptop. RBAC (as ServiceAccounts) make sense only when running a "real" cluster used by many users and, consequently, many processes. Still, we might want to test our ServiceAccounts locally. We could not do that through Docker For Mac/Windows.
 
+TODO: Trash Docker for Mac/Windows ServiceAccount
+
+TODO: Docker for Mac/Windows provides no mechanism to specify k8s version
+
 Another negative experience with Docker For Mac/Windows was installation of Ingress Controller. We had to follow the official instructions. With minikube, for example, we can simply execute `minikube addons enable ingress` to accomplish the same result. If we are to give a recommendation how to run a Kubernetes cluster locally to someone not interested diving deep into Kubernetes, minikube addons make everything much easier. On the other hand, hanving to install system level components like Ingress using kubectl (or Helm) make local cluster much more similar to "real" production. Still, that should not be a problem in case of minikube. Having addons does not mean that we cannot ignore them and run the same commands to, for example, install Ingress locally as we'd do in production.
 
 Minishift is very similar to minikube. Both create a cluster with a single command. The only issue is that minishift does not support default storage class. As a workaround, we got a hundred volumes without a class name. The result is the same. In both cases we can create volume claims with storage class name. Still, it's a bit annoying that we have to see those hundred volumes knowing that minikube already has a more elegant solution.
@@ -21,6 +25,8 @@ What is the final recommendation? **Use Docker For Mac/Windows to run your clust
 ## Comparing Kubernetes Platforms For Running On-Prem Clusters
 
 TODO: Write
+
+TODO: OpenShift has too many inconsistencies compared with the "official" API.
 
 ## Comparing Kubernetes Platforms For Running Clusters In Cloud
 

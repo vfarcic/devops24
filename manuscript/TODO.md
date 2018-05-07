@@ -88,12 +88,12 @@
 ## Chapter
 
 - [ ] Code
-- [ ] Write
 - [ ] Code review Docker for Mac/Windows
 - [ ] Code review minikube
 - [ ] Code review kops
 - [ ] Code review minishift
 - [ ] Code review GKE
+- [ ] Write
 - [ ] Text review
 - [ ] Diagrams
 - [ ] Gist
