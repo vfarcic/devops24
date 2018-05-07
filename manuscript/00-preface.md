@@ -6,7 +6,7 @@ The moment I published the last chapter of [The DevOps 2.3 Toolkit: Kubernetes](
 
 # Overview
 
-Just like other books I wrote, this one does not have a fixed scope. I did not start with an index. I didn't write a summary of each chapter in an attempt to define the scope. I do not do such things. What I did do, though, was to set a few guidelines.
+Just like other books I wrote, this one does not have a fixed scope. I did not start with an index. I didn't write a summary of each chapter in an attempt to define the scope. I do not do such things. There is only a high-level goal to explore **continuous delivery and deployment inside Kubernetes clusters**. What I did do, though, was to set a few guidelines.
 
 This book should be *smaller than the other books* in [The DevOps Toolkit Series](http://devopstoolkitseries.com/). I wanted to explore a more focused subject and, at the same time, save you from waiting for too long until it is published. I hope this book will be somewhere between a hundred and a hundred and fifty pages. Compared to the previous books that are approximately four hundred pages each, this one can be considered a little brother. That brother will hopefully end up being more experienced than any other member of the family. After all, the size does not always matter.
 
@@ -26,7 +26,7 @@ Some of you already chose the Kubernetes flavor you'll use. Others might still w
 
 Once I decided that many different platforms should be used in the book, I had to make a similar decision for CD tools as well. Just as exploring different Kubernetes platforms gives us knowledge that'll allow us to make better choices, the same is true for continuous deployment processes as well. Should we use a self-hosted solution like [Jenkins](https://jenkins.io/) or a service like [CodeShip](https://codeship.com/)? If we're hosting the solution ourselves, should it be open source Jenkins or the [enterprise edition](https://www.cloudbees.com/products/cloudbees-jenkins-enterprise)? How about [Jenkins X](https://jenkins-x.io/)? It was made public for the first time when I just started thinking about this book. It's a solution built on top of Kubernetes, and only for Kubernetes. How can I not include a CD tool specifically designed to work with Kubernetes? So, the potential set of tools could be Jenkins open source, Jenkins enterprise, Jenkins X, and CodeShip.
 
-To summarize the guidelines, it should be a smaller book that explores continuous delivery and deployment using Jenkins OSS, Jenkins EE, Jenkins X, and CodeShip. All the examples will the tested in minikube, Docker for Mac (or Windows), AWS with kops, GKE, and OpenShift with minishift.
+To summarize the guidelines, it should be a smaller book that **explores continuous delivery and deployment using Jenkins OSS, Jenkins EE, Jenkins X, and CodeShip**. All the examples will the tested in **minikube, Docker for Mac (or Windows), AWS with kops, GKE, and OpenShift with minishift**.
 
 The moment I finished writing the previous paragraph I realized that I am repeating the same mistakes from the past. I start with something that looks like a reasonable scope, and I end up with something much bigger and longer. Will I be able to follow all of those guidelines? I honestly don't know. I'll do my best.
 
