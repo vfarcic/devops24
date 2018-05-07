@@ -1,0 +1,147 @@
+## TODO
+
+- [ ] Code (neerajkothari)
+- [ ] Code review (vfarcic)
+- [ ] Write (neerajkothari)
+- [ ] Text review (vfarcic)
+- [ ] Diagrams (neerajkothari)
+- [ ] Gist (neerajkothari)
+- [ ] Review the title (neerajkothari)
+- [ ] Proofread (vfarcic)
+- [ ] Add to Book.txt (vfarcic)
+- [ ] Publish on LeanPub.com (vfarcic)
+
+# Setup Pod Network using basic CNI plugins
+
+In this section we going to use basic CNI plugins to setup pod network where pods can communicate across nodes. Let's setup a local kubernetes cluster. Run the commands from `Create local cluster with kubadmn  (Appendix)` to build the kubernetes cluster. 
+
+All basics plugins are available by default at `/opt/cni/bin` and installed by `kubernetes-cni` package. We didn't install this package explicitly, since kubelet package has dependency on this one. Below is CNI conf file plugins going to use. We using bridge and host-local plugins. Bridge plugin creates a bridge and adds the host and the container to it. The host-local is IPAM plugin maintains a local database of allocated IPs. IPAM plugin will assign a IP for a pod from subnet range we define in CNI conf file.
+
+```
+{
+	"cniVersion": "0.3.1",
+	"name": "mynet",
+	"type": "bridge",
+	"bridge": "cni0",
+	"isGateway": true,
+	"ipMasq": true,
+	"ipam": {
+		"type": "host-local",
+		"subnet": "${NODE_SUBNET}",
+		"routes": [
+			{ "dst": "0.0.0.0/0" }
+		]
+	}
+}
+```
+
+Since basic CNI plugin can't find pod network range used by other hosts, We need to supply non-conflicting subnet range ourselves for each host. Below are different subnet values we will use for each host.
+
+```
+master -> 10.22.1.0/24
+node1 -> 10.22.2.0/24
+node2 -> 10.22.3.0/24
+```
+
+`Vagrantfile` has a `cni` provisioner to configure file 10-mynet.conf needed by basic CNI plugin. Lets use this provisioner,
+
+```bash
+CNI='true' vagrant provision --provision-with cni
+
+==> master: Running provisioner: cni (shell)...
+    master: 10.22.1.0/24
+==> node1: Running provisioner: cni (shell)...
+    node1: 10.22.2.0/24
+==> node2: Running provisioner: cni (shell)...
+    node2: 10.22.3.0/24
+```
+
+Now, if we check again all nodes should be in the ready state. 
+
+```bash
+kubectl --kubeconfig ./admin.conf get nodes
+
+NAME      STATUS    ROLES     AGE       VERSION
+master    Ready     master    6m        v1.10.1
+node1     Ready     <none>    4m        v1.10.1
+node2     Ready     <none>    3m        v1.10.1
+```
+
+We also need to established cross nodes routes manually as basic CNI plugins don't provide this feature. `Vagrantfile` has a `route` provisioner to configure cross host routes. Lets use this provisioner,
+
+```bash
+CNI='true' vagrant provision --provision-with route
+
+==> node1: Running provisioner: route (shell)...
+    node1: configuring route...
+    node1: 10.22.3.0/24 via 10.100.198.202 dev enp0s8
+==> node2: Running provisioner: route (shell)...
+    node2: configuring route...
+    node2: 10.22.2.0/24 via 10.100.198.201 dev enp0s8
+```
+
+## Testing pod network
+
+Now, we should be deploying some pods to see if kubernetes network working fine or not. We will use simple nginx deployment with two replicas.
+
+```bash
+kubectl --kubeconfig ./admin.conf apply -f nginx-deployment.yaml
+
+deployment "nginx-deployment" created`
+```
+
+Below command will tell us if both pods are running and deployed on two different nodes.
+
+```bash
+kubectl --kubeconfig ./admin.conf get pods -o wide
+
+NAME                                READY     STATUS    RESTARTS   AGE       IP          NODE
+nginx-deployment-75675f5897-b4clx   1/1       Running   0          43s       10.22.3.3   node2
+nginx-deployment-75675f5897-chm2r   1/1       Running   0          43s       10.22.2.2   node1
+```
+
+Lets visualize our pod network,
+
+![Figure : Pod Network through basic CNI plugin](images/cni-basic-network.png)
+
+
+With the help of ping we can test whether bridge plugin was able to meet kubernetes network requirements,
+
+* All nodes can communicate with all pods (and vice-versa) without NAT
+
+```bash
+vagrant ssh node1
+
+ping 10.22.2.2  (same node)
+
+PING 10.22.2.2 (10.22.2.2) 56(84) bytes of data.
+64 bytes from 10.22.2.2: icmp_seq=1 ttl=64 time=0.054 ms
+
+ping 10.22.3.3 (across node)
+
+PING 10.22.3.3 (10.22.3.3) 56(84) bytes of data.
+64 bytes from 10.22.3.3: icmp_seq=1 ttl=63 time=0.570 ms
+
+exit (from node1)
+```
+
+`ping` test tell us that pods are reachable on same and across hosts.
+
+* All pods can communicate with all other pods without NAT
+
+Lets see if pod on node1 can reach to pod on node2.
+
+```bash
+kubectl --kubeconfig ./admin.conf exec -it nginx-deployment-75675f5897-chm2r ping 10.22.3.3
+
+PING 10.22.3.3 (10.22.3.3): 48 data bytes
+56 bytes from 10.22.3.3: icmp_seq=0 ttl=62 time=1.436 ms
+```
+
+## What now?
+
+We have explored the basic CNI plugin for pod network and performed various test. Lets delete the cluster,
+
+```bash
+vagrant destroy -f
+```
