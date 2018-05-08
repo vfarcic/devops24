@@ -13,9 +13,11 @@
 
 # Setup Pod Network using basic CNI plugins
 
-In this section we going to use basic CNI plugins to setup pod network where pods can communicate across nodes. Let's setup a local kubernetes cluster. Run the commands from `Create local cluster with kubadmn  (Appendix)` to build the kubernetes cluster. 
+In this section we going to use basic CNI plugins to setup pod network where pods can communicate across nodes. Let's setup a local kubernetes cluster. Run the commands from *Create local cluster with kubadmn  (Appendix)* to build the kubernetes cluster. 
 
-All basics plugins are available by default at `/opt/cni/bin` and installed by `kubernetes-cni` package. We didn't install this package explicitly, since kubelet package has dependency on this one. Below is CNI conf file plugins going to use. We using bridge and host-local plugins. Bridge plugin creates a bridge and adds the host and the container to it. The host-local is IPAM plugin maintains a local database of allocated IPs. IPAM plugin will assign a IP for a pod from subnet range we define in CNI conf file.
+All basics plugins are available by default at `/opt/cni/bin` and installed by *kubernetes-cni* package. We didn't install this package explicitly, since kubelet package has dependency on this one and we have installed kubelet package through out `bootstrap.sh` script. 
+
+We need to provision below CNI conf file for basic plugins we going to use. We using bridge and host-local plugins. Bridge plugin creates a bridge and adds the host and the container to it. The host-local is IPAM plugin maintains a local database of allocated IPs. IPAM plugin will assign a IP for a pod from subnet range we define in CNI conf file.
 
 ```
 {
@@ -43,11 +45,9 @@ node1 -> 10.22.2.0/24
 node2 -> 10.22.3.0/24
 ```
 
-`Vagrantfile` has a `cni` provisioner to configure file 10-mynet.conf needed by basic CNI plugin. Lets use this provisioner,
+*Vagrantfile* has a *cni* provisioner which creates file `10-mynet.conf` under `/etc/cni/net.d` directory on each host which is needed by basic CNI plugins. You will see output like this,
 
-```bash
-CNI='true' vagrant provision --provision-with cni
-
+```
 ==> master: Running provisioner: cni (shell)...
     master: 10.22.1.0/24
 ==> node1: Running provisioner: cni (shell)...
@@ -56,7 +56,18 @@ CNI='true' vagrant provision --provision-with cni
     node2: 10.22.3.0/24
 ```
 
-Now, if we check again all nodes should be in the ready state. 
+We also need to established cross nodes routes manually as basic CNI plugins don't provide this feature. *Vagrantfile* has a *route* provisioner to configure cross host routes. You will see output like this,
+
+```
+==> node1: Running provisioner: route (shell)...
+    node1: configuring route...
+    node1: 10.22.3.0/24 via 10.100.198.202 dev enp0s8
+==> node2: Running provisioner: route (shell)...
+    node2: configuring route...
+    node2: 10.22.2.0/24 via 10.100.198.201 dev enp0s8
+```
+
+All nodes should be in the ready state. 
 
 ```bash
 kubectl --kubeconfig ./admin.conf get nodes
@@ -67,25 +78,13 @@ node1     Ready     <none>    4m        v1.10.1
 node2     Ready     <none>    3m        v1.10.1
 ```
 
-We also need to established cross nodes routes manually as basic CNI plugins don't provide this feature. `Vagrantfile` has a `route` provisioner to configure cross host routes. Lets use this provisioner,
-
-```bash
-CNI='true' vagrant provision --provision-with route
-
-==> node1: Running provisioner: route (shell)...
-    node1: configuring route...
-    node1: 10.22.3.0/24 via 10.100.198.202 dev enp0s8
-==> node2: Running provisioner: route (shell)...
-    node2: configuring route...
-    node2: 10.22.2.0/24 via 10.100.198.201 dev enp0s8
-```
 
 ## Testing pod network
 
 Now, we should be deploying some pods to see if kubernetes network working fine or not. We will use simple nginx deployment with two replicas.
 
 ```bash
-kubectl --kubeconfig ./admin.conf apply -f nginx-deployment.yaml
+kubectl --kubeconfig ./admin.conf apply -f ../nginx-deployment.yaml
 
 deployment "nginx-deployment" created`
 ```

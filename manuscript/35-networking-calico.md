@@ -17,7 +17,7 @@ By default, there is no restriction on pods traffic in the kubernetes cluster wh
 
 NetworkPolicy is defined in two parts, set of pods a policy apply to and other pods have access to this pod. NetworkPolicy also has some other features like egress restrictions, IP ranges, port restrictions, etc. 
 
-Lets create kubernetes cluster using our `create local cluster with kubadmn guide`. You need to supply pod network when initializing kubernetes master, Use below command to initialize the master instead.
+Lets create kubernetes cluster using our *create local cluster with kubadmn guide*. You need to supply pod network when initializing kubernetes master, Use below command to initialize the master instead.
 
 ```bash
 sudo kubeadm init --apiserver-advertise-address 10.100.198.200 --pod-network-cidr 192.168.0.0/16
@@ -61,7 +61,7 @@ kube-proxy-tt5f7                          1/1       Running   0          9m
 kube-scheduler-master                     1/1       Running   0          9m  
 ```
 
-Once all the pods are runnning, lets create `go demo` app with database, we will not go in detail of go-demo app yaml as we are familiar with this app in previous books. We will be running 3 replicas of `go-demo-2-api` and one replica of `go-demo-2-db`.  
+Once all the calico pods are running, lets create *go demo* app with database, we will not go in detail of go-demo app yaml as we are familiar with this app through previous books. We will be running 3 replicas of `go-demo-2-api` and one replica of `go-demo-2-db`.  
 
 ```bash
 kubectl --kubeconfig ./admin.conf create -f go-demo-2.yml
@@ -80,7 +80,7 @@ go-demo-2-api-558c6cbf6d-v8hxc   1/1       Running   2          1m        192.16
 go-demo-2-db-5d98f87ff8-l7dch    1/1       Running   0          1m        192.168.166.130   node1
 ```
 
-Once all go demo pods are running, we will test whether we can access these pods from some other pod to prove that there is not restriction on pod traffic. Lets create pod with busybox to access go demo pods. Below command will create busybox conatiner and launch you inside the container. We going to do ping test with go demo pods.
+Once all go demo pods are running, we will test whether we can access these pods from some other pod to prove that there is not restriction on pod traffic. Below command will create busybox container and launch you inside the busybox container. We going to do ping test with go demo pods.
 
 ```bash
 kubectl --kubeconfig ./admin.conf run busybox --rm -ti --image=busybox sh
@@ -96,7 +96,7 @@ PING 192.168.166.130 (192.168.166.130): 56 data bytes
 exit (from busybox)
 ```
 
-As you have seen we can ping both `app` and `db` pods from busybox that proves no restrictions on pods. Next, we going to restrict the traffic on all the pods in the cluster by default using `deny-all-policy.yaml`. This is actually best practice to deny traffic to start with and then add policy to allow traffic at each pod level in cluster. This way we will have explicit control on pod traffic. Below is `deny-all-policy.yaml` defintion, if we define empty selector as {} then all pods are selected and empty polciy as [] means all pods are not allowed to access each other.
+As you have seen we can ping both *app* and *db* pods from busybox that proves no restrictions on pods. Next, we going to restrict the traffic on all the pods in the cluster by default using `deny-all-policy.yaml`. This is actually best practice to deny traffic to start with and then add policy to allow traffic at each pod level in cluster. This way we will have explicit control on pod traffic. Below is `deny-all-policy.yaml` definition, if we define empty selector as `{}` then all pods are selected and empty policy as `[]` means all pods are not allowed to access each other.
 
 ```
 kind: NetworkPolicy
@@ -131,11 +131,11 @@ PING 192.168.166.130 (192.168.166.130): 56 data bytes
 exit (from busybox)
 ```
 
-Since we have `deny-all` network policy in place, now we can't ping same pods we tried earlier before policy. We now going to open traffic selectively. Our ingress traffic should look like below, 
+Since we have *deny-all* network policy in place, we can't ping same pods we tried earlier before policy. We now going to open traffic selectively. Our ingress traffic should look like below, 
 
 ![Figure : Ingress Policy](images/ingress-allow.png)
 
-We will apply some labels on exisitng pods to understand the concept little bit easier. We will apply `tier=backend` to `api` pods and `tier=db` to `db` pod
+We will apply some labels on existing pods to understand the concept little bit easier. We will apply `tier=backend` to *api* pods and `tier=db` to *db* pod
 
 ```bash
 $ kubectl --kubeconfig ./admin.conf label pods -l type=api tier=backend
@@ -154,7 +154,7 @@ go-demo-2-api-558c6cbf6d-kdzh9   1/1       Running   2          1h        langua
 go-demo-2-db-5d98f87ff8-zdmdl    1/1       Running   0          1h        pod-template-hash=1854943994,service=go-demo-2,tier=db,type=db,vendor=MongoLabs
 ```
 
-Below are two policy defintions, `backend-policy` applies to any pods which has label `tier=backend` and only allow traffic from pods which has label `tier=frontend`. `db-policy` applies to any pods which has label `tier=db` and only allow traffic from pods which has label `tier=backend`.  
+Below are two policy definitions, `backend-policy` applies to any pods which has label `tier=backend` and only allow traffic from pods which has label `tier=frontend`. `db-policy` applies to any pods which has label `tier=db` and only allow traffic from pods which has label `tier=backend`.  
 
 ```
 kind: NetworkPolicy

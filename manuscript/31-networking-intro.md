@@ -33,7 +33,7 @@ Kubernetes' default networking driver is kubenet. It is a very basic networking 
 
 Container Network Interface (CNI) consists of a specification and libraries for writing plugins to configure network interfaces in containers, along with a number of basic plugins. CNI is a very simple specification which concerns only with network connectivity of containers and removing networking resources when a container is deleted. 
 
-CNI specs were originally developed by CoreOS for [rkt](TODO: link) project and are now managed by [Cloud Native Computing Foundation (CNCF)](TODO: link) under the [ContainerNetworking team](TODO: link). It has two branches. The first one is in charge of defining CNI specifications which are implemented by different networking providers. The second branch is working on basic plugins reference implementation of CNI specs.
+CNI specs were originally developed by CoreOS for [rkt](https://coreos.com/rkt) project and are now managed by [Cloud Native Computing Foundation (CNCF)](https://www.cncf.io/) under the [ContainerNetworking team](https://github.com/containernetworking). It has two branches. The first one is in charge of defining CNI specifications which are implemented by different networking providers. The second branch is working on basic plugins reference implementation of CNI specs.
 
 CNI and container runtimes are intricately tied together. Container runtime creates new network namespace and hands it over to a set of CNI plugin(s) to setup interfaces, iptables, routing, etc.
 
@@ -41,7 +41,7 @@ CNI plugins are categorized into two parts. The main plugins are responsible for
 
 TODO: Export PNG with 300% size for better printing quality
 TODO: Add figure number once we decide on chapters structure
-![Figure: Basic CNI diagram](images/cni-basic.png)
+![Figure 1-1: Basic CNI diagram](images/cni-basic.png)
 
 ContainerNetworking team created several basic plugins as reference implementations. We going to use some of those later. Please visit [containernetworking/plugins](https://github.com/containernetworking/plugins) repository for more info.
 
@@ -57,7 +57,7 @@ The steps that follow describe how a Pod gets its network.
 
 TODO: Export PNG with 300% size for better printing quality
 TODO: Add figure number once we decide on chapters structure
-![Figure : CNI Plugin Flow](images/cni-flow.png)
+![Figure 1-2: CNI Plugin Flow](images/cni-flow.png)
 
 The most commonly used networking options can be grouped into *Overlay*, *Layer 2*, and *Layer 3* solutions.
 
