@@ -13,7 +13,16 @@
 
 # Setup Pod Network using basic CNI plugins
 
-In this section we going to use basic CNI plugins to setup pod network where pods can communicate across nodes. Let's setup a local kubernetes cluster. Run the commands from *Create local cluster with kubadmn  (Appendix)* to build the kubernetes cluster. 
+In this section we going to use basic CNI plugins to setup pod network where pods can communicate across nodes. Let's setup a local kubernetes cluster. We have seen details in *Create local cluster with kubadmn  (chapter 2)* to build local kubernetes cluster. In this chapter, we going to save some time for ourselves and automate all commands needed to setup local kubernetes cluster.
+
+TODO: Add git repo information
+```bash
+git pull
+
+cd basic
+
+vagrant up
+```
 
 All basics plugins are available by default at `/opt/cni/bin` and installed by *kubernetes-cni* package. We didn't install this package explicitly, since kubelet package has dependency on this one and we have installed kubelet package through out `bootstrap.sh` script. 
 
@@ -84,7 +93,7 @@ node2     Ready     <none>    3m        v1.10.1
 Now, we should be deploying some pods to see if kubernetes network working fine or not. We will use simple nginx deployment with two replicas.
 
 ```bash
-kubectl --kubeconfig ./admin.conf apply -f ../nginx-deployment.yaml
+kubectl --kubeconfig ./admin.conf apply -f nginx-deployment.yaml
 
 deployment "nginx-deployment" created`
 ```
@@ -128,10 +137,14 @@ exit (from node1)
 
 * All pods can communicate with all other pods without NAT
 
-Lets see if pod on node1 can reach to pod on node2.
+Lets see if pod on node1 can reach to pod on node2. 
 
 ```bash
-kubectl --kubeconfig ./admin.conf exec -it nginx-deployment-75675f5897-chm2r ping 10.22.3.3
+NODE1_POD_NAME=$(kubectl --kubeconfig ./admin.conf get pods -o json | jq -r '.items[] | select(.spec.nodeName=="node1") | [.metadata.name] | @tsv')
+
+NODE2_POD_IP=$(kubectl --kubeconfig ./admin.conf get pods -o json | jq -r '.items[] | select(.spec.nodeName=="node2") | [.status.podIP] | @tsv')
+
+kubectl --kubeconfig ./admin.conf exec -it $NODE1_POD_NAME ping $NODE2_POD_IP
 
 PING 10.22.3.3 (10.22.3.3): 48 data bytes
 56 bytes from 10.22.3.3: icmp_seq=0 ttl=62 time=1.436 ms
