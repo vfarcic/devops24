@@ -15,8 +15,13 @@
 
 In this section we going to use basic CNI plugins to setup pod network where pods can communicate across nodes. Let's setup a local kubernetes cluster. We have seen details in *Create local cluster with kubadmn  (chapter 2)* to build local kubernetes cluster. In this chapter, we going to save some time for ourselves and automate all commands needed to setup local kubernetes cluster.
 
-TODO: Add git repo information
+Lets pull the latest code from the [vfarcic/k8s-specs](https://github.com/vfarcic/k8s-specs) repository.
+
+I> All the commands from this chapter are available in the [33-networking-basic.sh](TODO: link) Gist.
+
 ```bash
+cd k8s-specs
+
 git pull
 
 cd basic

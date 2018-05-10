@@ -13,10 +13,16 @@
 
 # Create local cluster with kubadmn
 
-Let's start with some hands-on as we usually do in each chapter and call our old friend vagarnt. We will create local cluster with help of vagrant and virtualbox.  
+Let's start with some hands-on as we usually do in each chapter and call our old friend vagarnt. We will create local cluster with help of vagrant and virtualbox. Lets pull the latest code from the [vfarcic/k8s-specs](https://github.com/vfarcic/k8s-specs) repository.
+
+I> All the commands from this chapter are available in the [32-networking-cluster.sh](TODO: link) Gist.
 
 ```bash
-cd local-cluster
+cd k8s-specs
+
+git pull
+
+cd cluster
 
 vagrant up
 ```
