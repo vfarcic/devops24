@@ -10,6 +10,8 @@ I> If we are to implement continuous delivery or deployment processes across the
 
 Let's experience some of the problems behind stateful applications, and the benefits *StatefulSets* bring to the table. To do that, we need a cluster.
 
+I> This chapter asssumes that you are already familiar with Namespaces, Ingress, Services, and Deployments. If you're not, please refer to [The DevOps 2.3 Toolkit: Kubernetes](https://amzn.to/2GvzDjy) for more info.
+
 We'll skip the theory (for now), and dive straight into examples. To do that, we need a cluster.
 
 ## Creating A Cluster
@@ -59,15 +61,20 @@ The only significant difference, when compared to Deployments, is that the `Stat
 
 W> ## A note to **minishift** users
 W>
-W> OpenShift does not allow setting `fsGroup` in the security context, it uses Routes instead of Ingress, and Services accessible through Routes need to be the `LoadBalancer` type. Due to those changes, I had to prepare a different YAML specification for minishift. Please execute `oc create -f sts/jenkins-oc.yml --record --save-config` instead of the command that follows.
+W> OpenShift does not allow setting `fsGroup` in the security context, it uses Routes instead of Ingress, and Services accessible through Routes need to be the `LoadBalancer` type. Due to those changes, I had to prepare a different YAML specification for minishift. Please execute `oc apply -f sts/jenkins-oc.yml --record` instead of the command that follows.
 
 ```bash
-kubectl create \
+kubectl apply \
     -f sts/jenkins.yml \
-    --record --save-config
+    --record
 ```
 
 We can see from the output that a Namespace, an Ingress, a Service, and a StatefulSet were created. In case you're using minishift and deployed the YAML defined in `sts/jenkins-oc.yml`, you got a Route instead Ingress.
+
+W> ## A note to GKE users
+W>
+W> GKE uses external load balancer as Ingress. To work properly, `type` of the service related to Ingress needs to be `NodePort`. We'll have to patch the service to change its type. Please execute the command that follows.
+W> `kubectl -n jenkins patch svc jenkins -p '{"spec":{"type": "NodePort"}}'`
 
 Let's confirm that the StatefulSet was rolled out correctly.
 
@@ -134,7 +141,7 @@ T> ## A note to Windows users
 T> 
 T> Git Bash might not be able to use the `open` command. If that's the case, replace the `open` command with `echo`. As a result, you'll get the full address that should be opened directly in your browser of choice.
 
-In some cases (e.g., GKE), it might take a few minutes until the external load balancer is created. If you see 40x or 50x error message, please wait for a while and try to open Jenkins in the browser again.
+W> In some cases (e.g., GKE), it might take a few minutes until the external load balancer is created. If you see 40x or 50x error message, please wait for a while and try to open Jenkins in the browser again.
 
 You might see browser's message that the connection is not private. That's normal since we did not specify an SSL certificate. If that's the case, please choose to proceed. In Chrome, you should click the *ADVANCED* link, followed by *Proceed to...* For the rest of the browsers... Well, I'm sure that you already know how to ignore SSL warnings in your favorite browser.
 
@@ -165,9 +172,9 @@ There are two Deployments, one for the API and the other for the database. Both 
 Now that we have a very high-level overview of the `go-demo-3` definition, we can proceed and create the resources.
 
 ```bash
-kubectl create \
+kubectl apply \
     -f sts/go-demo-3-deploy.yml \
-    --record --save-config
+    --record
 
 kubectl -n go-demo-3 \
     rollout status deployment api
@@ -368,9 +375,9 @@ Everything else in this YAML file is the same as in the one that used Deployment
 To summarize, we changed `db` Deployment into a StatefulSet, we added a command that creates MongoDB replica set named `rs0`, and we set the `db` Service to be Headless. We'll explore the reasons and the effects of those changes soon. For now, we'll create the resources defined in the `sts/go-demo-3-sts.yml` file.
 
 ```bash
-kubectl create \
+kubectl apply \
     -f sts/go-demo-3-sts.yml \
-    --record --save-config
+    --record
 
 kubectl -n go-demo-3 get pods
 ```
@@ -765,9 +772,9 @@ The sidecar will monitor the Pods created through our StatefulSet, and it will r
 Let's create the resources defined in `sts/go-demo-3.yml` and check whether everything works as expected.
 
 ```bash
-kubectl create \
+kubectl apply \
     -f sts/go-demo-3.yml \
-    --record --save-config
+    --record
 
 # Wait for a few moments
 
