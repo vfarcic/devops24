@@ -153,6 +153,8 @@ TODO: prometheus-2
 TODO: prom-repo
 
 TODO: gs-repo
+
+TODO: prom-operator
 ```
 
 ## Destroying The Cluster

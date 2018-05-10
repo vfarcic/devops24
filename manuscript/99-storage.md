@@ -1,6 +1,8 @@
 ## Cluster
 
 ```bash
+git clone https://github.com/vfarcic/k8s-specs.git
+
 cd k8s-specs
 
 git pull
@@ -41,7 +43,7 @@ cd ..
 
 ## EBS
 
-## EBS Setup
+### EBS Setup
 
 ```bash
 kubectl create \
