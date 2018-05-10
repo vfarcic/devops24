@@ -48,9 +48,4 @@ exit
 
 kubectl --kubeconfig ./admin.conf get nodes
 
-NAME      STATUS     ROLES     AGE       VERSION
-master    NotReady   master    6m        v1.10.0
-node1     NotReady   <none>    2m        v1.10.0
-node2     NotReady   <none>    1m        v1.10.0
-
 vagrant destroy -f
