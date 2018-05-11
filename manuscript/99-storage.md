@@ -41,6 +41,10 @@ kubectl create \
 cd ..
 ```
 
+## NFS
+
+TODO: Commands
+
 ## EBS
 
 ### EBS Setup

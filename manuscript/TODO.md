@@ -7,7 +7,6 @@
 - [ ] 04-helm.md
 - [ ] 05-jenkins-setup.md
 - [ ] 06-jenkins-cd.md
-- [ ] Security scanning (Clair, https://github.com/aquasecurity/kube-bench, security/best-practices)
 - [ ] Write CD with CodeShip
 - [ ] Write CD with JenkinsX
 - [ ] Write CD with CJE
@@ -34,6 +33,7 @@
 - [ ] Write azure.md
 - [ ] Write digital-ocean.md
 - [ ] Write resources.md
+- [ ] Security scanning (Clair, https://github.com/aquasecurity/kube-bench, security/best-practices)
 - [ ] Write security-with-third-party.md (Valut+Consul)
 - [ ] Write pod-spec-affinity.md
 - [ ] Write node-controller.md (https://github.com/kube-node/kube-machine/blob/master/README.md)
@@ -75,6 +75,7 @@
 - [ ] CRI and alternative container runtimes (CRI-O, etc)
 - [ ] https://raw.githubusercontent.com/cloudbees/ps-internal/master/K8S/Utils/setup_k8s_user.sh?token=Aftag0fCKRzriAmlYSrLW5-0IUkBUy7vks5avjoWwA%3D%3D
 - [ ] Operating Systems (CoreOS, RancherOS)
+- [ ] Machine learning (https://github.com/kubeflow)
 
 ## Contributors
 

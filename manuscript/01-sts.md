@@ -73,7 +73,7 @@ We can see from the output that a Namespace, an Ingress, a Service, and a Statef
 
 W> ## A note to GKE users
 W>
-W> GKE uses external load balancer as Ingress. To work properly, `type` of the service related to Ingress needs to be `NodePort`. We'll have to patch the service to change its type. Please execute the command that follows.
+W> GKE uses external load balancer as Ingress. To work properly, the `type` of the service related to Ingress needs to be `NodePort`. We'll have to patch the service to change its type. Please execute the command that follows.
 W> `kubectl -n jenkins patch svc jenkins -p '{"spec":{"type": "NodePort"}}'`
 
 Let's confirm that the StatefulSet was rolled out correctly.
@@ -113,6 +113,7 @@ Finally, as the last verification, we'll open Jenkins in a browser and confirm t
 W> ## A note to GKE users
 W>
 W> Please change `hostname` to `ip` in the command that follows. The `jsonpath` should be `{.status.loadBalancer.ingress[0].ip}`.
+W> Please note that GKE Ingress spins up an external load balancer and it might take a while until the IP is generated. Therefor, you might need to repeat the command that follows until you get the IP.
 
 W> ## A note to minikube users
 W>
