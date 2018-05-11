@@ -13,7 +13,7 @@
 
 # Setup Network Using Flannel
 
-In this chapter we going to use Flannel plugin to setup pod network where pods can communicate across nodes. Lets create kubernetes cluster using our `create local cluster with kubadmn guide`. You need to supply pod network when initializing kubernetes master, Use below command to initialize the master instead.
+In this chapter we going to use Flannel plugin to setup pod network where pods can communicate across nodes. Lets create kubernetes cluster using our *create local cluster with kubadmn guide*. You need to supply pod network when initializing kubernetes master, Use below command to initialize the master instead.
 
 ```bash
 sudo kubeadm init --apiserver-advertise-address 10.100.198.200 --pod-network-cidr 10.244.0.0/16

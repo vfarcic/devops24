@@ -13,9 +13,25 @@
 
 # Setup Pod Network using basic CNI plugins
 
-In this section we going to use basic CNI plugins to setup pod network where pods can communicate across nodes. Let's setup a local kubernetes cluster. Run the commands from `Create local cluster with kubadmn  (Appendix)` to build the kubernetes cluster. 
+In this section we going to use basic CNI plugins to setup pod network where pods can communicate across nodes. Let's setup a local kubernetes cluster. We have seen details in *Create local cluster with kubadmn  (chapter 2)* to build local kubernetes cluster. In this chapter, we going to save some time for ourselves and automate all commands needed to setup local kubernetes cluster.
 
-All basics plugins are available by default at `/opt/cni/bin` and installed by `kubernetes-cni` package. We didn't install this package explicitly, since kubelet package has dependency on this one. Below is CNI conf file plugins going to use. We using bridge and host-local plugins. Bridge plugin creates a bridge and adds the host and the container to it. The host-local is IPAM plugin maintains a local database of allocated IPs. IPAM plugin will assign a IP for a pod from subnet range we define in CNI conf file.
+Lets pull the latest code from the [vfarcic/k8s-specs](https://github.com/vfarcic/k8s-specs) repository.
+
+I> All the commands from this chapter are available in the [33-networking-basic.sh](TODO: link) Gist.
+
+```bash
+cd k8s-specs
+
+git pull
+
+cd basic
+
+vagrant up
+```
+
+All basics plugins are available by default at `/opt/cni/bin` and installed by *kubernetes-cni* package. We didn't install this package explicitly, since kubelet package has dependency on this one and we have installed kubelet package through out `bootstrap.sh` script. 
+
+We need to provision below CNI conf file for basic plugins we going to use. We using bridge and host-local plugins. Bridge plugin creates a bridge and adds the host and the container to it. The host-local is IPAM plugin maintains a local database of allocated IPs. IPAM plugin will assign a IP for a pod from subnet range we define in CNI conf file.
 
 ```
 {
@@ -43,11 +59,9 @@ node1 -> 10.22.2.0/24
 node2 -> 10.22.3.0/24
 ```
 
-`Vagrantfile` has a `cni` provisioner to configure file 10-mynet.conf needed by basic CNI plugin. Lets use this provisioner,
+*Vagrantfile* has a *cni* provisioner which creates file `10-mynet.conf` under `/etc/cni/net.d` directory on each host which is needed by basic CNI plugins. You will see output like this,
 
-```bash
-CNI='true' vagrant provision --provision-with cni
-
+```
 ==> master: Running provisioner: cni (shell)...
     master: 10.22.1.0/24
 ==> node1: Running provisioner: cni (shell)...
@@ -56,7 +70,18 @@ CNI='true' vagrant provision --provision-with cni
     node2: 10.22.3.0/24
 ```
 
-Now, if we check again all nodes should be in the ready state. 
+We also need to established cross nodes routes manually as basic CNI plugins don't provide this feature. *Vagrantfile* has a *route* provisioner to configure cross host routes. You will see output like this,
+
+```
+==> node1: Running provisioner: route (shell)...
+    node1: configuring route...
+    node1: 10.22.3.0/24 via 10.100.198.202 dev enp0s8
+==> node2: Running provisioner: route (shell)...
+    node2: configuring route...
+    node2: 10.22.2.0/24 via 10.100.198.201 dev enp0s8
+```
+
+All nodes should be in the ready state. 
 
 ```bash
 kubectl --kubeconfig ./admin.conf get nodes
@@ -67,18 +92,6 @@ node1     Ready     <none>    4m        v1.10.1
 node2     Ready     <none>    3m        v1.10.1
 ```
 
-We also need to established cross nodes routes manually as basic CNI plugins don't provide this feature. `Vagrantfile` has a `route` provisioner to configure cross host routes. Lets use this provisioner,
-
-```bash
-CNI='true' vagrant provision --provision-with route
-
-==> node1: Running provisioner: route (shell)...
-    node1: configuring route...
-    node1: 10.22.3.0/24 via 10.100.198.202 dev enp0s8
-==> node2: Running provisioner: route (shell)...
-    node2: configuring route...
-    node2: 10.22.2.0/24 via 10.100.198.201 dev enp0s8
-```
 
 ## Testing pod network
 
@@ -129,10 +142,14 @@ exit (from node1)
 
 * All pods can communicate with all other pods without NAT
 
-Lets see if pod on node1 can reach to pod on node2.
+Lets see if pod on node1 can reach to pod on node2. 
 
 ```bash
-kubectl --kubeconfig ./admin.conf exec -it nginx-deployment-75675f5897-chm2r ping 10.22.3.3
+NODE1_POD_NAME=$(kubectl --kubeconfig ./admin.conf get pods -o json | jq -r '.items[] | select(.spec.nodeName=="node1") | [.metadata.name] | @tsv')
+
+NODE2_POD_IP=$(kubectl --kubeconfig ./admin.conf get pods -o json | jq -r '.items[] | select(.spec.nodeName=="node2") | [.status.podIP] | @tsv')
+
+kubectl --kubeconfig ./admin.conf exec -it $NODE1_POD_NAME ping $NODE2_POD_IP
 
 PING 10.22.3.3 (10.22.3.3): 48 data bytes
 56 bytes from 10.22.3.3: icmp_seq=0 ttl=62 time=1.436 ms
