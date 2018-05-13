@@ -7,6 +7,7 @@
 - [ ] Code review minishift
 - [ ] Code review GKE
 - [ ] Write
+- [ ] The story
 - [ ] Text review
 - [ ] Diagrams
 - [ ] Gist
