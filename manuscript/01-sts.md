@@ -74,6 +74,7 @@ We can see from the output that a Namespace, an Ingress, a Service, and a Statef
 W> ## A note to GKE users
 W>
 W> GKE uses external load balancer as Ingress. To work properly, the `type` of the service related to Ingress needs to be `NodePort`. We'll have to patch the service to change its type. Please execute the command that follows.
+W>
 W> `kubectl -n jenkins patch svc jenkins -p '{"spec":{"type": "NodePort"}}'`
 
 Let's confirm that the StatefulSet was rolled out correctly.
