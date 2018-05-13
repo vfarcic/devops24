@@ -113,7 +113,7 @@ Finally, as the last verification, we'll open Jenkins in a browser and confirm t
 W> ## A note to GKE users
 W>
 W> Please change `hostname` to `ip` in the command that follows. The `jsonpath` should be `{.status.loadBalancer.ingress[0].ip}`.
-W> Please note that GKE Ingress spins up an external load balancer and it might take a while until the IP is generated. Therefor, you might need to repeat the command that follows until you get the IP.
+W> Please note that GKE Ingress spins up an external load balancer and it might take a while until the IP is generated. Therefore, you might need to repeat the command that follows until you get the IP.
 
 W> ## A note to minikube users
 W>

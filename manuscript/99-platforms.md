@@ -38,7 +38,7 @@ TODO: Write
 
 ## Random Stuff
 
-Ingress on different platforms is a nightmare
+Ingress on different platforms is a nightmare.
 
 OpenShift con: Slight differences in the security context
 OpenShift con: Services accessible through Routes need to be `LoadBalancer` type.

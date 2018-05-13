@@ -76,6 +76,7 @@
 - [ ] https://raw.githubusercontent.com/cloudbees/ps-internal/master/K8S/Utils/setup_k8s_user.sh?token=Aftag0fCKRzriAmlYSrLW5-0IUkBUy7vks5avjoWwA%3D%3D
 - [ ] Operating Systems (CoreOS, RancherOS)
 - [ ] Machine learning (https://github.com/kubeflow)
+- [ ] ChatOps w/k8s
 
 ## Contributors
 
