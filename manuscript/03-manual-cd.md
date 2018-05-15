@@ -2,7 +2,7 @@
 
 - [X] Code
 - [ ] Write
-- [ ] Code review Docker for Mac/Windows
+- [X] Code review Docker for Mac/Windows
 - [ ] Code review minikube
 - [ ] Code review kops
 - [ ] Code review minishift
