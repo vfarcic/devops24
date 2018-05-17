@@ -428,7 +428,7 @@ podTemplate(
     stage("func-test") {
       try {
         container("helm") {
-          sh "git clone https://github.com/${env.GH_USER}/${env.PROJECT}.git ."
+          git "https://github.com/${env.GH_USER}/${env.PROJECT}.git ."
           sh """helm upgrade \
             ${env.PROJECT}-${env.BUILD_NUMBER}-beta \
             helm/${env.PROJECT} -i \

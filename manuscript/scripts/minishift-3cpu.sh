@@ -1,0 +1,51 @@
+######################
+# Create The Cluster #
+######################
+
+# Make sure that your minishift version is v1.15 or higher
+
+minishift start \
+    --vm-driver virtualbox \
+    --cpus 3 \
+    --memory 3072
+
+IP=$(minishift ip)
+
+NAME=$(echo $IP | tr '.' '-')
+
+oc config set current-context \
+    default/$NAME:8443/system:admin
+
+#######################
+# Destroy the cluster #
+#######################
+
+minishift delete -f --clear-cache
+
+# Only if creating the cluster fails with `The server uses a certificate signed by unknown authority` message
+# rm -rf ~/.minishift
+
+# Only if creating the cluster fails with `The server uses a certificate signed by unknown authority` message
+# rm -rf ~/.kube
+
+kubectl config delete-cluster $NAME:8443
+
+kubectl config delete-cluster 127-0-0-1:8443
+
+kubectl config delete-context /$NAME:8443/developer
+
+kubectl config delete-context default/$NAME:8443/system:admin
+
+kubectl config delete-context minishift
+
+kubectl config delete-context myproject/$NAME:8443/developer
+
+kubectl config delete-context myproject/$NAME:8443/system:admin
+
+kubectl config delete-context default/127-0-0-1:8443/system:admin
+
+kubectl config unset users.developer/$NAME:8443
+
+kubectl config unset users.system:admin/$NAME:8443
+
+kubectl config unset users.system:admin/127-0-0-1:8443

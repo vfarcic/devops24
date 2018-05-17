@@ -49,6 +49,7 @@
 - [ ] Write deploy-advanced.md (staged update, canary, phased roll outs, bg)
 - [ ] Write write-addons.md
 - [ ] Write the-end.md
+- [ ] https://github.com/heptio/sonobuoy
 - [ ] Publish to Amazon
 - [ ] Change rs YAMLs to v1
 - [ ] Change deployment YAMLs to v1
@@ -71,7 +72,7 @@
 - [ ] https://medium.com/google-cloud/mgob-a-mongodb-backup-agent-for-kubernetes-cfc9b30c6c92
 - [ ] Serverless, OpenFaas
 - [ ] Service mesh (Istio, https://akomljen.com/kubernetes-service-mesh/, http://philcalcado.com/2017/08/03/pattern_service_mesh.html)
-- [ ] Security tools (https://sysdig.com/blog/20-docker-security-tools/, gVisor)
+- [ ] Security (RBAC, PodSecurityPolicy, https://sysdig.com/blog/20-docker-security-tools/, gVisor)
 - [ ] CRI and alternative container runtimes (CRI-O, etc)
 - [ ] https://raw.githubusercontent.com/cloudbees/ps-internal/master/K8S/Utils/setup_k8s_user.sh?token=Aftag0fCKRzriAmlYSrLW5-0IUkBUy7vks5avjoWwA%3D%3D
 - [ ] Operating Systems (CoreOS, RancherOS)

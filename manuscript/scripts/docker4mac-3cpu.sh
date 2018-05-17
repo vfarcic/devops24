@@ -4,7 +4,7 @@
 
 # Open Docker Preferences, select the Kubernetes tab, and select the "Enable Kubernetes" checkbox
 
-# Open Docker Preferences, select the Advanced tab, set CPUs to 2, and Memory to 2.0
+# Open Docker Preferences, select the Advanced tab, set CPUs to 3, and Memory to 3.0
 
 # Make sure that your current kubectl context is pointing to your Docker for Mac/Windows cluster
 
