@@ -93,7 +93,7 @@ kubectl -n go-demo-3 \
     run -it \
     --image busybox dns-test \
     --restart=Never \
-    --rm /bin/sh
+    --rm sh
 
 nslookup db
 

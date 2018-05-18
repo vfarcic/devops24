@@ -3,7 +3,7 @@
 - [X] Code
 - [X] Write
 - [X] Code review Docker for Mac/Windows
-- [ ] Code review minikube
+- [X] Code review minikube
 - [ ] Code review kops
 - [ ] Code review minishift
 - [ ] Code review GKE
@@ -119,7 +119,7 @@ git pull
 
 Just as in the previous chapters, we'll need a cluster if we are to do some hands-on exercises. The rules are still the same. You can continue using the same cluster as before, or switch to a different Kubernetes flavor. You can continue using one of the Kubernetes distributions listed below, or be adventurous and try something different. If you go with the latter, please let me know how it went and I'll test it myself and incorporate it to the list.
 
-W> Beware that for this chapter the minimum requirements for the cluster are 3 CPUs and 3 GB RAM. If you're using Docker For Mac or Windows, minikube, or minishift, the requirements are slightly higher. For everyone else, the specs are still the same.
+W> Beware! In this chapter, the minimum requirements for the cluster are 3 CPUs and 3 GB RAM. If you're using Docker For Mac or Windows, minikube, or minishift, the specs are slightly higher. For everyone else, they are still the same.
 
 * [docker4mac-3cpu.sh](https://gist.github.com/bf08bce43a26c7299b6bd365037eb074): **Docker for Mac** with 3 CPUs, 3 GB RAM, and with nginx Ingress.
 * [minikube-3cpu.sh](https://gist.github.com/871b5d7742ea6c10469812018c308798): **minikube** with 3 CPUs, 3 GB RAM, and with `ingress`, `storage-provisioner`, and `default-storageclass` addons enabled.
@@ -143,7 +143,9 @@ open "https://github.com/vfarcic/go-demo-3"
 
 If you're not familiar with GitHub, all you have to do is to login and click the *Fork* button located in the top-right corner of the screen.
 
-Next, we'll remove the `go-demo-3` repository and clone the fork.
+Next, we'll remove the `go-demo-3` repository (if you happen to have it) and clone the fork.
+
+Make sure that you replace `[...]` with your GitHub username.
 
 ```bash
 cd ..
@@ -155,9 +157,7 @@ export GH_USER=[...]
 git clone https://github.com/$GH_USER/go-demo-3.git
 ```
 
-Make sure that you replaced `[...]` with your GitHub username.
-
-The only thing left is to edit a few files. Please open *k8s/build.yml*, *k8s/prod.yml*, and *k8s/functional.yml* files in your favorite editor and change all occurrences of `vfarcic` to your Docker Hub user.
+The only thing left is to edit a few files. Please open *k8s/build.yml* and *k8s/prod.yml* files in your favorite editor and change all occurrences of `vfarcic` to your Docker Hub user.
 
 The namespace dedicated for all building and testing activities of the `go-demo-3` project is defined in the `k8s/build-ns.yml` file stored in the project repository.
 
@@ -343,6 +343,8 @@ Let's get moving and execute the first step.
 
 We cannot do much without the code of our application so the first step is to clone the code.
 
+Make sure that you replace `[...]` with your GitHub username.
+
 ```bash
 export GH_USER=[...]
 
@@ -352,19 +354,17 @@ git clone \
 cd go-demo-3
 ```
 
-Make sure that you replaced `[...]` with your GitHub username.
-
 Please note that we cloned the whole repository and, as a result, we are having a local copy of the HEAD commit of the master branch. If this would be a "real" pipeline, such a strategy would be unacceptable. Instead, we should have checked out a specific branch and a commit that initiated the process. However, we'll ignore those details for now, and assume that we'll solve them when we move the pipeline steps into Jenkins and other tools.
 
 Next, we'll build an image and push it to Docker Hub. To do that, we'll need to login first.
+
+Make sure that you replace `[...]` with your Docker Hub username.
 
 ```bash
 export DH_USER=[...]
 
 docker login -u $DH_USER
 ```
-
-Make sure that you replaced `[...]` with your Docker Hub username.
 
 Once you enter your password, you should see the `Login Succeeded` message.
 
@@ -491,11 +491,9 @@ cat k8s/kubectl.yml
 We already used a similar definition so there's probably no need to go through it. Instead, we'll create the Pod and confirm that it is running.
 
 ```bash
-kubectl apply \
-    -f k8s/kubectl.yml
+kubectl apply -f k8s/kubectl.yml
 
-kubectl -n go-demo-3-build \
-    get pods
+kubectl -n go-demo-3-build get pods
 ```
 
 We can continue once the output of the latter command confirms that the only container of the Pod is running.

@@ -512,10 +512,10 @@ kubectl -n go-demo-3 \
     run -it \
     --image busybox dns-test \
     --restart=Never \
-    --rm /bin/sh
+    --rm sh
 ```
 
-We created a new Pod based on `busybox` inside the `go-demo-3` Namespace. We specified `/bin/sh` as the command together with the `-ti` argument that allocated a TTY and standard input (`stdin`). As a result, we are inside the container created through the `dns-test` Pod, and we can execute our first `nslookup` query.
+We created a new Pod based on `busybox` inside the `go-demo-3` Namespace. We specified `sh` as the command together with the `-ti` argument that allocated a TTY and standard input (`stdin`). As a result, we are inside the container created through the `dns-test` Pod, and we can execute our first `nslookup` query.
 
 ```bash
 nslookup db

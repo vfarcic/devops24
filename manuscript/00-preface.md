@@ -6,11 +6,9 @@ The moment I published the last chapter of [The DevOps 2.3 Toolkit: Kubernetes](
 
 # Overview
 
-Just like other books I wrote, this one does not have a fixed scope. I did not start with an index. I didn't write a summary of each chapter in an attempt to define the scope. I do not do such things. There is only a high-level goal to explore **continuous delivery and deployment inside Kubernetes clusters**. What I did do, though, was to set a few guidelines.
+Just like the other books I wrote, this one does not have a fixed scope. I did not start with an index. I didn't write a summary of each chapter in an attempt to define the scope. I do not do such things. There is only a high-level goal to explore **continuous delivery and deployment inside Kubernetes clusters**. What I did do, though, was to set a few guidelines.
 
-This book should be *smaller than the other books* in [The DevOps Toolkit Series](http://devopstoolkitseries.com/). I wanted to explore a more focused subject and, at the same time, save you from waiting for too long until it is published. I hope this book will be somewhere between a hundred and a hundred and fifty pages. Compared to the previous books that are approximately four hundred pages each, this one can be considered a little brother. That brother will hopefully end up being more experienced than any other member of the family. After all, the size does not always matter.
-
-Let's move to the second guideline I defined before the "real" work on the book started. *All the examples will be tested on all major Kubernetes platforms.* Well, that might be a bit far-fetched. I'm aware that any sentence that mentions "all" together with "Kubernetes" is bound to be incorrect. New platforms are popping out like mushrooms after rain. Still, what I can certainly do is to choose a few of the most commonly used ones.
+The first guideline is that *all the examples will be tested on all major Kubernetes platforms.* Well, that might be a bit far-fetched. I'm aware that any sentence that mentions "all" together with "Kubernetes" is bound to be incorrect. New platforms are popping out like mushrooms after rain. Still, what I can certainly do is to choose a few of the most commonly used ones.
 
 **Minikube** and **Docker for Mac or Windows** should undoubtedly be there for those who prefer to "play" with Docker locally.
 
@@ -37,6 +35,8 @@ Eventually, you might get stuck and will be in need of help. Or you might want t
 Please note that this one, just as the previous books, is self-published. I believe that having no intermediaries between the writer and the reader is the best way to go. It allows me to write faster, update the book more frequently, and have more direct communication with you. Your feedback is part of the process. No matter whether you purchased the book while only a few or all chapters were written, the idea is that it will never be truly finished. As time passes, it will require updates so that it is aligned with the change in technology or processes. When possible, I will try to keep it up to date and release updates whenever that makes sense. Eventually, things might change so much that updates are not a good option anymore, and that will be a sign that a whole new book is required. **I will keep writing as long as I continue getting your support.**
 
 # Audience
+
+This book explores continuous deployment to a Kubernetes cluster. It uses a wide range of Kubernetes platforms and provides instructions how to develop a pipeline on few of the most commonly used CI/CD tools.
 
 This book is not your first contact with Kubernetes. I am assuming that you are already proficient with Deployments, ReplicaSets, Pods, Ingress, Services, PersistentVolumes, PersistentVolumeClaims, Namespaces and a few other things. This book assumes that we do not need to go through the basic stuff. At least, not through all of it. The book assumes a certain level of Kubernetes knowledge and hands-on experience. If that's not the case, what follows might be too confusing and advanced. Please read [The DevOps 2.3 Toolkit: Kubernetes](https://amzn.to/2GvzDjy) first, or consult the Kubernetes documentation. Come back once you're done and once you think you can claim that you understand at least basic Kubernetes concepts and resource types.
 

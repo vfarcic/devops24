@@ -31,7 +31,7 @@ kubectl get hpa
 
 kubectl describe hpa php-apache
 
-kubectl run -i --tty load-generator --image=busybox /bin/sh
+kubectl run -i --tty load-generator --image=busybox sh
 
 while true; do wget -q -O- http://php-apache.default.svc.cluster.local; done
 
