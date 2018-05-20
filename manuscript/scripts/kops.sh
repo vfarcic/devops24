@@ -19,4 +19,5 @@ NODE_COUNT=2 NODE_SIZE=t2.medium \
 
 kops delete cluster --name $NAME --yes
 
-aws s3api delete-bucket --bucket $BUCKET_NAME
+aws s3api delete-bucket \
+    --bucket $BUCKET_NAME

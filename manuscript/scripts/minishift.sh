@@ -25,9 +25,6 @@ minishift delete -f --clear-cache
 # Only if creating the cluster fails with `The server uses a certificate signed by unknown authority` message
 # rm -rf ~/.minishift
 
-# Only if creating the cluster fails with `The server uses a certificate signed by unknown authority` message
-# rm -rf ~/.kube
-
 kubectl config delete-cluster $NAME:8443
 
 kubectl config delete-cluster 127-0-0-1:8443
