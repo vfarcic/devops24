@@ -4,10 +4,9 @@
 - [X] Write
 - [X] Code review Docker for Mac/Windows
 - [X] Code review minikube
-- [ ] Code review kops
-- [ ] Code review minishift
-- [ ] Code review GKE
-- [ ] The story
+- [X] Code review kops
+- [X] Code review minishift
+- [X] Code review GKE
 - [ ] Text review
 - [ ] Diagrams
 - [ ] Gist
@@ -20,9 +19,9 @@
 
 # Defining Continuous Deployment
 
-T> The work on defining Continuous Deployment (CDP) steps should not start in Jenkins or any other similar tool. Instead, we should focus on Shell and scripts. We should turn our attention to the tools only once we are confident that we can execute the full process with only a few commands.
+T> The work on defining Continuous Deployment (CDP) steps should not start in Jenkins or any other similar tool. Instead, we should focus on Shell commands and scripts. We should turn our attention to the CI/CD tools only once we are confident that we can execute the full process with only a few commands.
 
-We should be able to execute most, if not all, CDP steps from anywhere. Developers should be able to run them locally from a Shell. Others might want to integrate them into their favorite IDEs. The number of ways all or parts of the CDP steps are executed can be quite huge. Running them as part of every commit is only one of those permutations. The way we execute CDP steps should be agnostic to the way we defined them. If we add the need for very high (if not complete) automation, it is clear that the steps must be simple commands or Shell scripts. Adding anything else to the mix is likely to result in tight coupling which will limit our ability to be independent of the tools we're using to run those steps.
+We should be able to execute most of CDP steps from anywhere. Developers should be able to run them locally from a Shell. Others might want to integrate them into their favorite IDEs. The number of ways all or parts of the CDP steps can be executed might be quite huge. Running them as part of every commit is only one of those permutations. The way we execute CDP steps should be agnostic to the way we defined them. If we add the need for very high (if not complete) automation, it is clear that the steps must be simple commands or Shell scripts. Adding anything else to the mix is likely to result in tight coupling which will limit our ability to be independent of the tools we're using to run those steps.
 
 Our goal in this chapter is to define the minimum number of steps a continuous deployment process might need. From there on, it would be up to you to extend those steps to serve a particular use-case you might be facing in your project. Once we know what should be done, we'll proceed and define the commands that will get us there. We'll do our best to create the CDP steps in a way that they can be easily ported to Jenkins, CodeShip, or any other tool we might choose to use. We'll try to be tools agnostic. There will always be some specific steps that will be very specific to the tools we'll use but my hopes are that they will be limited to limited scaffolding, and not the CDP logic.
 
@@ -119,13 +118,13 @@ git pull
 
 Just as in the previous chapters, we'll need a cluster if we are to do some hands-on exercises. The rules are still the same. You can continue using the same cluster as before, or switch to a different Kubernetes flavor. You can continue using one of the Kubernetes distributions listed below, or be adventurous and try something different. If you go with the latter, please let me know how it went and I'll test it myself and incorporate it to the list.
 
-W> Beware! In this chapter, the minimum requirements for the cluster are 3 CPUs and 3 GB RAM. If you're using Docker For Mac or Windows, minikube, or minishift, the specs are slightly higher. For everyone else, they are still the same.
+W> Beware! In this chapter, the minimum requirements for the cluster are 3 CPUs and 3 GB RAM. If you're using Docker For Mac or Windows, minikube, or minishift, the specs are slightly higher. For GKE, we need at least 4 CPUs, so we changed the machine type to *n1-highcpu-2*. For everyone else, they are still the same.
 
 * [docker4mac-3cpu.sh](https://gist.github.com/bf08bce43a26c7299b6bd365037eb074): **Docker for Mac** with 3 CPUs, 3 GB RAM, and with nginx Ingress.
 * [minikube-3cpu.sh](https://gist.github.com/871b5d7742ea6c10469812018c308798): **minikube** with 3 CPUs, 3 GB RAM, and with `ingress`, `storage-provisioner`, and `default-storageclass` addons enabled.
 * [kops.sh](https://gist.github.com/2a3e4ee9cb86d4a5a65cd3e4397f48fd): **kops in AWS** with 3 t2.small masters and 2 t2.medium nodes spread in three availability zones, and with nginx Ingress (assumes that the prerequisites are set through [Appendix B](#appendix-b)).
 * [minishift-3cpu.sh](https://gist.github.com/2074633688a85ef3f887769b726066df): **minishift** with 3 CPUs, 3 GB RAM, and version 1.16+.
-* [gke.sh](https://gist.github.com/5c52c165bf9c5002fedb61f8a5d6a6d1): **Google Kubernetes Engine (GKE)** with 3 n1-standard-1 (1 CPU, 3.75GB RAM) nodes (one in each zone), and with nginx Ingress controller running on top of the "standard" one that comes with GKE. We'll use nginx Ingress for compatibility with other platforms. Feel free to modify the YAML files if you prefer NOT to install nginx Ingress.
+* [gke.sh](https://gist.github.com/5c52c165bf9c5002fedb61f8a5d6a6d1): **Google Kubernetes Engine (GKE)** with 3 n1-highcpu-2 (2 CPUs, 1.8 GB RAM) nodes (one in each zone), and with nginx Ingress controller running on top of the "standard" one that comes with GKE. We'll use nginx Ingress for compatibility with other platforms. Feel free to modify the YAML files if you prefer NOT to install nginx Ingress.
 
 Now that we have a cluster, we can move onto a more interesting part of this chapter. We'll start defining and executing stages and steps of a continuous deployment pipeline.
 
@@ -273,16 +272,18 @@ kubectl apply \
     --record
 ```
 
-Now that we have two Namespaces dedicated to the `go-demo-3` application, we can start working on our continuous deployment steps.
+Now that we have two Namespaces dedicated to the `go-demo-3` application, we still need to figure out which tools we'll need for our continuous deployment pipeline.
 
-## Executing Continuous Integration Inside Containers
+## Defining A Pod With The Tools
 
-The first stage in our continuous deployment pipeline will have quite a few steps. We'll need to checkout the code, run unit tests and any other static analysis, build a Docker image, and push it to the registry. If we define continuous integration (CI) as a set of automated steps followed with manual operations and validations, we can say that the steps we are about to execute can be qualified as CI.
+Every application is different and the tools we need for continuous deployment pipeline will vary from one case to another. For now, we'll focus on those we'll need for our go-demo-3 application.
 
-The only thing we truly need to make all those steps work is Docker client which has access to Docker server. Fortunately, the `go-demo-3` repository already contains the definition we need.
+Since the application is written in Go, we'll need `golang` image to download the dependencies and run the tests. We'll have to build Docker images, so we should probably add a `docker` container as well. Finally, we'll have to execute quite a few `kubectl` commands. For those of you using OpenShift, we'll need `oc` as well. All in all, we need a Pod with `golang`, `docker`, `kubectl`, and (for some of you) `oc`.
+
+The *go-demo-3* repository already contains a definition of a Pod with all those containers, so let's take a closer look at it.
 
 ```bash
-cat k8s/docker-socket.yml
+cat k8s/cd.yml
 ```
 
 The output is as follows.
@@ -291,7 +292,7 @@ The output is as follows.
 apiVersion: v1
 kind: Pod
 metadata:
-  name: docker
+  name: cd
   namespace: go-demo-3-build
 spec:
   containers:
@@ -300,39 +301,74 @@ spec:
     command: ["sleep"]
     args: ["100000"]
     volumeMounts:
-    - mountPath: /var/run/docker.sock
-      name: docker-socket
+    - name: workspace
+      mountPath: /workspace
+    - name: docker-socket
+      mountPath: /var/run/docker.sock
+    workingDir: /workspace
+  - name: kubectl
+    image: vfarcic/kubectl
+    command: ["sleep"]
+    args: ["100000"]
+    volumeMounts:
+    - name: workspace
+      mountPath: /workspace
+    workingDir: /workspace
+  - name: oc
+    image: vfarcic/openshift-client
+    command: ["sleep"]
+    args: ["100000"]
+    volumeMounts:
+    - name: workspace
+      mountPath: /workspace
+    workingDir: /workspace
+  - name: golang
+    image: golang:1.9
+    command: ["sleep"]
+    args: ["100000"]
+    volumeMounts:
+    - name: workspace
+      mountPath: /workspace
+    workingDir: /workspace
+  serviceAccount: build
   volumes:
   - name: docker-socket
     hostPath:
       path: /var/run/docker.sock
       type: Socket
+  - name: workspace
+    emptyDir: {}
 ```
 
-There's nothing special about this Pod except maybe the volume. We are mounting Docker socket so that the Docker client inside a container can issue commands to Docker server running on the host. Otherwise, we would be running Docker-in-Docker and that is not a very good idea.
+Most of the YAML defines the containers based on images that contain the tools we need. What makes it special is that all the containers have the same mount called `workspace`. It maps to `/workspace` directory inside containers and it uses `emptyDir` volume type. We'll accomplish two things with those volumes. On one hand, all the containers will have a shared space so the artifacts generated through actions we'll perform in one will be available in the other. On the other hand, since `emptyDir` volume type exists only just as long as the Pod is running, it'll be removed when we remove the Pod. As a result, we won't be leaving unnecessary garbage on our nodes or on external drives.
 
-Let's `apply` the definition and see whether that Pod can provide everything we need for this stage of the pipeline.
+To simplify the things and save us from typing `cd /workspace`, we set `workingDir` to all the containers.
+
+Unlike most of the other Pods we normally run in our clusters, those dedicated to CDP processes are short lived. They are not supposed to exist for a long time nor should they leave any trace of their existence once they finish executing the steps we are about to define.
+
+The ability to run multiple containers on the same node and with shared file system and networking will be invaluable in our quest to define continuous deployment processes. If you were ever wondering what is the purpose of having Pods as entities that envelop multiple containers, the processes we are about to explore will hopefully give you a very good use-case.
+
+Let's create the Pod.
 
 ```bash
-kubectl apply \
-    -f k8s/docker-socket.yml \
-    --record
+kubectl apply -f k8s/cd.yml --record
 ```
 
-We should wait for a few moments until the image is pulled and the Pod is running.
+Pleases confirm that all the containers of the Pod are up and running by executing `kubectl -n go-demo-3-build get pods`. You should see that `4/4` are `ready`.
+
+Now we can start working on our continuous deployment pipeline steps.
+
+## Executing Continuous Integration Inside Containers
+
+The first stage in our continuous deployment pipeline will have quite a few steps. We'll need to checkout the code, run unit tests and any other static analysis, build a Docker image, and push it to the registry. If we define continuous integration (CI) as a set of automated steps followed with manual operations and validations, we can say that the steps we are about to execute can be qualified as CI.
+
+The only thing we truly need to make all those steps work is Docker client which has access to Docker server. One of the containers of the `cd` Pod already contains Docker. If you take another look at the definition, you'll see that we are mounting Docker socket so that the Docker client inside the container can issue commands to Docker server running on the host. Otherwise, we would be running Docker-in-Docker and that is not a very good idea.
+
+Now we can enter inside the `docker` container and check whether Docker client can indeed communicate with the server.
 
 ```bash
 kubectl -n go-demo-3-build \
-    get pods
-```
-
-The output should show that the `Pod` is running. If that's not the case, please wait for a few moments more and repeat the previous command.
-
-Now we can enter inside the container and check whether Docker client indeed communicated with the server.
-
-```bash
-kubectl -n go-demo-3-build \
-    exec -it docker -- sh
+    exec -it cd -c docker -- sh
 
 docker container ls
 ```
@@ -349,10 +385,13 @@ Make sure that you replace `[...]` with your GitHub username.
 export GH_USER=[...]
 
 git clone \
-    https://github.com/$GH_USER/go-demo-3.git
-
-cd go-demo-3
+    https://github.com/$GH_USER/go-demo-3.git \
+    .
 ```
+
+W> Please note that there is a dot (`.`) in the `git` command. It specifies the current directory as destination. It would be easy to overlook it.
+
+We cloned the repository into the `workspace` directory. That is the same folder we mounted as an `emptyDir` volume and is, therefore, available in all the containers of the `cd` Pod.
 
 Please note that we cloned the whole repository and, as a result, we are having a local copy of the HEAD commit of the master branch. If this would be a "real" pipeline, such a strategy would be unacceptable. Instead, we should have checked out a specific branch and a commit that initiated the process. However, we'll ignore those details for now, and assume that we'll solve them when we move the pipeline steps into Jenkins and other tools.
 
@@ -416,6 +455,14 @@ docker image build \
     -t $DH_USER/go-demo-3:1.0-beta .
 ```
 
+W> On some clusters you might receive `error parsing reference: "golang:1.9 AS build" is not a valid repository/tag: invalid reference format` error message. That probably means that Docker server is older than v17.05. You can check it with `docker version` command. If you are indeed unable to use multi-stage builds, you've stumbled into one of the problems with this approach. We'll solve this issue later (in one of the next chapters). For now, please execute the commands that follow as a workaround.
+W>
+W> `docker image pull vfarcic/go-demo-3:1.0-beta`
+W>
+W> `docker image tag vfarcic/go-demo-3:1.0-beta $DH_USER/go-demo-3:1.0-beta`
+W>
+W> Those commands pulled my image and tagged it as yours. Remember that this is only a workaround until we find a better solution.
+
 We can see from the output that the steps of our multi-stage build we executed. We downloaded the dependencies, run unit tests, and built the `go-demo` binary. All those things were temporary and we do not need them in the final image. There's no need to have a Go compiler, nor to keep the code. Therefore, once the first stage was finished, we can see the message *Removing intermediate container*. Everything was discarded and we started over and built the production ready image with the binary generated in the previous stage.
 
 We have the whole continuous integration process reduced to a single command. Developers can run it on their laptops, and CI/CD tools can use it as part of their extended processes. Isn't that neat?
@@ -436,6 +483,8 @@ vfarcic/go-demo-3 1.0-beta ...      54 seconds ago     25.8MB
 ```
 
 The first two images are the result of our build. The final image (`vfarcic/go-demo-3`) is only 25 MB. It's that small because Docker discarded all but the last stage. If you'd like to know how big your image would be if everything was built in a single stage, combine the size of the `vfarcic/go-demo-3` image with the one below it. That's the temporary image used in the first stage.
+
+W> If you had to tag my image as yours as a workaround for build problems, you won't see the second image (the one that is ~780 MB).
 
 The only thing missing is to push the image to the registry (e.g., Docker Hub).
 
@@ -482,21 +531,12 @@ Finally, once the new release is running, we'll execute a set of tests that will
 
 If any step in this stage fails, we need to be prepared to destroy everything we did and leave the cluster in the same state as before we started this stage.
 
-As you probably guessed, we'll need to add `kubectl` for at least some of the steps in this stage. Since we are committed not to install anything on the servers, we'll have to run `kubect` as yet another Pod.
+As you probably guessed, we'll need go into the `kubectl` container for at least some of the steps in this stage. It is already running as part of the `cd` Pod. Remember, we are performing manual simulation of a CDP pipeline. We must assume that everything will be executed from inside the cluster, not from your laptop.
 
 ```bash
-cat k8s/kubectl.yml
+kubectl -n go-demo-3-build \
+    exec -it cd -c kubectl -- sh
 ```
-
-We already used a similar definition so there's probably no need to go through it. Instead, we'll create the Pod and confirm that it is running.
-
-```bash
-kubectl apply -f k8s/kubectl.yml
-
-kubectl -n go-demo-3-build get pods
-```
-
-We can continue once the output of the latter command confirms that the only container of the Pod is running.
 
 The project contains separate definitions for deploying test and production releases. For now, we are interested only in prior which is defined in `k8s/build.yml`.
 
@@ -514,31 +554,21 @@ The two are almost the same. One is using `go-demo-3-build` Namespace while the 
 
 It's a pity that we had to create two separate YAML files only because of a few differences (Namespace and Ingress). We'll discuss the challenges behind rapid deployments using standard YAML files later. For now, we'll just roll with what we have.
 
-Since we'll execute `kubectl` commands from inside a container, we'll need to copy the `build.yml` file before we enter inside.
-
-```bash
-kubectl -n go-demo-3-build \
-    cp k8s/build.yml \
-    kubectl:/tmp/build.yml
-
-kubectl -n go-demo-3-build \
-    exec -it kubectl -- sh
-```
-
 Even though we separated production and non-production releases, we still need to modify the tag of the image on the fly. The alternative would be to change release numbers with each commit but that would represent a burden to developers and a likely source of errors. So, we'll go back to exercising "magic" with `sed`.
 
 ```bash
-cat /tmp/build.yml | sed -e \
+cat k8s/build.yml | sed -e \
     "s@:latest@:1.0-beta@g" | \
-    tee build.yml
+    tee /tmp/build.yml
 ```
 
-We output the contents of the `/tmp/build.yml` file, modified it with `sed` so that the `1.0-beta` tag is used instead of `latest`, and stored the output in `build.yml`.
+We output the contents of the `/k8s/build.yml` file, modified it with `sed` so that the `1.0-beta` tag is used instead of `latest`, and stored the output in `/tmp/build.yml`.
 
-Now we can deploy the new and still not fully tested release.
+Now we can deploy the new release.
 
 ```bash
-kubectl apply -f build.yml --record
+kubectl apply \
+    -f /tmp/build.yml --record
 
 kubectl rollout status deployment api
 ```
@@ -551,63 +581,74 @@ Let's check the exit code of the last command.
 
 ```bash
 echo $?
+```
+
+The output is `0` thus confirming that the rollout was successful. If it was anything else, we'd need to roll back or, even better, quickly fix the problem and roll forward.
+
+W> ## A note to GKE users
+W>
+W> GKE uses external load balancer as Ingress. To work properly, the `type` of the service related to Ingress needs to be `NodePort`. We'll have to patch the service to change its type. Please execute the command that follows.
+W>
+W> `kubectl -n go-demo-3-build patch svc api -p '{"spec":{"type": "NodePort"}}'`
+
+W> ## A note to minishift users
+W>
+W> Since OpenShift does not support Ingress (at least not by default), we'll need to add a route. Please execute the commands that follow.
+W>
+W> `exit`
+W>
+W> `kubectl -n go-demo-3-build \`
+W> `    exec -it cd -c oc -- sh`
+W>
+W> `cd /workspace`
+W>
+W> `oc apply -f k8s/build-oc.yml`
+W>
+W> We exited `kubectl` container, enter into `oc`, and deployed the route defined in `k8s/build-oc.yml`.
+
+The only thing missing in this stage is to run the tests. But, before we do that, we need to find out the address through which the application can be accessed.
+
+W> ## A note to GKE users
+W>
+W> Please change `hostname` to `ip` in the command that follows. The `jsonpath` should be `{.status.loadBalancer.ingress[0].ip}`.
+W> Please note that GKE Ingress spins up an external load balancer and it might take a while until the IP is generated. Therefore, you might need to repeat the command that follows until you get the IP.
+
+W> ## A note to minikube users
+W>
+W> Please open a separate terminal session and execute `minikube ip`. Remember the output. Change the command that follows to `ADDR=[...]/beta` where `[...]` is the IP you just retrieved.
+
+W> ## A note to minishift users
+W>
+W> Please change the command that follows to `ADDR=$(oc -n go-demo-3-build get routes -o jsonpath="{.items[0].spec.host}")`.
+
+```bash
+ADDR=$(kubectl -n go-demo-3-build \
+    get ing api \
+    -o jsonpath="{.status.loadBalancer.ingress[0].hostname}")/beta
+
+echo $ADDR | tee /workspace/addr
 
 exit
 ```
 
-The output is `0` thus confirming that the rollout was successful. If it was anything else, we'd need to roll back or, even better, quickly fix the problem and roll forward. Further on, we exited the container.
+We retrieved the `hostname` from Ingress with the appended path (`/beta`) dedicated to beta releases. We stored the result in the `/workspace/addr` file. That way we'll be able to retrieve it from other containers. Once we finished, we exited the container.
 
-The only thing missing in this stage is to run the tests. But, before we do that, we need to find out the address through which the application can be accessed.
-
-W> ## A note to minikube users
-W>
-W> Please change the command that follows to `DNS=$(minikube ip)`.
-
-```bash
-DNS=$(kubectl -n go-demo-3-build \
-    get ing api \
-    -o jsonpath="{.status.loadBalancer.ingress[0].hostname}")
-
-echo $DNS
-
-curl "http://$DNS/beta/demo/hello"
-```
-
-We retrieved the `hostname` from Ingress and sent a `curl` request to confirm that the test release indeed responds. We got `hello, world!` as the response and we can proceed and execute our functional test suite. Since we we need Go to run our tests, we'll have to exit the `kubectl` and create another Pod.
+Let's go inside the `golang` container. We'll need it if we're to execute functional tests.
 
 ```bash
 kubectl -n go-demo-3-build \
-    run golang \
-    --quiet \
-    --restart Never \
-    --env GH_USER=$GH_USER \
-    --env DNS=$DNS \
-    --image golang:1.9 \
-    sleep 1000000
+    exec -it cd -c golang -- sh
 ```
 
-Please note that we passed the DNS of our cluster as an environment variable. It might come in handy when running functional (and other) tests.
-
-We should wait until the Pod is fully up and running. You can check the status by listing the Pods in the `go-demo-3-build` Namespace.
+Before we run the functional tests, we'll send a request to the application manually. That will give us confidence that everything we did so far worked as expected.
 
 ```bash
-kubectl -n go-demo-3-build \
-    get pods
+curl "http://$(cat addr)/demo/hello"
 ```
 
-The output, after a while, should show that `1/1` containers of the `golang` Pod are running.
+W> In some cases (e.g., GKE), it might take a few minutes until the external load balancer is created. If you see 40x or 50x error message, please wait for a while and try to open Jenkins in the browser again.
 
-Next, we'll go inside the `golang` container and clone the code.
-
-```bash
-kubectl -n go-demo-3-build \
-    exec -it golang -- sh
-
-git clone \
-    https://github.com/$GH_USER/go-demo-3.git
-
-cd go-demo-3
-```
+We constructed the address using the information we stored in the `addr` file, and sent a `curl` request. The output is `hello, world!` thus confirming that the test release of application seems to be deployed correctly.
 
 The tests require a few dependencies, so we'll download them using `go get` command. Don't worry if you're new to Go. This exercise is not aimed at teaching you how to work with it, but only to show you the principles that should be applicable to almost any language. In your head, you can replace the command that follows with `maven` this, `gradle` that, `npm` whatever.
 
@@ -649,22 +690,30 @@ We can see that the tests passed and we can conclude that the application is a s
 Testing an application through the service associated with is a good idea if for some reason we are not allowed to expose it to the outside world through Ingress. However, if there is no such restriction, executing the tests through a DNS which points to an external load balancer, which forwards to the Ingress service on one of the worker nodes, and from there load balances to one of the replicas is much closer to how our users will access the application. Using the "real" externally accessible address is a better option when that is possible, so we'll change our `ADDRESS` variable and execute the tests one more time.
 
 ```bash
-export ADDRESS=$DNS/beta
+export ADDRESS=$(cat addr)
 
 go test ./... -v --run FunctionalTest
 ```
 
 W> ## A note to Docker For Mac/Windows users
 W>
-W> DNS behind Docker for Mac or Windows is `localhost`. Since it has a different meaning depending on where it is invoked, the tests will fail since it'll try to access the application running inside the container from where we're running the tests. Please ignore the outcome and stick with using Service name (e.g., `api`) when running tests on Docker for Mac or Windows.
+W> Docker for Mac or Windows cluster is accessuble through `localhost`. Since `localhost` has a different meaning depending on where it is invoked, the tests will fail by trying to access the application running inside the container from where we're running the tests. Please ignore the outcome and stick with using Service name (e.g., `api`) when running tests on Docker for Mac or Windows.
 
-We're almost finished with this stage. The only thing left is to exit the `golang` container and remove the application under test.
+We're almost finished with this stage. The only thing left is to exit the `golang` container, go back to `kubectl`, and remove the application under test.
 
 ```bash
 exit
 
-kubectl delete -f k8s/build.yml
+kubectl -n go-demo-3-build \
+    exec -it cd -c kubectl -- sh
+
+kubectl delete \
+    -f /workspace/k8s/build.yml
 ```
+
+W> ## A note to minishift users
+W>
+W> The Route we created through `build-oc.yml` is still not deleted. For the sake of simplicity, we'll ignore it (for now) since it does not occupy almost any resources.
 
 Please note that we executed `kubectl` from your laptop. In the real world scenarios, we would need to go back to the `kubectl` container. But, since you already know how to run `kubectl` from inside a container, we took a shortcut and executed the command directly from the machine you used to create the cluster. We'll continue taking the same shortcut to speed things up. Later on, once we automate all the steps, everything will be running in containers.
 
@@ -677,13 +726,17 @@ kubectl -n go-demo-3-build get all
 The output is as follows.
 
 ```
-NAME       READY STATUS  RESTARTS AGE
-po/docker  1/1   Running 0        11m
-po/golang  1/1   Running 0        4m
-po/kubectl 1/1   Running 0        5m
+NAME  READY STATUS  RESTARTS AGE
+po/cd 4/4   Running 0        11m
 ```
 
-Our `golang` and `kubectl` containers are still running. We will remove them as well later on when we're certain that we don't need them any more.
+Our `cd` Pod is still running. We will remove it later on when we're certain that we don't need any of the tools it contains.
+
+There's no need for us to stay inside the `kubectl` container any more, so we'll exit.
+
+```bash
+exit
+```
 
 ## Creating The Production Release
 
@@ -693,7 +746,7 @@ Please make sure to replace `[...]` with your Docker Hub user in one of the comm
 
 ```bash
 kubectl -n go-demo-3-build \
-    exec -it docker -- sh
+    exec -it cd -c docker -- sh
 
 export DH_USER=[...]
 
@@ -732,14 +785,17 @@ We're making great progress. Now that we have a new release, we can proceed and 
 
 ## Deploy
 
-We already saw the `prod.yml` is almost the same as `build.yml` we deployed earlier so there's probably no need to go through it in details. The only substantial difference is that we'll create the resources in the `go-demo-3` Namespace and we'll leave Ingress to its original path `/demo`.
+We already saw the `prod.yml` is almost the same as `build.yml` we deployed earlier so there's probably no need to go through it in details. The only substantial difference is that we'll create the resources in the `go-demo-3` Namespace, and we'll leave Ingress to its original path `/demo`.
 
 ```bash
+kubectl -n go-demo-3-build \
+    exec -it cd -c kubectl -- sh
+
 cat k8s/prod.yml \
     | sed -e "s@:latest@:1.0@g" \
-    | tee prod.yml
+    | tee /tmp/prod.yml
 
-kubectl apply -f prod.yml --record
+kubectl apply -f /tmp/prod.yml --record
 ```
 
 We used `sed` to convert `latest` to the tag we built shortwhile ago, and applied the definition. Since this is the first release, all the resources were created. Subsequent releases will follow the rolling update process. Since that is something Kubernetes does out-of-the-box, the command will always be the same.
@@ -753,7 +809,57 @@ kubectl -n go-demo-3 \
 echo $?
 ```
 
-The exit code is `0`, so we can assume that the rollout was successful. There's no need even to look at the Pods. They are almost certainly running. Still, to be on the safe side, we'll run another round of tests. We'll call them "production tests".
+The exit code is `0`, so we can assume that the rollout was successful. There's no need even to look at the Pods. They are almost certainly running.
+
+W> ## A note to GKE users
+W>
+W> GKE uses external load balancer as Ingress. To work properly, the `type` of the service related to Ingress needs to be `NodePort`. We'll have to patch the service to change its type. Please execute the command that follows.
+W>
+W> `kubectl -n go-demo-3 patch svc api -p '{"spec":{"type": "NodePort"}}'`
+
+W> ## A note to minishift users
+W>
+W> Since OpenShift does not support Ingress (at least not by default), we'll need to add a route. Please execute the commands that follow.
+W>
+W> `exit`
+W>
+W> `kubectl -n go-demo-3-build \`
+W> `    exec -it cd -c oc -- sh`
+W>
+W> `cd /workspace`
+W>
+W> `oc apply -f k8s/prod-oc.yml`
+W>
+W> We exited `kubectl` container, enter into `oc`, and deployed the route defined in `k8s/build-oc.yml`.
+
+Now that the production release is up-and-running, we should find the address through which we can access it. Excluding the difference in the Namespace, the command for retrieving the hostname is the same.
+
+W> ## A note to GKE users
+W>
+W> Please change `hostname` to `ip` in the command that follows. The `jsonpath` should be `{.status.loadBalancer.ingress[0].ip}`.
+W> Please note that GKE Ingress spins up an external load balancer and it might take a while until the IP is generated. Therefore, you might need to repeat the command that follows until you get the IP.
+
+W> ## A note to minikube users
+W>
+W> Change the command that follows to `ADDR=[...]` where `[...]` is the minikube IP you retrieved earlier.
+
+W> ## A note to minishift users
+W>
+W> Please change the command that follows to `ADDR=$(oc -n go-demo-3 get routes -o jsonpath="{.items[0].spec.host}")`.
+
+```bash
+ADDR=$(kubectl -n go-demo-3 \
+    get ing api \
+    -o jsonpath="{.status.loadBalancer.ingress[0].hostname}")
+
+echo $ADDR | tee /workspace/prod-addr
+```
+
+To be on the safe side, we'll run another round of tests. We'll call them "production tests". We don't need to be in the `kubectl` container for that, so let's exit.
+
+```bash
+exit
+```
 
 ## Production Testing
 
@@ -765,11 +871,9 @@ The tests are written in Go, and we still have the `golang` container running. A
 
 ```bash
 kubectl -n go-demo-3-build \
-    exec -it golang -- sh
+    exec -it cd -c golang -- sh
 
-cd go-demo-3
-
-export ADDRESS=$DNS
+export ADDRESS=$(cat prod-addr)
 ```
 
 Now that we have the address required for the tests, we can go ahead and execute them.
@@ -793,7 +897,11 @@ PASS
 ok      _/go/go-demo-3  0.107s
 ```
 
-Production tests were successfull and we can conclude that the deployment was successful as well.
+W> ## A note to GKE users
+W>
+W> If your tests failed, the cause is probably due to a long time GKE needs to create a load balancer. Please wait for a few minutes and repeat the tests.
+
+Production tests were successful and we can conclude that the deployment was successful as well.
 
 All that's left is to exit the container before we clean up.
 
@@ -813,9 +921,7 @@ kubectl -n go-demo-3-build \
 The output is as follows.
 
 ```
-pod "docker" deleted
-pod "golang" deleted
-pod "kubectl" deleted
+pod "cd" deleted
 ```
 
 That's it. Our continuous pipeline is finished. Or, to be more precise, we defined all the steps of the pipeline. We are yet to automate them.
