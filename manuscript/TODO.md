@@ -10,6 +10,8 @@
 - [ ] Write CD with CodeShip
 - [ ] Write CD with JenkinsX
 - [ ] Write CD with CJE
+- [ ] Write CD with Argo (https://applatix.com/open-source/argo/)
+- [ ] Spinnaker
 - [ ] Write https://github.com/azure/brigade
 - [ ] Write Windows support
 
@@ -97,7 +99,6 @@
 - [ ] Code review minishift
 - [ ] Code review GKE
 - [ ] Write
-- [ ] The story
 - [ ] Text review
 - [ ] Diagrams
 - [ ] Gist
