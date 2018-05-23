@@ -1,5 +1,6 @@
 00-preface.md
 01-sts.md
 02-sa.md
+03-manual-cd.md
 99-appendix-a.md
 99-appendix-b.md

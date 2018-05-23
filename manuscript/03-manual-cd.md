@@ -1,22 +1,3 @@
-## TODO
-
-- [X] Code
-- [X] Write
-- [X] Code review Docker for Mac/Windows
-- [X] Code review minikube
-- [X] Code review kops
-- [X] Code review minishift
-- [X] Code review GKE
-- [X] Text review
-- [X] Diagrams
-- [X] Gist
-- [X] Review the title
-- [X] Proofread
-- [ ] Add to slides
-- [ ] Publish on TechnologyConversations.com
-- [ ] Add to Book.txt
-- [ ] Publish on LeanPub.com
-
 # Defining Continuous Deployment
 
 T> The work on defining Continuous Deployment (CDP) steps should not start in Jenkins or any other similar tool. Instead, we should focus on Shell commands and scripts and turn our attention to the CI/CD tools only once we are confident that we can execute the full process with only a few commands.
@@ -134,7 +115,7 @@ W> **Beware!** The minimum requirements for the cluster are now slightly higher.
 
 Now that we have a cluster, we can move into a more exciting part of this chapter. We'll start defining and executing stages and steps of a continuous deployment pipeline.
 
-## Creating A Namespace Dedicated To Continuous Deployment Processes
+## Creating Namespaces Dedicated To Continuous Deployment Processes
 
 If we are to accomplish a reasonable level of security of our pipelines, we need to run them in dedicated Namespaces. Our cluster already has RBAC enabled, so we'll need a ServiceAccount as well. Since security alone is not enough, we also need to make sure that our pipeline does not affect other applications. We'll accomplish that by creating a LimitRange and a ResourceQuota.
 
@@ -922,7 +903,7 @@ W> ## A note to GKE users
 W>
 W> If your tests failed, the cause is probably due to a long time GKE needs to create a load balancer. Please wait for a few minutes and re-execute them.
 
-![Figure 3-6: The production testing stage of a continuous deployment pipeline](images/ch03/manual-cd-steps-cleanup.png)
+![Figure 3-6: The production testing stage of a continuous deployment pipeline](images/ch03/manual-cd-steps-prod.png)
 
 Production tests were successful, and we can conclude that the deployment was successful as well.
 
