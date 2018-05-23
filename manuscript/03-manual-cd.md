@@ -799,7 +799,7 @@ The `1.0-beta` is a clear indication that the image might not have been tested a
 
 We should always be explicit with versions we are deploying to production, so the `1.0` tag is what we'll use. That will help us control what we have and debug problems if they occur. However, others might not want to use explicit versions. A developer might want to deploy the last stable version of an application created by a different team. In those cases, developers might not care which version is in production. In such a case, deploying `latest` is probably a good idea, assuming that we take good care that it (almost) always works.
 
-![Figure 3-4: The release stage of a continuous deployment pipeline](images/ch03/manual-cd-steps-deploy.png)
+![Figure 3-4: The release stage of a continuous deployment pipeline](images/ch03/manual-cd-steps-release.png)
 
 We're making significant progress. Now that we have a new release, we can proceed and execute rolling updates against production.
 
