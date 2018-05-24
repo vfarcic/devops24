@@ -456,7 +456,7 @@ Another minute later, the third `db` Pod is also running but our `api` Pods are 
 
 What we just observed is an essential difference between Deployments and StatefulSets. Replicas of the latter are created sequentially. Only after the first replica was running, the StatefulSet started creating the second. Similarly, the creation of the third began solely after the second was running.
 
-Moreover, we can see that the names of the Pods created through the StatefulSet are predictable. Unlike Deployments that create random suffixes for each Pod, StatefulSets create them with indexed suffixes based on integer ordinals. The name of the first Pod will always end with `-0`, the second will be suffixed with `-1`, and so on. That naming will be maintained forever. If we'd initiate rolling updates, Kubernetes would replace the Pods of the `db` StatefulSet, but the names would remain the same.
+Moreover, we can see that the names of the Pods created through the StatefulSet are predictable. Unlike Deployments that create random suffixes for each Pod, StatefulSets create them with indexed suffixes based on integer ordinals. The name of the first Pod will always end suffixed `-0`, the second will be suffixed with `-1`, and so on. That naming will be maintained forever. If we'd initiate rolling updates, Kubernetes would replace the Pods of the `db` StatefulSet, but the names would remain the same.
 
 The nature of the sequential creation of Pods and formatting of their names provides predictability that is often paramount with stateful applications. We can think of StatefulSet replicas as being separate Pods with guaranteed ordering, uniqueness, and predictability.
 
@@ -483,7 +483,7 @@ Moreover, we can see that the claims also follow a specific naming convention. T
 
 Judging by the age of the claims, we can see that they followed the same pattern as the Pods. They are approximately a minute apart. The StatefulSet created the first Pod and used the claim template to create a PersistentVolume and attach it. Later on, it continued to the second Pod and the claim, and after that with the third. Pods are created sequentially, and each generated a new PersistentVolumeClaim.
 
-If a Pod is (re)scheduled due to a failure or a rolling update, it'll continue using the same PersistentVolumeClaim and, as a result, keep using the same PersistentVolume. Pods and volumes became inseparable.
+If a Pod is (re)scheduled due to a failure or a rolling update, it'll continue using the same PersistentVolumeClaim and, as a result, it will keep using the same PersistentVolume,making Pods and volumes inseparable.
 
 ![Figure 1-2: Each Pod created through the StatefulSet gets a PersistentVolume (AWS variation)](images/ch01/sts.png)
 
