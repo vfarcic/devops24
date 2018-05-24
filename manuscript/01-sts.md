@@ -370,7 +370,8 @@ spec:
     app: db
 ```
 
-This time we set `clusterIP` to `None`. That will create a Headless Service.
+This time we set `clusterIP` to `None`. That will create a Headless Service. Headless service is a service that doesn’t need load-balancing and has a single service IP.
+
 
 Everything else in this YAML file is the same as in the one that used Deployment controller to run MongoDB.
 
