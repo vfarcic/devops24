@@ -118,11 +118,11 @@ W> Please note that GKE Ingress spins up an external load balancer and it might 
 
 W> ## A note to minikube users
 W>
-W> Please change the command that follows to `CLUSTER_DNS=$(minikube ip)`.
+W> Please change the following command to `CLUSTER_DNS=$(minikube ip)`.
 
 W> ## A note to minishift users
 W>
-W> Please change the command that follows to `CLUSTER_DNS=jenkins-jenkins.$(minishift ip).nip.io`.
+W> Please change the following command to `CLUSTER_DNS=jenkins-jenkins.$(minishift ip).nip.io`.
 
 ```bash
 CLUSTER_DNS=$(kubectl -n jenkins \
