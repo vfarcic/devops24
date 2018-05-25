@@ -14,7 +14,7 @@ Whether we'll manage to reach our goals entirely is yet to be seen. For now, we'
 
 ## To Continuously Deliver Or To Continuously Deploy?
 
-Everyone wants to implement continuous delivery or deployment. After all, the benefits are too significant to be ignored. Increase the speed of delivery, increase the quality, decrease the costs, free people to dedicate time to what brings value, and so on and so forth. Those improvements are like music to any decision maker, especially if that person has a business background. If a tech geek can articulate the benefits continuous delivery brings to the table, when he asks a business representative for a budget, the response is almost always “Yes! Do it.”
+Everyone wants to implement continuous delivery or deployment. After all, the benefits are too significant to be ignored. Increase the speed of delivery, increase the quality, decrease the costs, free people to dedicate time to what brings value, and so on and so forth. Those improvements are like music to any decision maker, especially if that person has a business background. If a tech geek can articulate the benefits continuous delivery brings to the table, when he asks a business representative for a budget, the response is almost always "Yes! Do it."
 
 By now, you might be confused with the differences between continuous integration, delivery, and deployment, so I'll do my best to walk you through the primary objectives behind each.
 
@@ -594,8 +594,7 @@ W> Since OpenShift does not support Ingress (at least not by default), we'll nee
 W>
 W> `exit`
 W>
-W> `kubectl -n go-demo-3-build \`
-W> `    exec -it cd -c oc -- sh`
+W> `kubectl -n go-demo-3-build exec -it cd -c oc -- sh`
 W>
 W> `oc apply -f k8s/build-oc.yml`
 W>
@@ -824,8 +823,7 @@ W> Since OpenShift does not support Ingress (at least not by default), we'll nee
 W>
 W> `exit`
 W>
-W> `kubectl -n go-demo-3-build \`
-W> `    exec -it cd -c oc -- sh`
+W> `kubectl -n go-demo-3-build exec -it cd -c oc -- sh`
 W>
 W> `oc apply -f k8s/prod-oc.yml`
 W>

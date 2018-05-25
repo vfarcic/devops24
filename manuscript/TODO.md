@@ -14,6 +14,7 @@
 - [ ] Spinnaker
 - [ ] Write https://github.com/azure/brigade
 - [ ] Write Windows support
+- [ ] Add DO with https://github.com/digitalocean/csi-digitalocean
 
 ## The DevOps 2.5 Toolkit
 
@@ -77,9 +78,10 @@
 - [ ] Security (RBAC, PodSecurityPolicy, NetworkPolicy, KaraContainers, https://sysdig.com/blog/20-docker-security-tools/, gVisor)
 - [ ] CRI and alternative container runtimes (CRI-O, etc)
 - [ ] https://raw.githubusercontent.com/cloudbees/ps-internal/master/K8S/Utils/setup_k8s_user.sh?token=Aftag0fCKRzriAmlYSrLW5-0IUkBUy7vks5avjoWwA%3D%3D
-- [ ] Operating Systems (CoreOS, RancherOS)
+- [ ] Operating Systems (RancherOS)
 - [ ] Machine learning (https://github.com/kubeflow)
 - [ ] ChatOps w/k8s
+- [ ] Containers (Docker, containerD)
 
 ## Contributors
 

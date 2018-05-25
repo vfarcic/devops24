@@ -2,9 +2,11 @@
 # Create The Cluster #
 ######################
 
-# Make sure that your kops version is v1.9 or higher
+# Make sure that your kops version is v1.9 or higher.
 
-# Make sure that all the prerequisites described in the "Appendix A" are met
+# Make sure that all the prerequisites described in the "Appendix B" are met.
+
+# Do not run the commands from below if you are a **Windows** user. You'll have to follow the instructions from the Appendix B instead.
 
 source cluster/kops
 
