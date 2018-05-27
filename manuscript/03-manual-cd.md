@@ -105,7 +105,9 @@ git pull
 
 Just as in the previous chapters, we'll need a cluster if we are to do the hands-on exercises. The rules are still the same. You can continue using the same cluster as before, or you can switch to a different Kubernetes flavor. You can continue using one of the Kubernetes distributions listed below, or be adventurous and try something different. If you go with the latter, please let me know how it went, and I'll test it myself and incorporate it into the list.
 
-W> **Beware!** The minimum requirements for the cluster are now slightly higher. We'll need at least 3 CPUs and 3 GB RAM if running a single-node cluster, a slightly more if those resources are spread across multiple nodes. If you're using Docker For Mac or Windows, minikube, or minishift, the specs are 1 CPU and 1 GB RAM higher. For GKE, we need at least 4 CPUs, so we changed the machine type to *n1-highcpu-2*. For everyone else, the requirements are still the same.
+W> **Beware!** The minimum requirements for the cluster are now slightly higher. We'll need at least 3 CPUs and 3 GB RAM if running a single-node cluster, and slightly more if those resources are spread across multiple nodes. If you're using Docker For Mac or Windows, minikube, or minishift, the specs are 1 CPU and 1 GB RAM higher. For GKE, we need at least 4 CPUs, so we changed the machine type to *n1-highcpu-2*. For everyone else, the requirements are still the same.
+
+The Gists with the commands I used to create different variations of Kubernetes clusters are as follows.
 
 * [docker4mac-3cpu.sh](https://gist.github.com/bf08bce43a26c7299b6bd365037eb074): **Docker for Mac** with 3 CPUs, 3 GB RAM, and with nginx Ingress.
 * [minikube-3cpu.sh](https://gist.github.com/871b5d7742ea6c10469812018c308798): **minikube** with 3 CPUs, 3 GB RAM, and with `ingress`, `storage-provisioner`, and `default-storageclass` addons enabled.

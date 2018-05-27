@@ -5,10 +5,12 @@
 - [ ] 02-sa.md
 - [ ] 03-manual-cd.md
 - [ ] 04-helm.md
-- [ ] 05-jenkins-setup.md
-- [ ] 06-jenkins-cd.md
-- [ ] Write CD with CodeShip
-- [ ] Write CD with JenkinsX
+- [ ] 05-monocular.md
+- [ ] 06-jenkins-setup.md
+- [ ] 07-jenkins-cd.md
+- [ ] 08-codeship.md
+- [ ] 09-jenkins-openshift.md
+- [ ] 10-jenkinx.md
 - [ ] Write CD with CJE
 - [ ] Write CD with Argo (https://applatix.com/open-source/argo/)
 - [ ] Spinnaker
@@ -29,7 +31,6 @@
 - [ ] Write job.md
 - [ ] Write cron-job.md
 - [ ] Write architecture.md
-- [ ] Write SETUP.md
 - [ ] Write gce.md
 - [ ] Write networking (Calico)
 - [ ] Write aws.md
@@ -69,7 +70,6 @@
 - [ ] Pod / Disruptions
 - [ ] Cluster Autoscaler 
 - [ ] create k8s cluster locally (vagrant/virtualbox) / upgrade k8s cluster using kubeadmn
-- [ ] ConfigMap 
 - [ ] https://github.com/jaegertracing/jaeger-kubernetes
 - [ ] Chaos testing (e.g., https://github.com/bloomberg/powerfulseal/blob/master/README.md)
 - [ ] https://medium.com/google-cloud/mgob-a-mongodb-backup-agent-for-kubernetes-cfc9b30c6c92
