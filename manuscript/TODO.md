@@ -62,6 +62,7 @@
 - [ ] DockerEE
 - [ ] OpenShift
 - [ ] Rancher
+- [ ] kismatic
 - [ ] https://kubernetes.io/docs/setup/pick-right-solution/
 - [ ] RBAC with LDAP
 - [ ] kubernetes Networking - different CNI plugin/provider (Flannel, Calico, etc)

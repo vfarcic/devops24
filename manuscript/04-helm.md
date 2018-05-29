@@ -6,7 +6,7 @@
 - [X] Code review kops
 - [X] Code review minishift
 - [X] Code review GKE
-- [ ] Write
+- [X] Write
 - [ ] Text review
 - [ ] Diagrams
 - [ ] Gist
@@ -927,7 +927,7 @@ rbac:
   install: true
 ```
 
-As you can see, the variables in this file follow the same format as those we output through the `helm inspect values` command. The only difference is in values, and the fact that `helm/jenkins-values.yml` only contains those that we are hoping to change.
+As you can see, the variables in that file follow the same format as those we output through the `helm inspect values` command. The only difference is in values, and the fact that `helm/jenkins-values.yml` only contains those that we are hoping to change.
 
 We defined that the `ImageTag` should be fixed to `2.116-alpine`.
 
@@ -1068,9 +1068,9 @@ helm create my-app
 ls -1 my-app
 ```
 
-The first command created a Chart named *my-app* and the second listed the files and the directories Helm created for us.
+The first command created a Chart named *my-app*, and the second listed the files and the directories that form the new Chart.
 
-TODO: Continue
+The output of the latter command is as follows.
 
 ```
 Chart.yaml
@@ -1079,31 +1079,31 @@ templates
 values.yaml
 ```
 
-TODO: dev-charts
+We will not go into the details behind each of those files and directories just yet. For now, just note that a Chart consists of files and directories that follow certain naming conventions.
 
-TODO: dev-templates
-
-TODO: best-practices
+If our Chart has dependencies, we could download them with the `dependency update` command.
 
 ```bash
 helm dependency update my-app
 ```
 
-```
-No requirements found in /Users/vfarcic/IdeaProjects/go-demo-3/my-app/charts.
-```
+The output shows that `no requirements` were `found in .../go-demo-3/my-app/charts`. That makes sense because we did not yet declare any dependencies. For now, just remember that they can be downloaded or updated.
+
+Once we're done with defining the Chart of an application, we can package it.
 
 ```bash
 helm package my-app
 ```
 
-```
-Successfully packaged chart and saved it to: /Users/vfarcic/IdeaProjects/go-demo-3/my-app-0.1.0.tgz
-```
+We can see from the output that Helm `successfully packaged chart and saved it to: .../go-demo-3/my-app-0.1.0.tgz`. We do not yet have a repository for our Charts. We'll work on that in the next chapter.
+
+If we are unsure whether we made a mistake in our Chart, we can validate by executing `lint` command.
 
 ```bash
 helm lint my-app
 ```
+
+The output is as follows.
 
 ```
 ==> Linting my-app
@@ -1112,17 +1112,16 @@ helm lint my-app
 1 chart(s) linted, no failures
 ```
 
-<!-- The helm install command can install from several sources:
+We can see that our Chart contains no failures, at least not those based on syntax. That should come as no surprise since we did not even modify the sample Chart Helm created for us.
 
-A chart repository (as we’ve seen above)
-A local chart archive (helm install foo-0.1.1.tgz)
-An unpacked chart directory (helm install path/to/foo)
-A full URL (helm install https://example.com/charts/foo-1.2.3.tgz) -->
+Charts can be installed using a Chart repository (e.g., `stable/jenkins`), a local Chart archive (e.g., `my-app-0.1.0.tgz`), an unpacked Chart directory (e.g., `my-app`), or a full URL (e.g., `https://acme.com/charts/my-app-0.1.0.tgz`). So far we used Chart repository to install Jenkins. We'll switch to the local archive option to install `my-app`.
 
 ```bash
 helm install ./my-app-0.1.0.tgz \
     --name my-app
 ```
+
+The output is as follows.
 
 ```
 NAME:   my-app
@@ -1151,35 +1150,49 @@ NOTES:
   kubectl port-forward $POD_NAME 8080:80
 ```
 
+The sample application is a very simple one with a Service and a Deployment. There's not much to say about it. We used it only to explore the basic commands for creating and managing Charts. We'll delete everything we did and start over with a more serious example.
+
 ```bash
 helm delete my-app --purge
-```
 
-```
-release "my-app" deleted
-```
-
-```bash
 rm -rf my-app
 
 rm -rf my-app-0.1.0.tgz
 ```
 
+We delete the Chart from the cluster, as well as the local directory and the archive we created earlier. The time has come to apply the knowledge we obtained and explore the format of the files that constitute a Chart. We'll switch to the *go-demo-3* application next.
+
+## Exploring Files That Constitute A Chart
+
+I prepared a Chart that defined the *go-demo-3* application. We'll use it to get familiar with writing Charts. Even if we choose to use Helm only for third-party applications, familiarity with Chart files is a must since we might have to look at them to better understand the application we want to install.
+
+The files are located in `helm/go-demo-3` directory inside the repository. Let's take a look at what we have.
+
 ```bash
 ls -1 helm/go-demo-3
 ```
+
+The output is as follows.
 
 ```
 Chart.yaml
 LICENSE
 README.md
 templates
-values.yamls
+values.yaml
 ```
+
+A chart is organized as a collection of files inside of a directory. The directory name is the name of the chart (without versioning information). So, a Chart that describes *go-demo-3* is stored in the directory with the same name.
+
+The first file we'll explore is *Chart.yml*. It is a mandatory file with a combination of mandatory and optional fields.
+
+Let's take a closer look.
 
 ```bash
 cat helm/go-demo-3/Chart.yaml
 ```
+
+The output is as follows.
 
 ```yaml
 name: go-demo-3
@@ -1200,9 +1213,21 @@ maintainers:
   email: viktor@farcic.com
 ```
 
+The `name`, `version`, and `apiVersion` are mandatory fields. All the others are optional.
+
+Most of the fields should be self-explanatory, but we'll go through each of them just in case.
+
+The `name` is the name of the Chart and the `version` is the version. That's obvious, isn't it? The important thing to note is that versions must follow [SemVer 2](http://semver.org/) standard. The full identification of a Chart package in a repository is always a combination of a name and a version. If we package this Chart, its name would be *go-demo-3-0.0.1.tgz*. The `apiVersion` is the version of the Chart and, at this moment, the only supported value is `v1`.
+
+The rest of the fields are mostly informational. You should be able to understand their meaning, so I won't bother you with lenghtly explanations.
+
+The next in line is the LICENSE file.
+
 ```bash
 cat helm/go-demo-3/LICENSE
 ```
+
+The first few lines of the output are as follows.
 
 ```
 The MIT License (MIT)
@@ -1210,35 +1235,34 @@ The MIT License (MIT)
 Copyright (c) 2018 Viktor Farcic
 
 Permission is hereby granted, free of charge, to any person obtaining a copy
-of this software and associated documentation files (the "Software"), to deal
-in the Software without restriction, including without limitation the rights
-to use, copy, modify, merge, publish, distribute, sublicense, and/or sell
-copies of the Software, and to permit persons to whom the Software is
-furnished to do so, subject to the following conditions:
-
-The above copyright notice and this permission notice shall be included in all
-copies or substantial portions of the Software.
-
-THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR
-IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY,
-FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE
-AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER
-LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,
-OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
-SOFTWARE.
+of this software...
 ```
+
+The *go-demo-3* application is licensed as MIT. It's up to you to decide which license you'll use, if any.
+
+README.md is used to describe the application.
 
 ```bash
 cat helm/go-demo-3/README.md
 ```
 
+The output is as follows.
+
 ```
 This is just a silly demo.
 ```
 
+I was too lazy to write a proper description. You shouldn't be. As a rule of thumb, README.md should contain a description of the application, a list or pre-requisites and requirements, description of the options available through values.yaml, and anything else you might deem important. As the extension suggests, it should be written in Markdown format.
+
+Now we are getting to the important part.
+
+The values that can be used to customize the installation are defined in `values.yaml`.
+
 ```bash
 cat helm/go-demo-3/values.yaml
 ```
+
+The output is as follows.
 
 ```yaml
 replicaCount: 3
@@ -1280,9 +1304,19 @@ dbPersistence:
   size: 2Gi
 ```
 
+As you can see, all the things that may vary from one *go-demo-3* installation to another are defined here. We can set how many replicas should be deployed for both the API and the DB. Tags of both can be changed as well. We can disable Ingress and change the host. We can chnage the type of the Service or disable RBAC. The resources are split into two groups, so that the API and the DB can be controlled separately. Finally, we can change database persistence by specifying the `storageClass`, the `accessMode`, or the `size`.
+
+I should have described those values in more detail in `README.md`, but, as I already admitted, I was too lazy to do that. Alternative explanation of the lack of proper README is that we'll go through the YAML files where those values are used and everything will become much clearer.
+
+The important thing to note is that the values defined in that file are defaults that are used only if we do not overwrite them during the installation through `--set` or `--values` arguments.
+
+The files that define all the resources are in the `templates` directory.
+
 ```bash
 ls -1 helm/go-demo-3/templates/
 ```
+
+The output is as follows.
 
 ```
 NOTES.txt
@@ -1294,9 +1328,17 @@ sts.yaml
 svc.yaml
 ```
 
+The templates are written in the [Go template language](https://golang.org/pkg/text/template/) extended with add-on functions from the [Sprig library](https://github.com/Masterminds/sprig) and a few others specific to Helm. Don't worry if you are new to Go. You will not need to learn it. For most use-cases, a few templating rules are more than enough for most of the use-cases. With time, you might decide to "go crazy" and learn everything templating offers. That time is not today.
+
+When Helm renders the Chart, it'll pass all the files in the `templates` directory through its templating engine.
+
+Let's take a look at the `NOTES.txt` file.
+
 ```bash
 cat helm/go-demo-3/templates/NOTES.txt
 ```
+
+The output is as follows.
 
 ```
 1. Wait until the applicaiton is rolled out:
@@ -1325,9 +1367,40 @@ cat helm/go-demo-3/templates/NOTES.txt
 {{- end }}
 ```
 
+The content of the NOTES.txt file will be printed after the installation or upgrade. You already saw a similar one in action when we installed Jenkins. The instructions we received how to open it and how to retrieve the password came from the NOTES.txt file stored in Jenkins Chart.
+
+That file is our first direct contact with Helm templating. You'll notice that parts of it are inside `if` blocks. If we take a look at the second bullet, we can deduce that one set of instructions will be printed in `ingress` is `enabled`, another if the `type` of the Service is `NodePort`, and yet another if neither of the two first two conditions are met.
+
+Template snippets are always inside double curly braces (e.g., `{{` and `}}`). Inside them can be (often simple) logic like a `if` statement, a predefined or a custom made function. An example of a custom made function is `{{ template "helm.fullname" . }} `. It is defined in `_helpers.tpl` file which we'll explore soon.
+
+Variables always start with a dot (`.`). Those coming from the `values.yaml` file are always prefixed with `.Values`. An example is `.Values.ingress.host` that defines the `host` that will be configured in our Ingress resource.
+
+Helm also provides a set of pre-defined variables prefixed with `.Release`, `.Chart`, `.Files`, and `.Capabilities`. As an example, near the top of the NOTES.txt file is `{{ .Release.Namespace }}` snippet that will get converted to the Namespace into which we decided to install our Chart. 
+
+The full list of the pre-defined values is as follows (a copy from the official documentation).
+
+* `Release.Name`: The name of the release (not the Chart)
+* `Release.Time`: The time the chart release was last updated. This will match the Last Released time on a Release object.
+* `Release.Namespace`: The Namespace the Chart was released to.
+* `Release.Service`: The service that conducted the release. Usually this is Tiller.
+* `Release.IsUpgrade`: This is set to `true` if the current operation is an upgrade or rollback.
+* `Release.IsInstall`: This is set to `true` if the current operation is an install.
+* `Release.Revision`: The revision number. It begins at 1, and increments with each helm upgrade.
+* `Chart`: The contents of the Chart.yaml. Thus, the Chart version is obtainable as Chart.Version and the maintainers are in Chart.Maintainers.
+* `Files`: A map-like object containing all non-special files in the Chart. This will not give you access to templates, but will give you access to additional files that are present (unless they are excluded using .helmignore). Files can be accessed using `{{index .Files "file.name"}}` or using the `{{.Files.Get name}}` or `{{.Files.GetString name}}` functions. You can also access the contents of the file as `[]byte` using `{{.Files.GetBytes}}`
+* `Capabilities`: A map-like object that contains information about the versions of Kubernetes (`{{.Capabilities.KubeVersion}}`, Tiller (`{{.Capabilities.TillerVersion}}`, and the supported Kubernetes API versions (`{{.Capabilities.APIVersions.Has "batch/v1"}}`)
+
+You'll also notice that our `if`, `else if`, `else`, and `end` statements start with a dash (`-`). That's Go template way of specifying that we want all empty space before the statement (if `-` is on the left) or after the statement (if `-` is on the right) to be removed.
+
+There's much more to Go templating that what we just explored. I'll comment on other use-cases as they come. For now, this should be enough to get you going and you are free to consult [template package documentation](https://golang.org/pkg/text/template/) for more info. For now, the important thing to note is that we have the `NOTES.txt` file that will provide useful post-installation information to those who will use our Chart.
+
+I mentioned `_helpers.tpl` as the source of custom functions and variables. Let's take a look at it.
+
 ```bash
 cat helm/go-demo-3/templates/_helpers.tpl
 ```
+
+The output is as follows.
 
 ```
 {{/* vim: set filetype=mustache: */}}
@@ -1353,9 +1426,15 @@ If release name contains chart name it will be used as a full name.
 {{- end -}}
 ```
 
+That file is the exact copy of the `_helpers.tpl` file that gets created with the `helm create` command that generates a sample Chart. You can extend it with your own functions. I didn't. I kept it as-is. It consists of two functions and comments that describe them. The first (`helm.name`) returns the name of the chart trimmed to 63 characters which is the limitation for the size of some of the Kubernetes fields. The second function (`helm.fullname`) returns fully qualified name of the application. If you go back to the NOTES.txt file, you'll notice that we are using `helm.fullname` in a few occasions. Later on, you'll see that we'll use it in quite a few other places.
+
+Now that we took NOTES.txt and _helpers.tpl out of the way, we can take a look at the first template that defines one of the resource files.
+
 ```bash
 cat helm/go-demo-3/templates/deployment.yaml
 ```
+
+The output is as follows.
 
 ```yaml
 apiVersion: apps/v1beta2
@@ -1398,9 +1477,17 @@ spec:
 {{ toYaml .Values.resources | indent 10 }}
 ```
 
+That file defines the Deployment of the *go-demo-3* API. The first thing I did was to copy the definition from the YAML file we used in the previous chapters. Afterwards, I replaced parts of it with functions, and variables. The `name`, for example, is now `{{ template "helm.fullname" . }}`, which guarantees that this Deployment will have a unique name. The rest of the file follows the same logic. Some thing are using pre-defined values like `{{ .Chart.Name }}` and `{{ .Release.Name }}`, while others are using values from the `values.yaml`. An example of the latter is `{{ .Values.replicaCount }}`.
+
+The last line contains a syntax we haven't seen before. `{{ toYaml .Values.resources | indent 10 }}` will take all the entries from the `resources` field in the `values.yaml`, and convert them to YAML format. Since the final YAML needs to be properly indented, we piped the output to `indent 10`. Since the `resources:` section of `deployment.yaml` is indented by eight spaces, indenting the entries from `resources` in `values.yaml` will put them just two spaces inside it.
+
+Let's take a look at one more template.
+
 ```bash
 cat helm/go-demo-3/templates/ing.yaml
 ```
+
+The output is as follows.
 
 ```yaml
 {{- if .Values.ingress.enabled -}}
@@ -1428,11 +1515,21 @@ spec:
 {{- end -}}
 ```
 
-```bash
-# The rest of the files are following the same logic
+That YAML defines the Ingress resource that makes the API Deployment accessible through its Service. More of the values are the same as in the Deployment. There's only one difference worthile commenting.
 
+The whole YAML is enveloped by the `{{- if .Values.ingress.enabled -}}` statement. The resource will be installed only if `ingress.enabled` is set to `true`. Since that is already the default default value in `values.yaml`, we'll have to explicitly disable it if we do not want Ingress.
+
+Feel free to explore the rest of the templates. They are following the same logic as the two we just explored.
+
+There's one potentially important file we did not define. We did not created `requirements.yaml` for *go-demo-3*. We did not need any. We will use it though in one of the next chapters, so I'll save the explanation for later.
+
+Now that we went through the files that constitute the *go-demo-3* Chart, we should lint it to confirm that the format does not contain any obvious issues.
+
+```bash
 helm lint helm/go-demo-3
 ```
+
+The output is as follows.
 
 ```
 ==> Linting helm/go-demo-3
@@ -1441,21 +1538,31 @@ helm lint helm/go-demo-3
 1 chart(s) linted, no failures
 ```
 
+If we ignore the complaint that the icon is not defined, our Chart seem to be defined correctly, and we can create a package.
+
 ```bash
 helm package helm/go-demo-3 -d helm
-
-# Useful if publishing
 ```
+
+The output is as follows.
 
 ```
 Successfully packaged chart and saved it to: helm/go-demo-3-0.0.1.tgz
 ```
 
-## Installing
+We will not use the package just yet. For now, I wanted to make sure that you remember that we can create it.
+
+## Upgrading Charts
+
+We are about to install the *go-demo-3* Chart. You should already be familiar with the commands, so you can consider this as an exercise that aims to solidify what you already learned. There will be one difference comapred to the commands we executed earlier. It'll prove to be a simple, but important one for our continuous deployment processes.
+
+We'll start by inspecting the values.
 
 ```bash
 helm inspect values helm/go-demo-3
 ```
+
+The output is as follows.
 
 ```yaml
 replicaCount: 3
@@ -1499,29 +1606,56 @@ dbPersistence:
   size: 2Gi
 ```
 
+We are almost ready to install the application. The only thing we're missing is the host we'll use for the application.
+
+You'll find two commands below. Please execute only one of those depending on your Kubernetes flavor.
+
+If you are **NOT** using **minishift**, please execute the command that follows.
+
 ```bash
-# If NOT minishift
 HOST="go-demo-3.$LB_IP.xip.io"
+```
 
-# If minishift
+If you are using minishift, you can retrieve the host with the command that follows.
+
+```bash
 HOST="go-demo-3-go-demo-3.$(minishift ip).nip.io"
+```
 
+No matter how you retrieved the host, we'll output it so that we can confirm that it looks OK.
+
+```bash
 echo $HOST
 ```
+
+In my case, the output is as follows.
 
 ```
 jenkins.192.168.99.100.xip.io
 ```
 
+Now we are finally ready to install the Chart. However, we won't use `helm install` as before. We'll use `upgrade` instead.
+
 ```bash
-# If NOT minishift
 helm upgrade -i \
     go-demo-3 helm/go-demo-3 \
     --namespace go-demo-3 \
-    --set ingress.host=$HOST
-
-# No Ingress with minishift
+    --set image.tag=1.0 \
+    --set ingress.host=$HOST \
+    --reuse-values
 ```
+
+The reason we are using `helm upgrade` this time lies in the fact that we are practicing the commands we hope to use inside our CDP processes. Given that we want to use the same process no matter whether it's the first release (install), or those that follow later (upgrade). It would be silly to have `if/else` statements that would determine whether it is the first release and thus execute the install or to go with upgrade. We are going with a much simpler solution and will always upgrade the Chart. The trick is in the `-i` argument that can be translated to "install unless a release by the same name doesn't already exist".
+
+The next two arguments are the name of the Chart (`go-demo-3`) and the path to the Chart (`helm/go-demo-3`). By using the path to the directory with the Chart, we are experiencing yet another way to supply the Chart files. In the next chapter will switch to using `tgz` packages.
+
+The rest of the arguments are making sure that the correct tag is used (`1.0`), that Ingress is using the desired host, and that the values that might have been used in the previous upgrades are still the same.
+
+If this command is used in the continuous deployment processes, we need to set the tag explicitly through the `--set` argument to ensure that the correct image is used. The host, on the other hand, is static and unlikely to change often (if ever). We would be better of defining it in `values.yaml`. However, since I could not predict what will be your host, I had to define it as the `--set` argument.
+
+Please note that minishift does not support Ingress (at least not by default). So it was created but has no effect. I though that is a better option than to use different commands for OpenShift than for the rest of the flavors. If minishift is your choice, feel free to add `--set ingress.enable=false` to the previous command.
+
+The output of the `upgrade` is the same as if we executed `install` (resources are removed for brevity).
 
 ```
 NAME:   go-demo-3
@@ -1529,42 +1663,7 @@ LAST DEPLOYED: Fri May 25 14:40:31 2018
 NAMESPACE: go-demo-3
 STATUS: DEPLOYED
 
-RESOURCES:
-==> v1/Service
-NAME          TYPE       CLUSTER-IP      EXTERNAL-IP  PORT(S)    AGE
-go-demo-3-db  ClusterIP  None            <none>       27017/TCP  1s
-go-demo-3     ClusterIP  100.68.193.213  <none>       8080/TCP   1s
-
-==> v1beta2/Deployment
-NAME       DESIRED  CURRENT  UP-TO-DATE  AVAILABLE  AGE
-go-demo-3  3        3        3           0          1s
-
-==> v1beta2/StatefulSet
-NAME          DESIRED  CURRENT  AGE
-go-demo-3-db  3        0        1s
-
-==> v1beta1/Ingress
-NAME       HOSTS                           ADDRESS  PORTS  AGE
-go-demo-3  go-demo-3.18.222.53.124.xip.io  80       1s
-
-==> v1/Pod(related)
-NAME                        READY  STATUS             RESTARTS  AGE
-go-demo-3-6f9bf6687c-77wgf  0/1    ContainerCreating  0         1s
-go-demo-3-6f9bf6687c-97qdh  0/1    ContainerCreating  0         1s
-go-demo-3-6f9bf6687c-sshbc  0/1    ContainerCreating  0         1s
-
-==> v1/ServiceAccount
-NAME          SECRETS  AGE
-go-demo-3-db  1        1s
-
-==> v1beta1/Role
-NAME          AGE
-go-demo-3-db  1s
-
-==> v1beta1/RoleBinding
-NAME          AGE
-go-demo-3-db  1s
-
+...
 
 NOTES:
 1. Wait until the applicaiton is rolled out:
@@ -1574,15 +1673,20 @@ NOTES:
   curl http://go-demo-3.18.222.53.124.xip.io/demo/hello
 ```
 
-```bash
-# If minishift
-oc -n go-demo-3 create route edge \
-    --service go-demo-3 \
-    --insecure-policy Allow
+W> ## A note to minishift users
+W>
+W> We'll need to create a Route separately from the Helm Chart, just as we did with Jenkins. Please execute the command that follows.
+W>
+W> `oc -n go-demo-3 create route edge --service go-demo-3 --insecure-policy Allow`
 
+We'll wait until the Deployment rolls out before proceeding.
+
+```bash
 kubectl -n go-demo-3 \
     rollout status deployment go-demo-3
 ```
+
+The output is as follows.
 
 ```
 Waiting for rollout to finish: 0 of 3 updated replicas are available...
@@ -1591,201 +1695,28 @@ Waiting for rollout to finish: 2 of 3 updated replicas are available...
 deployment "go-demo-3" successfully rolled out
 ```
 
+Now we can confirm that the application is indeed working by issuing a `curl` request.
+
 ```bash    
 curl http://$HOST/demo/hello
 ```
 
-```
-hello, world!
-```
+The output should display the familiar `hello, world!` message, thus confirming that the application is indeed running and that it is accesible through the host we defined in Ingress (or Route in case of minishift).
 
-```bash
-kubectl -n go-demo-3 \
-    describe deployment go-demo-3
-```
-
-```
-Name:                   go-demo-3
-Namespace:              go-demo-3
-CreationTimestamp:      Fri, 25 May 2018 03:18:18 +0200
-Labels:                 app=go-demo-3
-                        chart=go-demo-3-0.0.1
-                        heritage=Tiller
-                        release=go-demo-3
-Annotations:            deployment.kubernetes.io/revision=1
-Selector:               app=go-demo-3,release=go-demo-3
-Replicas:               3 desired | 3 updated | 3 total | 3 available | 0 unavailable
-StrategyType:           RollingUpdate
-MinReadySeconds:        0
-RollingUpdateStrategy:  25% max unavailable, 25% max surge
-Pod Template:
-  Labels:  app=go-demo-3
-           release=go-demo-3
-  Containers:
-   api:
-    Image:  vfarcic/go-demo-3:latest
-    Port:   <none>
-    Limits:
-      cpu:     200m
-      memory:  20Mi
-    Requests:
-      cpu:      100m
-      memory:   10Mi
-    Liveness:   http-get http://:8080/demo/hello delay=0s timeout=1s period=10s #success=1 #failure=3
-    Readiness:  http-get http://:8080/demo/hello delay=0s timeout=1s period=1s #success=1 #failure=3
-    Environment:
-      DB:    go-demo-3-db
-    Mounts:  <none>
-  Volumes:   <none>
-Conditions:
-  Type           Status  Reason
-  ----           ------  ------
-  Available      True    MinimumReplicasAvailable
-  Progressing    True    NewReplicaSetAvailable
-OldReplicaSets:  <none>
-NewReplicaSet:   go-demo-3-5764f6465c (3/3 replicas created)
-Events:
-  Type    Reason             Age   From                   Message
-  ----    ------             ----  ----                   -------
-  Normal  ScalingReplicaSet  1m    deployment-controller  Scaled up replica set go-demo-3-5764f6465c to 3
-```
+Let's imagine that some time passed since we installed the first release, that someone recently pushed a change to the master branch, that we already run all our tests, that we built a new image, and that we pushed it to Docker Hub. In that hipothetical situation, our next step would be to execute another `helm upgrade`.
 
 ```bash
 helm upgrade -i \
     go-demo-3 helm/go-demo-3 \
     --namespace go-demo-3 \
-    --set image.tag=1.0 \
+    --set image.tag=2.0 \
+    --set ingress.host=$HOST \
     --reuse-values
 ```
 
-```
-Release "go-demo-3" has been upgraded. Happy Helming!
-LAST DEPLOYED: Fri May 25 14:42:53 2018
-NAMESPACE: go-demo-3
-STATUS: DEPLOYED
+When compared with the previous command, the only difference is in the tag. This time we set it to `2.0`. The rest of the command is exactly the same.
 
-RESOURCES:
-==> v1beta1/Ingress
-NAME       HOSTS                           ADDRESS           PORTS  AGE
-go-demo-3  go-demo-3.18.222.53.124.xip.io  a2aa563a6600a...  80     2m
-
-==> v1/Pod(related)
-NAME                        READY  STATUS             RESTARTS  AGE
-go-demo-3-6f9bf6687c-77wgf  1/1    Running            2         2m
-go-demo-3-6f9bf6687c-97qdh  1/1    Running            2         2m
-go-demo-3-6f9bf6687c-sshbc  1/1    Running            2         2m
-go-demo-3-7bccf8b78f-slrdk  0/1    ContainerCreating  0         1s
-go-demo-3-db-0              2/2    Running            0         2m
-go-demo-3-db-1              2/2    Running            0         1m
-go-demo-3-db-2              2/2    Running            0         1m
-
-==> v1/ServiceAccount
-NAME          SECRETS  AGE
-go-demo-3-db  1        2m
-
-==> v1beta1/Role
-NAME          AGE
-go-demo-3-db  2m
-
-==> v1beta1/RoleBinding
-NAME          AGE
-go-demo-3-db  2m
-
-==> v1/Service
-NAME          TYPE       CLUSTER-IP      EXTERNAL-IP  PORT(S)    AGE
-go-demo-3-db  ClusterIP  None            <none>       27017/TCP  2m
-go-demo-3     ClusterIP  100.68.193.213  <none>       8080/TCP   2m
-
-==> v1beta2/Deployment
-NAME       DESIRED  CURRENT  UP-TO-DATE  AVAILABLE  AGE
-go-demo-3  3        4        1           3          2m
-
-==> v1beta2/StatefulSet
-NAME          DESIRED  CURRENT  AGE
-go-demo-3-db  3        3        2m
-
-
-NOTES:
-1. Wait until the applicaiton is rolled out:
-  kubectl -n go-demo-3 rollout status deployment go-demo-3
-
-2. Test the application by running these commands:
-  curl http://go-demo-3.18.222.53.124.xip.io/demo/hello
-```
-
-```bash
-kubectl -n go-demo-3 \
-    describe deployment go-demo-3
-```
-
-```
-Name:                   go-demo-3
-Namespace:              go-demo-3
-CreationTimestamp:      Thu, 24 May 2018 13:58:46 +0200
-Labels:                 app=go-demo-3
-                        chart=go-demo-3-0.0.1
-                        heritage=Tiller
-                        release=go-demo-3
-Annotations:            deployment.kubernetes.io/revision=2
-Selector:               app=go-demo-3,release=go-demo-3
-Replicas:               3 desired | 3 updated | 3 total | 3 available | 0 unavailable
-StrategyType:           RollingUpdate
-MinReadySeconds:        0
-RollingUpdateStrategy:  25% max unavailable, 25% max surge
-Pod Template:
-  Labels:  app=go-demo-3
-           release=go-demo-3
-  Containers:
-   api:
-    Image:  vfarcic/go-demo-3:1.0
-    Port:   <none>
-    Limits:
-      cpu:     200m
-      memory:  20Mi
-    Requests:
-      cpu:      100m
-      memory:   10Mi
-    Liveness:   http-get http://:8080/demo/hello delay=0s timeout=1s period=10s #success=1 #failure=3
-    Readiness:  http-get http://:8080/demo/hello delay=0s timeout=1s period=1s #success=1 #failure=3
-    Environment:
-      DB:    go-demo-3-db
-    Mounts:  <none>
-  Volumes:   <none>
-Conditions:
-  Type           Status  Reason
-  ----           ------  ------
-  Available      True    MinimumReplicasAvailable
-  Progressing    True    NewReplicaSetAvailable
-OldReplicaSets:  <none>
-NewReplicaSet:   go-demo-3-7bccf8b78f (3/3 replicas created)
-Events:
-  Type    Reason             Age   From                   Message
-  ----    ------             ----  ----                   -------
-  Normal  ScalingReplicaSet  3m    deployment-controller  Scaled up replica set go-demo-3-6f9bf6687c to 3
-  Normal  ScalingReplicaSet  28s   deployment-controller  Scaled up replica set go-demo-3-7bccf8b78f to 1
-  Normal  ScalingReplicaSet  25s   deployment-controller  Scaled down replica set go-demo-3-6f9bf6687c to 2
-  Normal  ScalingReplicaSet  25s   deployment-controller  Scaled up replica set go-demo-3-7bccf8b78f to 2
-  Normal  ScalingReplicaSet  22s   deployment-controller  Scaled down replica set go-demo-3-6f9bf6687c to 1
-  Normal  ScalingReplicaSet  22s   deployment-controller  Scaled up replica set go-demo-3-7bccf8b78f to 3
-  Normal  ScalingReplicaSet  20s   deployment-controller  Scaled down replica set go-demo-3-6f9bf6687c to 0
-```
-
-```bash
-kubectl -n go-demo-3 \
-    rollout status deployment go-demo-3
-```
-
-```
-deployment "go-demo-3" successfully rolled out
-```
-
-```bash
-curl http://$HOST/demo/hello
-```
-
-```
-hello, world!
-```
+There's probably no need to further validations (e.g., wait for it to roll out and send a `curl` request). All that's left is to remove the Chart and delete the Namespace. We're done with the hands-on exercises.
 
 ```bash
 helm delete go-demo-3 --purge
@@ -1795,11 +1726,18 @@ kubectl delete ns go-demo-3
 
 ## Helm vs OpenShift Templates
 
-TODO: Write
+I could give you a lengthly comparison between Helm and OpenShift templates. I won't do that. The reason is simple. Helm is the de-facto standard for installing applications. It's the most widely used, and it's adopting is going through the roof. Among the similar tools, it has the biggest community, it has the most applications available, and it is becoming adopted by more software vendors than any other solution. The exception is RedHat. The created OpenShift templates long before Helm came into being. Helm borrowed many of its concepts, improved them, and added a few additional features. When we add to that the fact that OpenShift templates work only on OpenShift, the decision which one to use is pretty straight forward. Helm wins, unless you chose OpenShift as your Kubernetes flavor. In that case, the decision is harder to make. On the one hand, Routes and a few other OpenShift-specific types of resources cannot be defined (easily) in Helm. On the other hand, it is likely that OpenShift will switch to Helm at some moment, so you might just as well jump into Helm right away.
+
+I must give a big thumbs up to RedHat for paving the way towards some of the commonly used Kubernetes resources. They came up with Routes when Ingress did not exist. They developed OpenShift templates before Helm was created. Both Ingress and Helm were heavily influenced by their counter-parts in OpenShift. The are quite a few other similar examples.
+
+The problem is that RedHat does not know (or want to) let go of the things they pioneered. They stick with Routes, even though Ingress become standard. They continue forcing OpenShift templates, even though it's clear that Helm is the de-facto standard. By not switching to the standards that they themselves pioneered, they are making their platform incompatible with others. In the previous chapters we experienced the pain Routes cause when trying to define YAML files that should work on all other Kubernetes flavors. Now we experienced the same problem with Helm.
+
+If you chose OpenShift, it's up to you to decide whether to use Helm or OpenShift templates. Both choices have pros and cons. Personally, one of the things that attacts me the most with Kubernetes is the promise that our applications can run on any hosting solution and on any Kubernetes flavor. RedHat is breaking that promise. It's not that I don't expect different solutions to come up with new things that distinguish them from the competition. I do. OpenShift has quite a few of those. But, it also has features that have equally good or better equivalents that are part of Kubernetes core or widely accepted by the community. Helm is one of those that are better then their counterpart in OpenShift.
+
+We'll continue using Helm throughout the rest of the book. If you do choose to stick with OpenShift templates, you'll have to do a few modifications to the examples. The good news is that those changes should be relatively easy to make. I believe that you won't have a problem adapting.
 
 ## What Now?
 
-TODO: Write
+We have a couple of problems left to solve. We did not yet figure out how to store the Helm charts in a way that they can be easily retrieved and used by others. We'll tackle that issue in the next chapter.
 
-* Need to store Helm charts somewhere
-* Need to solve the permissions
+I suggest you take a rest. You deserve it. If you do feel that way, please destroy the cluster. Otherwise, jump to the next chapter right away. The choice is yours.
