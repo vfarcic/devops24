@@ -9,8 +9,8 @@
 - [X] Write
 - [X] Text review
 - [-] Diagrams
-- [ ] Gist
-- [ ] Review the title
+- [X] Gist
+- [X] Review the title
 - [ ] Proofread
 - [ ] Add to slides
 - [ ] Publish on TechnologyConversations.com
@@ -25,7 +25,7 @@ We faced quite a few challenges thus far. The good news is that we managed to so
 
 We spent a bit of time trying to define Jenkins resources while we were in the [Deploying Stateful Applications At Scale](#sts) chapter. That was a good exercise that can be characterized as a learning experience, but there's still some work in front of us to make it a truly useful definition. The major issue with our Jenkins definition is that it is still not automated. We can spin up a master, but we still have to go through the setup wizard manually. Once we're done with the setup, we'd need to install some plugins, and we'd need to change its configuration. Before we go down that road, we might want to explore whether others already did that work for us. If we'd look for, let's say, a Java library that would help us solve a particular problem with our application, we'd probably look for a Maven repository. Maybe there is something similar for Kubernetes applications. Maybe there is a community-maintained repository with installation solutions for commonly used tools. We'll make it our mission to find such a place.
 
-Another problem we faced was customization of our YAML files. As a minimum, we'll need to specify different image tag every time we deploy a release. In the [Defining Continuous Deployment](#manual-cd) chpater, we had to use `sed` to modify definitions before sending them through `kubectl` to Kube API. While that worked, I'm sure that you'll agree that commands like `sed -e "s@:latest@:1.7@g"` are not very intuitive. They look and feel awkward. To make things more complicated, image tags are rarely the only things that change from one deployment to another. We might need to change domains or paths of our Ingress controllers to accomodate the needs of having our applications deployed to different environments (e.g., staging and production). The same can be said for the number of replicas and many other things that define what we want to install. Using concatenated `sed` command can quickly become complicated, and it is not very user-friendly. Sure, we could modify YAML every time we, for example, make a new release. We could also create different definitions for each environment we're planning to use. But, we won't do that. That would only result in duplication and maintenance nightmare. We already have two YAML files for the `go-demo-3` application (one for testing and the other for production). If we continue down that route, we might end up with ten, twenty, or even more variations of the same definitions. We might even be forced to change it with every commit of our code so that the tag is always up to date. That road is not the one we'll take. It leads towards a cliff. What we need is a templating mechanism that will allow us to modify definitions before sending them to Kube API.
+Another problem we faced was customization of our YAML files. As a minimum, we'll need to specify different image tag every time we deploy a release. In the [Defining Continuous Deployment](#manual-cd) chapter, we had to use `sed` to modify definitions before sending them through `kubectl` to Kube API. While that worked, I'm sure that you'll agree that commands like `sed -e "s@:latest@:1.7@g"` are not very intuitive. They look and feel awkward. To make things more complicated, image tags are rarely the only things that change from one deployment to another. We might need to change domains or paths of our Ingress controllers to accomodate the needs of having our applications deployed to different environments (e.g., staging and production). The same can be said for the number of replicas and many other things that define what we want to install. Using concatenated `sed` command can quickly become complicated, and it is not very user-friendly. Sure, we could modify YAML every time we, for example, make a new release. We could also create different definitions for each environment we're planning to use. But, we won't do that. That would only result in duplication and maintenance nightmare. We already have two YAML files for the `go-demo-3` application (one for testing and the other for production). If we continue down that route, we might end up with ten, twenty, or even more variations of the same definitions. We might even be forced to change it with every commit of our code so that the tag is always up to date. That road is not the one we'll take. It leads towards a cliff. What we need is a templating mechanism that will allow us to modify definitions before sending them to Kube API.
 
 The last issue we'll try to solve in this chapter is the need to describe our applications and the possible changes others might apply to them before installing them inside a cluster. Truth be told, that is already possible. Anyone can read our YAML files to deduce what an application consist of. Anyone could take one of our YAML files and modify it to suit their own needs. In some cases that might be challenging even for someone experienced with Kubernetes. However, our main concern are those who are not Kubernetes ninjas. We cannot expect everyone in our organization to spend a year learning Kubernetes only so that they can deploy applications. On the other hand, we do want to provide that ability to everyone. We want to empower everyone. When faced with the need for everyone to use Kubernetes and the fact that not everyone will be a Kubernetes expert, it becomes obvious that we need a more descriptive, easier to customize, and more user friendly way to discover and deploy applications.
 
@@ -39,7 +39,7 @@ Before we proceed, we'll need a cluster. It's time to get our hands dirty.
 
 It's hand-on time again. We'll need to go back to the local copy of the [vfarcic/k8s-specs](https://github.com/vfarcic/k8s-specs) repository and pull the latest version.
 
-I> All the commands from this chapter are available in the [04-helm.sh](TODO) Gist.
+I> All the commands from this chapter are available in the [04-helm.sh](https://gist.github.com/84adc5ad977f5c1a682bed524b781e0c) Gist.
 
 ```bash
 cd k8s-specs
@@ -645,8 +645,6 @@ open "http://$ADDR"
 
 This time there is no need even to login. All we need to do is to check whether changing the tag worked. Please observe the version in the bottom-right corner of the screen. If should be *Jenkins ver. 2.112*.
 
-## Upgrading Helm Installations
-
 Let's imagine that some time passed and we decided to upgrade our Jenkins from *2.112* to *2.116*. We go through the documentation and discover that there is the `upgrade` command we can leverage.
 
 ```bash
@@ -707,7 +705,7 @@ open "http://$ADDR"
 
 Please note the version in the bottom-right corner of the screen. It should say *Jenkins ver. 2.116*.
 
-## Rolling Back A Helm Revision
+## Rolling Back Helm Revisions
 
 No matter how we deploy our applications and no matter how much we trust our validations, the truth is that sooner or later we'll have to roll back. That is especially true with third-party applications. While we could roll forward faulty applications we developed, the same is often not an option with those that are not in our control. If there is a problem and we cannot fix it fast, the only alternative it to roll back.
 
@@ -1704,7 +1702,7 @@ deployment "go-demo-3" successfully rolled out
 
 Now we can confirm that the application is indeed working by sending a `curl` request.
 
-```bash    
+```bash
 curl http://$HOST/demo/hello
 ```
 
