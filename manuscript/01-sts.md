@@ -1,4 +1,4 @@
-# Deploying Stateful Applications At Scale
+# Deploying Stateful Applications At Scale {#sts}
 
 T> Stateless and stateful application are quite different in their architecture. Those differences need to be reflected in Kubernetes as well. The fact that we can use Deployments with PersistentVolumes does not necessarily mean that is the best way to run stateful applications.
 

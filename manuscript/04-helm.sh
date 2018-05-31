@@ -1,348 +1,70 @@
-## TODO
-
-- [X] Code
-- [X] Code review Docker for Mac/Windows
-- [X] Code review minikube
-- [X] Code review kops
-- [X] Code review minishift
-- [X] Code review GKE
-- [X] Write
-- [X] Text review
-- [-] Diagrams
-- [ ] Gist
-- [ ] Review the title
-- [ ] Proofread
-- [ ] Add to slides
-- [ ] Publish on TechnologyConversations.com
-- [ ] Add to Book.txt
-- [ ] Publish on LeanPub.com
-
-# Packaging Kubernetes Applications
-
-T> Using YAML files to install or upgrade applications in a Kubernetes cluster works well only for static definitions. The moment we need to change an aspect of an application we are bound to discover the need for templating and packaging mechanisms.
-
-We faced quite a few challenges thus far. The good news is that we managed to solve most of them. The bad news is that, in some cases, our solutions felt sub-optimum (politically correct way to say *horrible*).
-
-We spent a bit of time trying to define Jenkins resources while we were in the [Deploying Stateful Applications At Scale](#sts) chapter. That was a good exercise that can be characterized as a learning experience, but there's still some work in front of us to make it a truly useful definition. The major issue with our Jenkins definition is that it is still not automated. We can spin up a master, but we still have to go through the setup wizard manually. Once we're done with the setup, we'd need to install some plugins, and we'd need to change its configuration. Before we go down that road, we might want to explore whether others already did that work for us. If we'd look for, let's say, a Java library that would help us solve a particular problem with our application, we'd probably look for a Maven repository. Maybe there is something similar for Kubernetes applications. Maybe there is a community-maintained repository with installation solutions for commonly used tools. We'll make it our mission to find such a place.
-
-Another problem we faced was customization of our YAML files. As a minimum, we'll need to specify different image tag every time we deploy a release. In the [Defining Continuous Deployment](#manual-cd) chpater, we had to use `sed` to modify definitions before sending them through `kubectl` to Kube API. While that worked, I'm sure that you'll agree that commands like `sed -e "s@:latest@:1.7@g"` are not very intuitive. They look and feel awkward. To make things more complicated, image tags are rarely the only things that change from one deployment to another. We might need to change domains or paths of our Ingress controllers to accomodate the needs of having our applications deployed to different environments (e.g., staging and production). The same can be said for the number of replicas and many other things that define what we want to install. Using concatenated `sed` command can quickly become complicated, and it is not very user-friendly. Sure, we could modify YAML every time we, for example, make a new release. We could also create different definitions for each environment we're planning to use. But, we won't do that. That would only result in duplication and maintenance nightmare. We already have two YAML files for the `go-demo-3` application (one for testing and the other for production). If we continue down that route, we might end up with ten, twenty, or even more variations of the same definitions. We might even be forced to change it with every commit of our code so that the tag is always up to date. That road is not the one we'll take. It leads towards a cliff. What we need is a templating mechanism that will allow us to modify definitions before sending them to Kube API.
-
-The last issue we'll try to solve in this chapter is the need to describe our applications and the possible changes others might apply to them before installing them inside a cluster. Truth be told, that is already possible. Anyone can read our YAML files to deduce what an application consist of. Anyone could take one of our YAML files and modify it to suit their own needs. In some cases that might be challenging even for someone experienced with Kubernetes. However, our main concern are those who are not Kubernetes ninjas. We cannot expect everyone in our organization to spend a year learning Kubernetes only so that they can deploy applications. On the other hand, we do want to provide that ability to everyone. We want to empower everyone. When faced with the need for everyone to use Kubernetes and the fact that not everyone will be a Kubernetes expert, it becomes obvious that we need a more descriptive, easier to customize, and more user friendly way to discover and deploy applications.
-
-We'll try to tackle those and a few other issues in this chapter. We'll try to find a place where community contributes with definitions of commonly used applications (e.g., Jenkins). We'll seek for a templating mechanism that will allow us to customize our applications before installing them. Finally, we'll try to find a way to better document our definitions. We'll try to make it so simple that even those who don't know Kubernetes can safely deploy applications to a cluster. What we need is a Kubernetes equivalent of package managers like *apt*, *yum*, *apk*, [Homebrew](https://brew.sh/), or [Chocolatey](https://chocolatey.org/), combined with the ability to document our packages in a way that anyone can use them.
-
-I'll save you from searching for a solution and reveal it right away. We'll explore [Helm](https://helm.sh/) as the missing piece that will make our deployments customizable and user friendly. If we are lucky, it might even turn out to be the solution that will save us from reinventing the wheel with commonly used applications.
-
-Before we proceed, we'll need a cluster. It's time to get our hands dirty.
-
-## Creating A Cluster
-
-It's hand-on time again. We'll need to go back to the local copy of the [vfarcic/k8s-specs](https://github.com/vfarcic/k8s-specs) repository and pull the latest version.
-
-I> All the commands from this chapter are available in the [04-helm.sh](TODO) Gist.
-
-```bash
 cd k8s-specs
 
 git pull
-```
 
-Just as in the previous chapters, we'll need a cluster if we are to execute hands-on exercises. The rules are still the same. You can continue using the same cluster as before, or you can switch to a different Kubernetes flavor. You can continue using one of the Kubernetes distributions listed below, or be adventurous and try something different. If you go with the latter, please let me know how it went, and I'll test it myself and incorporate it into the list.
-
-Cluster requirements in this chapter are the same as in the previous. We'll need at least 3 CPUs and 3 GB RAM if running a single-node cluster, and slightly more if those resources are spread across multiple nodes.
-
-For your convenience, the Gists and the specs we used in the previous chapter are available here as well.
-
-* [docker4mac-3cpu.sh](https://gist.github.com/bf08bce43a26c7299b6bd365037eb074): **Docker for Mac** with 3 CPUs, 3 GB RAM, and with nginx Ingress.
-* [minikube-3cpu.sh](https://gist.github.com/871b5d7742ea6c10469812018c308798): **minikube** with 3 CPUs, 3 GB RAM, and with `ingress`, `storage-provisioner`, and `default-storageclass` addons enabled.
-* [kops.sh](https://gist.github.com/2a3e4ee9cb86d4a5a65cd3e4397f48fd): **kops in AWS** with 3 t2.small masters and 2 t2.medium nodes spread in three availability zones, and with nginx Ingress (assumes that the prerequisites are set through [Appendix B](#appendix-b)).
-* [minishift-3cpu.sh](https://gist.github.com/2074633688a85ef3f887769b726066df): **minishift** with 3 CPUs, 3 GB RAM, and version 1.16+.
-* [gke-2cpu.sh](https://gist.github.com/e3a2be59b0294438707b6b48adeb1a68): **Google Kubernetes Engine (GKE)** with 3 n1-highcpu-2 (2 CPUs, 1.8 GB RAM) nodes (one in each zone), and with nginx Ingress controller running on top of the "standard" one that comes with GKE. We'll use nginx Ingress for compatibility with other platforms. Feel free to modify the YAML files if you prefer NOT to install nginx Ingress.
-
-With a cluster up-and-running, we can proceed with an introduction to Helm.
-
-## What Is Helm?
-
-I will not explain about Helm. I won't even give you the elevator pitch. I'll only say that it is a project with a big and healthy community, that it is a member of [Cloud Native Computing Foundation (CNCF)](https://www.cncf.io/), and that it has backing of big guys like Google, Microsoft, and a few others. For everything else, you'll need to follow the exercises. They'll lead us towards an understanding of the project, and they will hopefully helps us in our goal to refine our continuous deployment pipeline.
-
-The first step is to install it.
-
-## Installing Helm
-
-Helm is a client/server type of application. We'll start with a client. Once we have it running, we'll use it to install the server (Tiller) inside our newly created cluster.
-
-The Helm client is a command line utility responsible for local development of Charts, managing repositories, and interaction with the Tiller. Tiller server, on the other hand, runs inside a Kubernetes cluster and interacts with Kube API. It listens for incoming requests from the Helm client, combines Charts and configuration values to build a release, installs Charts and tracks subsequent releases, and is in charge of upgrading and uninstalling Charts through interaction with Kube API.
-
-I> Do not get too attached to Tiller. Helm v3 will remove the server component and operate fully from the client side. At the time of this writing (June 2018), it is still unknown when will v3 reach GA.
-
-I'm sure that this brief explanation is more confusing than helpful. Worry not. Everything will be explained soon through examples. For now, we'll focus on installing Helm and Tiller.
-
-If you are a **MacOS user**, please use [Homebrew](https://brew.sh/) to install Helm. The command is as follows.
-
-```bash
+# Only if MacOS
 brew install kubernetes-helm
-```
 
-If you are a **Windows user**, please use [Chocolatey](https://chocolatey.org/) to install Helm. The command is as follows.
-
-```bash
+# Only if Windows
 choco install kubernetes-helm
-```
 
-Finally, if you are neither Windows nor MacOS user, you must be running **Linux**. Please go to the [releases](https://github.com/kubernetes/helm/releases) page, download `tar.gz` file, unpack it, and move the binary to `/usr/local/bin/`.
+# Only if Linux
+open https://github.com/kubernetes/helm/releases
 
-If you already have Helm installed, please make sure that it is newer than 2.8.2. That version, and probably a few versions before it, was failing on Docker For Mac/Windows.
+# Only if Linux
+# Download `tar.gz` file, unpack it, and move the binary to `/usr/local/bin/`.
 
-Once you're done installing (or upgrading) Helm, please execute `helm help` to verify that it is working.
-
-We are about to install *Tiller*. It'll run inside our cluster. Just as `kubectl` is a client that communicates with Kube API, `helm` will propagate our wishes to `tiller` which, in turn, will issue requests to Kube API.
-
-It should come as no surprise that Tiller will be yet another Pod in our cluster. As such, you should already know that we'll need a ServiceAccount that will allow it to establish communication with Kube API. Since we hope to use Helm for all our installation in Kubernetes, we should give that ServiceAccount very generous permissions across the whole cluster.
-
-Let's take a look at the definition of a ServiceAccount we'll create for Tiller.
-
-```bash
 cat helm/tiller-rbac.yml
-```
 
-The output is as follows.
-
-```yaml
-apiVersion: v1
-kind: ServiceAccount
-metadata:
-  name: tiller
-  namespace: kube-system
-
----
-
-apiVersion: rbac.authorization.k8s.io/v1beta1
-kind: ClusterRoleBinding
-metadata:
-  name: tiller
-roleRef:
-  apiGroup: rbac.authorization.k8s.io
-  kind: ClusterRole
-  name: cluster-admin
-subjects:
-  - kind: ServiceAccount
-    name: tiller
-    namespace: kube-system
-```
-
-Since by now you are an expert in ServiceAccounts, there should be no need for a detailed explanation of the definition. We're creating a ServiceAccount called `tiller` in the `kube-system` Namespace and we are assigning it ClusterRole `cluster-admin`. In other words, the account will be able to execute any operation anywhere inside the cluster.
-
-You might be thinking that having such wide permissions might seem dangerous, and you would be right. Only a handful of people should have the user permissions to operate inside `kube-system` Namespace. On the other hand, we can expect much wider circle of people being able to use Helm. We'll solve that problem later in one of the next chapters. For now, we'll focus only on how Helm works, and get back to the permissions issue later.
-
-Let's create the ServiceAccount.
-
-```bash
 kubectl create \
     -f helm/tiller-rbac.yml \
     --record --save-config
-```
 
-We can see from the output that both the ServiceAccount and the ClusterRoleBinding were created.
-
-Now that we have the ServiceAccount that gives Helm full permissions to manage any Kubernetes resource, we can proceed and install Tiller.
-
-```bash
 helm init --service-account tiller
 
 kubectl -n kube-system \
     rollout status deploy tiller-deploy
-```
 
-We used `helm init` to create the server component called `tiller`. Since our cluster uses RBAC and all the processes require authentication and permissions to communicate with Kube API, we added `--service-account tiller` argument. It'll attach the ServiceAccount the the `tiller` Pod.
-
-The latter command waits until the Deployment is rolled out.
-
-We could have specified `--tiller-namespace` argument to deploy it to a specific Namespace. That ability will come in handy in one of the next chapters. For now, we omitted that argument so Tiller was installed in the `kube-system` Namespace. To be on the safe side, we'll list the Pods to confirm that it is indeed running.
-
-```bash
 kubectl -n kube-system get pods
-```
 
-The output, limited to the relevant parts, is as follows.
-
-```
-NAME              READY STATUS  RESTARTS AGE
-...
-tiller-deploy-... 1/1   Running 0        59s
-```
-
-Helm already has a single repository pre-configured. For those of you who just installed Helm for the first time, the repository is up-to-date. On the other hand, if you happen to have Helm from before, you might want to update the repository references by executing the command that follows.
-
-```bash
 helm repo update
-```
 
-The only thing left is to search for our favorite application hoping that it is available in the Helm repository.
-
-```bash
 helm search
-```
 
-The output, limited to the last few entries, is as follows.
-
-```
-...
-stable/weave-scope 0.9.2 1.6.5 A Helm chart for the Weave Scope cluster visual...
-stable/wordpress   1.0.7 4.9.6 Web publishing platform for building blogs and ...
-stable/zeppelin    1.0.1 0.7.2 Web-based notebook that enables data-driven, in...
-stable/zetcd       0.1.9 0.0.3 CoreOS zetcd Helm chart for Kubernetes            
-```
-
-We can see that the default repository already contains quite a few commonly used applications. It is the repository that contains the official Kubernetes Charts which are carefully curated and well maintained. Later on, in one of the next chapters, we'll add more repositories to our local Helm installation. For now, we just need Jenkins, which happens to be one of the official Charts.
-
-I already mentioned Charts a few times. You'll find out what they are soon. For now, all you should know is that a Chart defines everything an application needs to run in a Kubernetes cluster.
-
-## Installing Helm Charts
-
-The first thing we'll do is to confirm that Jenkins indeed exists in the official Helm repository. We could do that by executing `helm search` (again) and going through all the available Charts. However, the list is pretty big and growing by the day. We'll filter the search to narrow down the output.
-
-```bash
 helm search jenkins
-```
 
-The output is as follows.
+# Only if minishift
+oc patch scc restricted -p '{"runAsUser":{"type": "RunAsAny"}}'
 
-```
-NAME           CHART VERSION APP VERSION DESCRIPTION                                       
-stable/jenkins 0.16.1        2.107       Open source continuous integration server. It s...
-```
-
-We can see that the repository contains `stable/jenkins` chart based on Jenkins version 2.107.
-
-W> ## A note to minishift users
-W>
-W> Helm will try to install Jenkins Chart with the process in a container running as user 0. By default, that is not allowed in OpenShift. We'll skip discussing the best approach to correct the permissions in OpenShift. I'll assume you already know how to set the permissions on per-Pod basis. Instead, we'll do the simplest fix. Please execute the command that follows to allow creation of restricted Pods to run as any user.
-W>
-W> `oc patch scc restricted -p '{"runAsUser":{"type": "RunAsAny"}}'`
-
-We'll install Jenkins with the default values first. If that works as expected, we'll try to adapt it to our needs later on.
-
-Now that we know (through `search`) that the name of the Chart is `stable/jenkins`, all we need to do is execute `helm install`.
-
-```bash
 helm install stable/jenkins \
     --name jenkins \
     --namespace jenkins
-```
 
-We instructed Helm to install `stable/jenkins` with the name `jenkins`, and inside the Namespace also called `jenkins`.
+# Only if minikube
+helm upgrade jenkins stable/jenkins \
+    --set Master.ServiceType=NodePort
 
-The output is as follows.
+# Only if minishift
+oc -n jenkins create route edge \
+    --service jenkins \
+    --insecure-policy Allow
 
-```
-NAME:   jenkins
-LAST DEPLOYED: Sun May ...
-NAMESPACE: jenkins
-STATUS: DEPLOYED
-
-RESOURCES:
-==> v1/Service
-NAME          TYPE         CLUSTER-IP     EXTERNAL-IP PORT(S)        AGE
-jenkins-agent ClusterIP    10.111.123.174 <none>      50000/TCP      1s
-jenkins       LoadBalancer 10.110.48.57   localhost   8080:31294/TCP 0s
-
-==> v1beta1/Deployment
-NAME    DESIRED CURRENT UP-TO-DATE AVAILABLE AGE
-jenkins 1       1       1          0         0s
-
-==> v1/Pod(related)
-NAME        READY STATUS   RESTARTS AGE
-jenkins-... 0/1   Init:0/1 0        0s
-
-==> v1/Secret
-NAME    TYPE   DATA AGE
-jenkins Opaque 2    1s
-
-==> v1/ConfigMap
-NAME          DATA AGE
-jenkins       4    1s
-jenkins-tests 1    1s
-
-==> v1/PersistentVolumeClaim
-NAME    STATUS VOLUME  CAPACITY ACCESS MODES STORAGECLASS AGE
-jenkins Bound  pvc-... 8Gi      RWO          gp2          1s
-
-
-NOTES:
-1. Get your 'admin' user password by running:
-  printf $(kubectl get secret --namespace jenkins jenkins -o jsonpath="{.data.jenkins-admin-password}" | base64 --decode);echo
-2. Get the Jenkins URL to visit by running these commands in the same shell:
-  NOTE: It may take a few minutes for the LoadBalancer IP to be available.
-        You can watch the status of by running 'kubectl get svc --namespace jenkins -w jenkins'
-  export SERVICE_IP=$(kubectl get svc --namespace jenkins jenkins --template "{{ range (index .status.loadBalancer.ingress 0) }}{{ . }}{{ end }}")
-  echo http://$SERVICE_IP:8080/login
-
-3. Login with the password from step 1 and the username: admin
-
-For more information on running Jenkins on Kubernetes, visit:
-https://cloud.google.com/solutions/jenkins-on-container-engine
-```
-
-At the top of the output, we can see some general information like the name we gave to the installed Chart (`jenkins`), when it was deployed, what the Namespace is, and the status.
-
-Below the general information is the list of the installed resources. We can see that the Chart installed two services; one for the master and the other for the agents. Below is the Deployment and the Pod. It also created a Secret that holds the administrative username and password. We'll use it soon. Further on, we can see that it created two ConfigMaps. One (`jenkins`) holds all the configurations Jenkins might need. Later on, when we customize it, the data in this ConfigMap will reflect those changes. The second ConfigMap (`jenkins-tests`) is, at the moment, used only to provide a command used for executing liveness and readiness probes. Finally, we can see that a PersistentVolumeClass was created as well, thus making our Jenkins fault tolerant without loosing its state.
-
-Don't worry if you feel overwhelmed. We'll do a couple of iterations of the Jenkins installation process and that will give us plenty of opportunity to explore this Chart in more details. If you are impatient, please `describe` any of those resources to get more insight into what's installed.
-
-At the bottom of the output we can see the post-installation instructions provided by the authors of the Chart. In our case, those instructions tell us how to retrieve the administrative password from the Secret, how to open Jenkins in browser, and how to login.
-
-W> ## A note to minikube users
-W>
-W> If you go back to the output, you'll notice that the type of the `jenkins` Service is `LoadBalancer`. Since we do not have a load balancer in front of our minikube cluster, that type will not work and we should change it to `NodePort`. Please execute the command that follows.
-W>
-W> `helm upgrade jenkins stable/jenkins --set Master.ServiceType=NodePort`
-W>
-W> We haven't explained the `upgrade` process just yet. For now, just note that we changed the Service type to `NodePort`.
-
-W> ## A note to minishift users
-W>
-W> OpenShift requires Routes to make services accessible outside the cluster. To make things more complicated, they are not part of "standard Kubernetes" so we'll need to create one using `oc`. Please execute the command that follows.
-W> 
-W> `oc -n jenkins create route edge --service jenkins --insecure-policy Allow`
-W> 
-W> That command created an `edge` Router tied to the `jenkins` Service. Since we do not have SSL certificates for HTTPS communication, we also specified that it is OK to use insecure policy which will allow us to access Jenkins through plain HTTP.
-
-Next, we'll wait until `jenkins` Deployment is rolled out.
-
-```bash
 kubectl -n jenkins \
     rollout status deploy jenkins
-```
 
-We are almost ready to open Jenkins in a browser. But, before we do that, we need to retrieve the hostname (or IP) through which we can access our first Helm install.
-
-```bash
 ADDR=$(kubectl -n jenkins \
     get svc jenkins \
     -o jsonpath="{.status.loadBalancer.ingress[0].hostname}"):8080
-```
 
-W> ## A note to minikube users
-W>
-W> Unlike some other Kubernetes flavors (e.g., AWS with kops), minikube does not have a hostname automatically assigned to us through an external load balancer. We'll have to retrieve the IP of our minikube cluster and the port published when we changed the `jenkins` service to `NodePort`. Please execute the command that follows.
-W> 
-W> `ADDR=$(minikube ip):$(kubectl -n jenkins get svc jenkins -o jsonpath="{.spec.ports[0].nodePort}")`
+# Only if minikube
+ADDR=$(minikube ip):$(kubectl -n jenkins get svc jenkins -o jsonpath="{.spec.ports[0].nodePort}")
 
-W> ## A note to GKE users
-W>
-W> Unlike some other Kubernetes flavors (e.g., AWS with kops), GKE does not have a hostname automatically assigned to us through an external load balancer. Instead, we got the IP of Google's LB. We'll have to get that IP. Please execute the command that follows.
-W> 
-W> `ADDR=$(kubectl -n jenkins get svc jenkins -o jsonpath="{.status.loadBalancer.ingress[0].ip}"):8080`
+# Only if GKE
+ADDR=$(kubectl -n jenkins get svc jenkins -o jsonpath="{.status.loadBalancer.ingress[0].ip}"):8080
 
-W> ## A note to minishift users
-W>
-W> Unlike all other Kubernetes flavors, OpenShift does not use Ingress. We'll have to retrieve the address from the `jenkins` Route we created previously. Please execute the command that follows.
-W> 
-W> `ADDR=$(oc -n jenkins get route jenkins -o jsonpath="{.status.ingress[0].host}")`
+# Only if minishift
+ADDR=$(oc -n jenkins get route jenkins -o jsonpath="{.status.ingress[0].host}")
 
-To be on the safe side, we'll `echo` the address we retrieved and confirm that it looks valid.
-
-```bash
 echo $ADDR
 ```
 
