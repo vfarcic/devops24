@@ -82,7 +82,9 @@
 - [ ] Operating Systems (RancherOS)
 - [ ] Machine learning (https://github.com/kubeflow)
 - [ ] ChatOps w/k8s
-- [ ] Containers (Docker, containerD)
+- [ ] Run containers (Docker, containerD, rkt, cri-o)
+- [ ] Build images (kaniko, buildah)
+- [ ] [cert-manager](https://github.com/jetstack/cert-manager)
 
 ## Contributors
 
