@@ -174,7 +174,7 @@ LB_IP=$(kubectl -n ingress-nginx \
 
 echo $LB_IP
 
-HOST="jenkins.$LB_IP.xip.io"
+HOST="jenkins.$LB_IP.nip.io"
 
 echo $HOST
 
@@ -266,7 +266,7 @@ helm package helm/go-demo-3 -d helm
 helm inspect values helm/go-demo-3
 
 # Only if NOT minishift
-HOST="go-demo-3.$LB_IP.xip.io"
+HOST="go-demo-3.$LB_IP.nip.io"
 
 # Only if minishift
 HOST="go-demo-3-go-demo-3.$(minishift ip).nip.io"

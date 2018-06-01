@@ -780,7 +780,7 @@ We managed to customize Jenkins by setting `ImageTag`. What if we'd like to set 
 
 Applying all those changes through `--set` arguments would end up as a very long command and would constitute an undocumented installation. We'll have to change the tactic and switch to `--values`. But before we do all that, we need to generate a domain we'll use with our cluster.
 
-We'll use [xip.io](http://xip.io/) to generate valid domains. The service provides a wildcard DNS for any IP address. It extracts IP from the xip.io subdomain and sends it back in the response. For example, if we generate 192.168.99.100.xip.io, it'll be resolved to 192.168.99.100. We can even add sub-sub domains like something.192.168.99.100.xip.io, and it would still be resolved to 192.168.99.100. It's a simple and awesome service that quickly became an indispensable part of my toolbox.
+We'll use [nip.io](http://nip.io/) to generate valid domains. The service provides a wildcard DNS for any IP address. It extracts IP from the nip.io subdomain and sends it back in the response. For example, if we generate 192.168.99.100.nip.io, it'll be resolved to 192.168.99.100. We can even add sub-sub domains like something.192.168.99.100.nip.io, and it would still be resolved to 192.168.99.100. It's a simple and awesome service that quickly became an indispensable part of my toolbox.
 
 First things first... We need to find out the IP of our cluster or external LB if available. The commands that follow will differ from one cluster type to another.
 
@@ -822,7 +822,7 @@ Next we'll output the retrieved IP to confirm that the commands worked, and gene
 ```bash
 echo $LB_IP
 
-HOST="jenkins.$LB_IP.xip.io"
+HOST="jenkins.$LB_IP.nip.io"
 
 echo $HOST
 ```
@@ -830,14 +830,14 @@ echo $HOST
 The output of the second `echo` command should be similar to the one that follows.
 
 ```
-jenkins.192.168.99.100.xip.io
+jenkins.192.168.99.100.nip.io
 ```
 
-*xip.io* will resolve that address to `192.168.99.100`, and we'll have a unique domain for our Jenkins installation. That way we can stop using different paths to distinguish applications in Ingress config. Domains work much better. Many Helm charts do not even have the option to configure unique request paths and assume that Ingress will be configured with a unique domain.
+*nip.io* will resolve that address to `192.168.99.100`, and we'll have a unique domain for our Jenkins installation. That way we can stop using different paths to distinguish applications in Ingress config. Domains work much better. Many Helm charts do not even have the option to configure unique request paths and assume that Ingress will be configured with a unique domain.
 
 W> ## A note to minishift users
 W>
-W> I did not forget about you. You already have a valid domain in the `ADDR` variable. It is based on *nip.io* which serves the same purpose as *xip.io*. All we have to do is assign it to the `HOST` variable. Please execute the command that follows.
+W> I did not forget about you. You already have a valid domain in the `ADDR` variable. It is based on *nip.io* which serves the same purpose as *nip.io*. All we have to do is assign it to the `HOST` variable. Please execute the command that follows.
 W> 
 W> `HOST=$ADDR && echo $HOST`.
 W> 
@@ -983,7 +983,7 @@ The output is as follows.
 ```yaml
 Master:
   Cpu: 500m
-  HostName: jenkins.18.220.212.56.xip.io
+  HostName: jenkins.18.220.212.56.nip.io
   ImageTag: 2.116-alpine
   Ingress:
     Annotations:
@@ -1618,7 +1618,7 @@ You'll find two commands below. Please execute only one of those depending on yo
 If you are **NOT** using **minishift**, please execute the command that follows.
 
 ```bash
-HOST="go-demo-3.$LB_IP.xip.io"
+HOST="go-demo-3.$LB_IP.nip.io"
 ```
 
 If you are using minishift, you can retrieve the host with the command that follows.
@@ -1636,7 +1636,7 @@ echo $HOST
 In my case, the output is as follows.
 
 ```
-jenkins.192.168.99.100.xip.io
+jenkins.192.168.99.100.nip.io
 ```
 
 Now we are finally ready to install the Chart. However, we won't use `helm install` as before. We'll use `upgrade` instead.
@@ -1675,7 +1675,7 @@ NOTES:
   kubectl -n go-demo-3 rollout status deployment go-demo-3
 
 2. Test the application by running these commands:
-  curl http://go-demo-3.18.222.53.124.xip.io/demo/hello
+  curl http://go-demo-3.18.222.53.124.nip.io/demo/hello
 ```
 
 W> ## A note to minishift users
