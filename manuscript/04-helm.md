@@ -11,7 +11,7 @@
 - [-] Diagrams
 - [X] Gist
 - [X] Review the title
-- [ ] Proofread
+- [X] Proofread
 - [ ] Add to slides
 - [ ] Publish on TechnologyConversations.com
 - [ ] Add to Book.txt
@@ -23,21 +23,21 @@ T> Using YAML files to install or upgrade applications in a Kubernetes cluster w
 
 We faced quite a few challenges thus far. The good news is that we managed to solve most of them. The bad news is that, in some cases, our solutions felt sub-optimum (politically correct way to say *horrible*).
 
-We spent a bit of time trying to define Jenkins resources while we were in the [Deploying Stateful Applications At Scale](#sts) chapter. That was a good exercise that can be characterized as a learning experience, but there's still some work in front of us to make it a truly useful definition. The major issue with our Jenkins definition is that it is still not automated. We can spin up a master, but we still have to go through the setup wizard manually. Once we're done with the setup, we'd need to install some plugins, and we'd need to change its configuration. Before we go down that road, we might want to explore whether others already did that work for us. If we'd look for, let's say, a Java library that would help us solve a particular problem with our application, we'd probably look for a Maven repository. Maybe there is something similar for Kubernetes applications. Maybe there is a community-maintained repository with installation solutions for commonly used tools. We'll make it our mission to find such a place.
+We spent a bit of time trying to define Jenkins resources while we were in the [Deploying Stateful Applications At Scale](#sts) chapter. That was a good exercise that can be characterized as a learning experience, but there's still some work in front of us to make it a truly useful definition. The primary issue with our Jenkins definition is that it is still not automated. We can spin up a master, but we still have to go through the setup wizard manually. Once we're done with the setup, we'd need to install some plugins, and we'd need to change its configuration. Before we go down that road, we might want to explore whether others already did that work for us. If we'd look for, let's say, a Java library that would help us solve a particular problem with our application, we'd probably look for a Maven repository. Maybe there is something similar for Kubernetes applications. Perhaps there is a community-maintained repository with installation solutions for commonly used tools. We'll make it our mission to find such a place.
 
-Another problem we faced was customization of our YAML files. As a minimum, we'll need to specify different image tag every time we deploy a release. In the [Defining Continuous Deployment](#manual-cd) chapter, we had to use `sed` to modify definitions before sending them through `kubectl` to Kube API. While that worked, I'm sure that you'll agree that commands like `sed -e "s@:latest@:1.7@g"` are not very intuitive. They look and feel awkward. To make things more complicated, image tags are rarely the only things that change from one deployment to another. We might need to change domains or paths of our Ingress controllers to accomodate the needs of having our applications deployed to different environments (e.g., staging and production). The same can be said for the number of replicas and many other things that define what we want to install. Using concatenated `sed` command can quickly become complicated, and it is not very user-friendly. Sure, we could modify YAML every time we, for example, make a new release. We could also create different definitions for each environment we're planning to use. But, we won't do that. That would only result in duplication and maintenance nightmare. We already have two YAML files for the `go-demo-3` application (one for testing and the other for production). If we continue down that route, we might end up with ten, twenty, or even more variations of the same definitions. We might even be forced to change it with every commit of our code so that the tag is always up to date. That road is not the one we'll take. It leads towards a cliff. What we need is a templating mechanism that will allow us to modify definitions before sending them to Kube API.
+Another problem we faced was customization of our YAML files. As a minimum, we'll need to specify different image tag every time we deploy a release. In the [Defining Continuous Deployment](#manual-cd) chapter, we had to use `sed` to modify definitions before sending them through `kubectl` to Kube API. While that worked, I'm sure that you'll agree that commands like `sed -e "s@:latest@:1.7@g"` are not very intuitive. They look and feel awkward. To make things more complicated, image tags are rarely the only things that change from one deployment to another. We might need to change domains or paths of our Ingress controllers to accommodate the needs of having our applications deployed to different environments (e.g., staging and production). The same can be said for the number of replicas and many other things that define what we want to install. Using concatenated `sed` command can quickly become complicated, and it is not very user-friendly. Sure, we could modify YAML every time we, for example, make a new release. We could also create different definitions for each environment we're planning to use. But, we won't do that. That would only result in duplication and maintenance nightmare. We already have two YAML files for the `go-demo-3` application (one for testing and the other for production). If we continue down that route, we might end up with ten, twenty, or even more variations of the same definitions. We might also be forced to change it with every commit of our code so that the tag is always up to date. That road is not the one we'll take. It leads towards a cliff. What we need is a templating mechanism that will allow us to modify definitions before sending them to Kube API.
 
-The last issue we'll try to solve in this chapter is the need to describe our applications and the possible changes others might apply to them before installing them inside a cluster. Truth be told, that is already possible. Anyone can read our YAML files to deduce what an application consist of. Anyone could take one of our YAML files and modify it to suit their own needs. In some cases that might be challenging even for someone experienced with Kubernetes. However, our main concern are those who are not Kubernetes ninjas. We cannot expect everyone in our organization to spend a year learning Kubernetes only so that they can deploy applications. On the other hand, we do want to provide that ability to everyone. We want to empower everyone. When faced with the need for everyone to use Kubernetes and the fact that not everyone will be a Kubernetes expert, it becomes obvious that we need a more descriptive, easier to customize, and more user friendly way to discover and deploy applications.
+The last issue we'll try to solve in this chapter is the need to describe our applications and the possible changes others might apply to them before installing them inside a cluster. Truth be told, that is already possible. Anyone can read our YAML files to deduce what constitutes the application. Anyone could take one of our YAML files and modify it to suit their own needs. In some cases that might be challenging even for someone experienced with Kubernetes. However, our primary concern is related to those who are not Kubernetes ninjas. We cannot expect everyone in our organization to spend a year learning Kubernetes only so that they can deploy applications. On the other hand, we do want to provide that ability to everyone. We want to empower everyone. When faced with the need for everyone to use Kubernetes and the fact that not everyone will be a Kubernetes expert, it becomes apparent that we need a more descriptive, easier to customize, and more user-friendly way to discover and deploy applications.
 
 We'll try to tackle those and a few other issues in this chapter. We'll try to find a place where community contributes with definitions of commonly used applications (e.g., Jenkins). We'll seek for a templating mechanism that will allow us to customize our applications before installing them. Finally, we'll try to find a way to better document our definitions. We'll try to make it so simple that even those who don't know Kubernetes can safely deploy applications to a cluster. What we need is a Kubernetes equivalent of package managers like *apt*, *yum*, *apk*, [Homebrew](https://brew.sh/), or [Chocolatey](https://chocolatey.org/), combined with the ability to document our packages in a way that anyone can use them.
 
-I'll save you from searching for a solution and reveal it right away. We'll explore [Helm](https://helm.sh/) as the missing piece that will make our deployments customizable and user friendly. If we are lucky, it might even turn out to be the solution that will save us from reinventing the wheel with commonly used applications.
+I'll save you from searching for a solution and reveal it right away. We'll explore [Helm](https://helm.sh/) as the missing piece that will make our deployments customizable and user-friendly. If we are lucky, it might even turn out to be the solution that will save us from reinventing the wheel with commonly used applications.
 
 Before we proceed, we'll need a cluster. It's time to get our hands dirty.
 
 ## Creating A Cluster
 
-It's hand-on time again. We'll need to go back to the local copy of the [vfarcic/k8s-specs](https://github.com/vfarcic/k8s-specs) repository and pull the latest version.
+It's hands-on time again. We'll need to go back to the local copy of the [vfarcic/k8s-specs](https://github.com/vfarcic/k8s-specs) repository and pull the latest version.
 
 I> All the commands from this chapter are available in the [04-helm.sh](https://gist.github.com/84adc5ad977f5c1a682bed524b781e0c) Gist.
 
@@ -47,7 +47,7 @@ cd k8s-specs
 git pull
 ```
 
-Just as in the previous chapters, we'll need a cluster if we are to execute hands-on exercises. The rules are still the same. You can continue using the same cluster as before, or you can switch to a different Kubernetes flavor. You can continue using one of the Kubernetes distributions listed below, or be adventurous and try something different. If you go with the latter, please let me know how it went, and I'll test it myself and incorporate it into the list.
+Just as in the previous chapters, we'll need a cluster if we are to execute hands-on exercises. The rules are still the same. You can continue using the same cluster as before, or you can switch to a different Kubernetes flavor. You can keep using one of the Kubernetes distributions listed below, or be adventurous and try something different. If you go with the latter, please let me know how it went, and I'll test it myself and incorporate it into the list.
 
 Cluster requirements in this chapter are the same as in the previous. We'll need at least 3 CPUs and 3 GB RAM if running a single-node cluster, and slightly more if those resources are spread across multiple nodes.
 
@@ -63,7 +63,7 @@ With a cluster up-and-running, we can proceed with an introduction to Helm.
 
 ## What Is Helm?
 
-I will not explain about Helm. I won't even give you the elevator pitch. I'll only say that it is a project with a big and healthy community, that it is a member of [Cloud Native Computing Foundation (CNCF)](https://www.cncf.io/), and that it has backing of big guys like Google, Microsoft, and a few others. For everything else, you'll need to follow the exercises. They'll lead us towards an understanding of the project, and they will hopefully helps us in our goal to refine our continuous deployment pipeline.
+I will not explain about Helm. I won't even give you the elevator pitch. I'll only say that it is a project with a big and healthy community, that it is a member of [Cloud Native Computing Foundation (CNCF)](https://www.cncf.io/), and that it has the backing of big guys like Google, Microsoft, and a few others. For everything else, you'll need to follow the exercises. They'll lead us towards an understanding of the project, and they will hopefully help us in our goal to refine our continuous deployment pipeline.
 
 The first step is to install it.
 
@@ -71,7 +71,7 @@ The first step is to install it.
 
 Helm is a client/server type of application. We'll start with a client. Once we have it running, we'll use it to install the server (Tiller) inside our newly created cluster.
 
-The Helm client is a command line utility responsible for local development of Charts, managing repositories, and interaction with the Tiller. Tiller server, on the other hand, runs inside a Kubernetes cluster and interacts with Kube API. It listens for incoming requests from the Helm client, combines Charts and configuration values to build a release, installs Charts and tracks subsequent releases, and is in charge of upgrading and uninstalling Charts through interaction with Kube API.
+The Helm client is a command line utility responsible for the local development of Charts, managing repositories, and interaction with the Tiller. Tiller server, on the other hand, runs inside a Kubernetes cluster and interacts with Kube API. It listens for incoming requests from the Helm client, combines Charts and configuration values to build a release, installs Charts and tracks subsequent releases, and is in charge of upgrading and uninstalling Charts through interaction with Kube API.
 
 I> Do not get too attached to Tiller. Helm v3 will remove the server component and operate fully from the client side. At the time of this writing (June 2018), it is still unknown when will v3 reach GA.
 
@@ -91,7 +91,7 @@ choco install kubernetes-helm
 
 Finally, if you are neither Windows nor MacOS user, you must be running **Linux**. Please go to the [releases](https://github.com/kubernetes/helm/releases) page, download `tar.gz` file, unpack it, and move the binary to `/usr/local/bin/`.
 
-If you already have Helm installed, please make sure that it is newer than 2.8.2. That version, and probably a few versions before it, was failing on Docker For Mac/Windows.
+If you already have Helm installed, please make sure that it is newer than 2.8.2. That version, and probably a few versions before, was failing on Docker For Mac/Windows.
 
 Once you're done installing (or upgrading) Helm, please execute `helm help` to verify that it is working.
 
@@ -130,9 +130,9 @@ subjects:
     namespace: kube-system
 ```
 
-Since by now you are an expert in ServiceAccounts, there should be no need for a detailed explanation of the definition. We're creating a ServiceAccount called `tiller` in the `kube-system` Namespace and we are assigning it ClusterRole `cluster-admin`. In other words, the account will be able to execute any operation anywhere inside the cluster.
+Since by now you are an expert in ServiceAccounts, there should be no need for a detailed explanation of the definition. We're creating a ServiceAccount called `tiller` in the `kube-system` Namespace, and we are assigning it ClusterRole `cluster-admin`. In other words, the account will be able to execute any operation anywhere inside the cluster.
 
-You might be thinking that having such wide permissions might seem dangerous, and you would be right. Only a handful of people should have the user permissions to operate inside `kube-system` Namespace. On the other hand, we can expect much wider circle of people being able to use Helm. We'll solve that problem later in one of the next chapters. For now, we'll focus only on how Helm works, and get back to the permissions issue later.
+You might be thinking that having such broad permissions might seem dangerous, and you would be right. Only a handful of people should have the user permissions to operate inside `kube-system` Namespace. On the other hand, we can expect much wider circle of people being able to use Helm. We'll solve that problem later in one of the next chapters. For now, we'll focus only on how Helm works, and get back to the permissions issue later.
 
 Let's create the ServiceAccount.
 
@@ -153,11 +153,11 @@ kubectl -n kube-system \
     rollout status deploy tiller-deploy
 ```
 
-We used `helm init` to create the server component called `tiller`. Since our cluster uses RBAC and all the processes require authentication and permissions to communicate with Kube API, we added `--service-account tiller` argument. It'll attach the ServiceAccount the the `tiller` Pod.
+We used `helm init` to create the server component called `tiller`. Since our cluster uses RBAC and all the processes require authentication and permissions to communicate with Kube API, we added `--service-account tiller` argument. It'll attach the ServiceAccount to the `tiller` Pod.
 
 The latter command waits until the Deployment is rolled out.
 
-We could have specified `--tiller-namespace` argument to deploy it to a specific Namespace. That ability will come in handy in one of the next chapters. For now, we omitted that argument so Tiller was installed in the `kube-system` Namespace. To be on the safe side, we'll list the Pods to confirm that it is indeed running.
+We could have specified `--tiller-namespace` argument to deploy it to a specific Namespace. That ability will come in handy in one of the next chapters. For now, we omitted that argument, so Tiller was installed in the `kube-system` Namespace. To be on the safe side, we'll list the Pods to confirm that it is indeed running.
 
 ```bash
 kubectl -n kube-system get pods
@@ -216,7 +216,7 @@ We can see that the repository contains `stable/jenkins` chart based on Jenkins 
 
 W> ## A note to minishift users
 W>
-W> Helm will try to install Jenkins Chart with the process in a container running as user 0. By default, that is not allowed in OpenShift. We'll skip discussing the best approach to correct the permissions in OpenShift. I'll assume you already know how to set the permissions on per-Pod basis. Instead, we'll do the simplest fix. Please execute the command that follows to allow creation of restricted Pods to run as any user.
+W> Helm will try to install Jenkins Chart with the process in a container running as user 0. By default, that is not allowed in OpenShift. We'll skip discussing the best approach to correct the permissions in OpenShift. I'll assume you already know how to set the permissions on the per-Pod basis. Instead, we'll do the simplest fix. Please execute the command that follows to allow the creation of restricted Pods to run as any user.
 W>
 W> `oc patch scc restricted -p '{"runAsUser":{"type": "RunAsAny"}}'`
 
@@ -285,15 +285,15 @@ https://cloud.google.com/solutions/jenkins-on-container-engine
 
 At the top of the output, we can see some general information like the name we gave to the installed Chart (`jenkins`), when it was deployed, what the Namespace is, and the status.
 
-Below the general information is the list of the installed resources. We can see that the Chart installed two services; one for the master and the other for the agents. Below is the Deployment and the Pod. It also created a Secret that holds the administrative username and password. We'll use it soon. Further on, we can see that it created two ConfigMaps. One (`jenkins`) holds all the configurations Jenkins might need. Later on, when we customize it, the data in this ConfigMap will reflect those changes. The second ConfigMap (`jenkins-tests`) is, at the moment, used only to provide a command used for executing liveness and readiness probes. Finally, we can see that a PersistentVolumeClass was created as well, thus making our Jenkins fault tolerant without loosing its state.
+Below the general information is the list of the installed resources. We can see that the Chart installed two services; one for the master and the other for the agents. Below is the Deployment and the Pod. It also created a Secret that holds the administrative username and password. We'll use it soon. Further on, we can see that it created two ConfigMaps. One (`jenkins`) holds all the configurations Jenkins might need. Later on, when we customize it, the data in this ConfigMap will reflect those changes. The second ConfigMap (`jenkins-tests`) is, at the moment, used only to provide a command used for executing liveness and readiness probes. Finally, we can see that a PersistentVolumeClass was created as well, thus making our Jenkins fault tolerant without losing its state.
 
-Don't worry if you feel overwhelmed. We'll do a couple of iterations of the Jenkins installation process and that will give us plenty of opportunity to explore this Chart in more details. If you are impatient, please `describe` any of those resources to get more insight into what's installed.
+Don't worry if you feel overwhelmed. We'll do a couple of iterations of the Jenkins installation process, and that will give us plenty of opportunities to explore this Chart in more details. If you are impatient, please `describe` any of those resources to get more insight into what's installed.
 
-At the bottom of the output we can see the post-installation instructions provided by the authors of the Chart. In our case, those instructions tell us how to retrieve the administrative password from the Secret, how to open Jenkins in browser, and how to login.
+At the bottom of the output, we can see the post-installation instructions provided by the authors of the Chart. In our case, those instructions tell us how to retrieve the administrative password from the Secret, how to open Jenkins in a browser, and how to log in.
 
 W> ## A note to minikube users
 W>
-W> If you go back to the output, you'll notice that the type of the `jenkins` Service is `LoadBalancer`. Since we do not have a load balancer in front of our minikube cluster, that type will not work and we should change it to `NodePort`. Please execute the command that follows.
+W> If you go back to the output, you'll notice that the type of the `jenkins` Service is `LoadBalancer`. Since we do not have a load balancer in front of our minikube cluster, that type will not work, and we should change it to `NodePort`. Please execute the command that follows.
 W>
 W> `helm upgrade jenkins stable/jenkins --set Master.ServiceType=NodePort`
 W>
@@ -360,7 +360,7 @@ open "http://$ADDR"
 
 W> Remember that if you are a **Windows user**, you'll have to replace `open` with `echo`, copy the output, and paste it into a new tab of your browser of choice.
 
-You should be presented with the login screen. There is no setup wizard indicating that this Helm chart already configured Jenkins with some sensible default values. That means that, among other things, the Chart created a user with a password during the automated setup. We need to discover it.
+You should be presented with the login screen. There is no setup wizard indicating that this Helm chart already configured Jenkins with some sensible default values. That means that, among other things, the Chart created a user with a password during the automatic setup. We need to discover it.
 
 Fortunately, we already saw from the `helm install` output that we should retrieve the password by retrieving the `jenkins-admin-password` entry from the `jenkins` secret. If you need to refresh your memory, please scroll back to the output, or ignore it all together and execute the command that follows.
 
@@ -377,7 +377,7 @@ The output should be a random set of characters similar to the one that follows.
 shP7Fcsb9g
 ```
 
-Please copy the output and return to Jenkins` login screen in your browser. Type *admin* into the *User* field, paste the copied output into the *Password* field, and click the *log in* button.
+Please copy the output and return to Jenkins` login screen in your browser. Type *admin* into the *User* field, paste the copied output into the *Password* field and click the *log in* button.
 
 Mission accomplished. Jenkins is up-and-running without us spending any time writing YAML file with all the resources. It was set up automatically with the administrative user and probably quite a few other goodies. We'll get to them later. For now, we'll "play" with a few other `helm` commands that might come in handy.
 
@@ -389,11 +389,11 @@ helm inspect stable/jenkins
 
 The output of the `inspect` command is too big to be presented in a book. It contains all the information you might need before installing an application (in this case Jenkins).
 
-If you prefer to go through the available Charts visually, you might want to visit [Kubeapps](https://kubeapps.com/) project hosted by [bitnami](https://bitnami.com/). Click on the *Explore Apps* button and you'll be sent to the hub with the list of all the official Charts. If you search for Jenkins, you'll end up on the [page with the Chart's details](https://hub.kubeapps.com/charts/stable/jenkins). You'll notice that the info in that page is the same as the output of the `inspect` command.
+If you prefer to go through the available Charts visually, you might want to visit [Kubeapps](https://kubeapps.com/) project hosted by [bitnami](https://bitnami.com/). Click on the *Explore Apps* button, and you'll be sent to the hub with the list of all the official Charts. If you search for Jenkins, you'll end up on the [page with the Chart's details](https://hub.kubeapps.com/charts/stable/jenkins). You'll notice that the info in that page is the same as the output of the `inspect` command.
 
-We won't go back to [Kubeapps](https://kubeapps.com/) since I prefer command line over UIs. A strong grip on the command line helps a lot when it comes to automation, which happens to be the goal of this book.
+We won't go back to [Kubeapps](https://kubeapps.com/) since I prefer command line over UIs. A firm grip on the command line helps a lot when it comes to automation, which happens to be the goal of this book.
 
-With time, the number of the Charts running in your cluster with increase and you might be in need to list them. You can do that with the `ls` command.
+With time, the number of the Charts running in your cluster will increase, and you might be in need to list them. You can do that with the `ls` command.
 
 ```bash
 helm ls
@@ -406,7 +406,7 @@ NAME    REVISION UPDATED     STATUS   CHART          NAMESPACE
 jenkins 1        Thu May ... DEPLOYED jenkins-0.16.1 jenkins
 ```
 
-There is not much to look at right now since we have only one Chart. Just remember that the command exist. It'll come in handy later on.
+There is not much to look at right now since we have only one Chart. Just remember that the command exists. It'll come in handy later on.
 
 If you need to see the details behind one of the installed Charts, please use the `status` command.
 
@@ -414,9 +414,9 @@ If you need to see the details behind one of the installed Charts, please use th
 helm status jenkins
 ```
 
-The output should be very similar to the one you saw when we installed the Chart. The only difference is that, this time, all the Pods are running.
+The output should be very similar to the one you saw when we installed the Chart. The only difference is that this time all the Pods are running.
 
-Tiller obviously stores the information about the installed Charts somewhere. Unlike most other applications that tend to store their state on disk, or replicate data across multiple instances, tiller uses Kubernetes ConfgMaps to preserve its state.
+Tiller obviously stores the information about the installed Charts somewhere. Unlike most other applications that tend to save their state on disk, or replicate data across multiple instances, tiller uses Kubernetes ConfgMaps to preserve its state.
 
 Let's take a look at the ConfigMaps in the `kube-system` Namespace where tiller is running.
 
@@ -433,7 +433,7 @@ jenkins.v1 1    25m
 ...
 ```
 
-We can see that there is a config named `jenkins.v1`. We did not explore revisions just yet. For now, just assume that each new installation of a Chart is version 1.
+We can see that there is a config named `jenkins.v1`. We did not explore revisions just yet. For now, only assume that each new installation of a Chart is version 1.
 
 Let's take a look at the contents of the ConfigMap.
 
@@ -464,7 +464,7 @@ Events:  <none>
 
 I replaced the content of the release Data with `[ENCRYPTED RELEASE INFO]` since it is too big to be presented in the book. The release contains all the info tiller used to create the first `jenkins` release. It is encrypted as a security precaution.
 
-We're finished exploring our Jenkins installation so our next step is to remove it.
+We're finished exploring our Jenkins installation, so our next step is to remove it.
 
 ```bash
 helm delete jenkins
@@ -503,7 +503,7 @@ STATUS: DELETED
 ...
 ```
 
-If you expected an empty output or an error stating that `jenkins` does not exist, you were wrong. The Chart is still in the system, only this time it's status is `DELETED`. You'll notice that all the resources are gone though.
+If you expected an empty output or an error stating that `jenkins` does not exist, you were wrong. The Chart is still in the system, only this time its status is `DELETED`. You'll notice that all the resources are gone though.
 
 When we execute `helm delete [THE_NAME_OF_A_CHART]`, we are only removing the Kubernetes resources. The Chart is still in the system. We could, for example, revert the `delete` action and return to the previous state with Jenkins up-and-running again.
 
@@ -527,7 +527,7 @@ The output is as follows.
 Error: getting deployed release "jenkins": release: "jenkins" not found
 ```
 
-This time, everything was removed and `helm` cannot find the `jenkins` Chart any more.
+This time, everything was removed, and `helm` cannot find the `jenkins` Chart anymore.
 
 ## Customizing Helm Installations
 
@@ -560,7 +560,7 @@ We can see that within the `Master` section there is a variable `ImageTag`. The 
 helm inspect stable/jenkins
 ```
 
-I encourage you to read the whole output as some later moment. For now, we care only about the `ImageTag`.
+I encourage you to read the whole output at some later moment. For now, we care only about the `ImageTag`.
 
 The output, limited to the relevant parts, is as follows.
 
@@ -605,7 +605,7 @@ kubectl -n jenkins \
     rollout status deployment jenkins
 ```
 
-Now that the Deployment rolled out, we are almost ready to test whether the change of the variable had any effect. First we need to get the Jenkins address. We'll retrieve it in the same way as before, so there's no need to lengthy explanation.
+Now that the Deployment rolled out, we are almost ready to test whether the change of the variable had any effect. First, we need to get the Jenkins address. We'll retrieve it in the same way as before, so there's no need to lengthy explanation.
 
 ```bash
 ADDR=$(kubectl -n jenkins \
@@ -643,7 +643,7 @@ Now we can open Jenkins UI.
 open "http://$ADDR"
 ```
 
-This time there is no need even to login. All we need to do is to check whether changing the tag worked. Please observe the version in the bottom-right corner of the screen. If should be *Jenkins ver. 2.112*.
+This time there is no need even to log in. All we need to do is to check whether changing the tag worked. Please observe the version in the bottom-right corner of the screen. If should be *Jenkins ver. 2.112*.
 
 Let's imagine that some time passed and we decided to upgrade our Jenkins from *2.112* to *2.116*. We go through the documentation and discover that there is the `upgrade` command we can leverage.
 
@@ -653,7 +653,7 @@ helm upgrade jenkins stable/jenkins \
     --reuse-values
 ```
 
-This time we did not specify the Namespace but we did set the `--reuse-values` argument. With it, the upgrade will maintain all the values used the last time we installed or upgraded the Chart. The result is an upgrade of the Kubernetes resources so that they comply with our desire to change the tag, and leave everything else intact.
+This time we did not specify the Namespace, but we did set the `--reuse-values` argument. With it, the upgrade will maintain all the values used the last time we installed or upgraded the Chart. The result is an upgrade of the Kubernetes resources so that they comply with our desire to change the tag, and leave everything else intact.
 
 The output of the `upgrade` command, limited to the first few lines, is as follows.
 
@@ -707,7 +707,7 @@ Please note the version in the bottom-right corner of the screen. It should say 
 
 ## Rolling Back Helm Revisions
 
-No matter how we deploy our applications and no matter how much we trust our validations, the truth is that sooner or later we'll have to roll back. That is especially true with third-party applications. While we could roll forward faulty applications we developed, the same is often not an option with those that are not in our control. If there is a problem and we cannot fix it fast, the only alternative it to roll back.
+No matter how we deploy our applications and no matter how much we trust our validations, the truth is that sooner or later we'll have to roll back. That is especially true with third-party applications. While we could roll forward faulty applications we developed, the same is often not an option with those that are not in our control. If there is a problem and we cannot fix it fast, the only alternative is to roll back.
 
 Fortunately, Helm provides a mechanism to roll back. Before we try it out, let's take a look at the list of the Charts we installed so far.
 
@@ -722,15 +722,15 @@ NAME    REVISION UPDATED     STATUS   CHART          NAMESPACE
 jenkins 2        Thu May ... DEPLOYED jenkins-0.16.1 jenkins  
 ```
 
-As expected, we have only one Chart running in our cluster. The important piece of information is that it is the second revision. First we installed the Chart with Jenkins version 2.112, and then we upgraded it to 2.116.
+As expected, we have only one Chart running in our cluster. The critical piece of information is that it is the second revision. First, we installed the Chart with Jenkins version 2.112, and then we upgraded it to 2.116.
 
 W> ## A note to minikube users
 W>
 W> You'll see `3` revisions in your output. We executed `helm upgrade` after the initial install to change the type of the `jenkins` Service to `NodePort`.
 
-We can roll back to the the previous version (`2.112`) by executing `helm rollback jenkins 1`. That would roll back from the revision `2` to whatever was defined as the revision `1`. However, in most cases that is unpractical. Most of our rollbacks are likely to be executed through our CD or CDP processes. In those cases, it might be too complicated for us to find out what was the previous release number.
+We can roll back to the previous version (`2.112`) by executing `helm rollback jenkins 1`. That would roll back from the revision `2` to whatever was defined as the revision `1`. However, in most cases that is unpractical. Most of our rollbacks are likely to be executed through our CD or CDP processes. In those cases, it might be too complicated for us to find out what was the previous release number.
 
-Luckily, there is an undocumented feature that allows us to roll back to the previous version without explicitly setting up the revision number. By the time you read this, the feature might become documented. I was about to start working on it and submit a pull request. Luckily, while going through the code I saw that it's already there.
+Luckily, there is an undocumented feature that allows us to roll back to the previous version without explicitly setting up the revision number. By the time you read this, the feature might become documented. I was about to start working on it and submit a pull request. Luckily, while going through the code, I saw that it's already there.
 
 Please execute the command that follows.
 
@@ -740,7 +740,7 @@ helm rollback jenkins 0
 
 By specifying `0` as the revision number, Helm will roll back to the previous version. It's as easy as that.
 
-We got the visual confirmation in form of the "`Rollback was a success! Happy Helming!`" message.
+We got the visual confirmation in the form of the "`Rollback was a success! Happy Helming!`" message.
 
 Let's take a look at the current situation.
 
@@ -776,11 +776,11 @@ helm delete jenkins --purge
 
 ## Using YAML Values To Customize Helm Installations
 
-We managed to customize Jenkins by setting `ImageTag`. What if we'd like to set CPU and memory. We should also add Ingress and that would require a few annotations. If we add Ingress, we might want to change the Service type to ClusterIP and set HostName to our domain. We should also make sure that RBAC is used. Finally, the plugins that come with the Chart are probably not all the plugins we need.
+We managed to customize Jenkins by setting `ImageTag`. What if we'd like to set CPU and memory. We should also add Ingress, and that would require a few annotations. If we add Ingress, we might want to change the Service type to ClusterIP and set HostName to our domain. We should also make sure that RBAC is used. Finally, the plugins that come with the Chart are probably not all the plugins we need.
 
 Applying all those changes through `--set` arguments would end up as a very long command and would constitute an undocumented installation. We'll have to change the tactic and switch to `--values`. But before we do all that, we need to generate a domain we'll use with our cluster.
 
-We'll use [xip.io](http://xip.io/) to generate valid domains. The service provides a wildcard DNS for any IP address. It extracts IP from the xip.io subdomain and sends it back in the response. For example, if we generate 192.168.99.100.xip.io, it'll be resolved to 192.168.99.100. We can even add sub-sub domains like something.192.168.99.100.xip.io and it would still be resolved to 192.168.99.100. It's a simple and awesome service that quickly became indispensable part of my toolbox.
+We'll use [xip.io](http://xip.io/) to generate valid domains. The service provides a wildcard DNS for any IP address. It extracts IP from the xip.io subdomain and sends it back in the response. For example, if we generate 192.168.99.100.xip.io, it'll be resolved to 192.168.99.100. We can even add sub-sub domains like something.192.168.99.100.xip.io, and it would still be resolved to 192.168.99.100. It's a simple and awesome service that quickly became an indispensable part of my toolbox.
 
 First things first... We need to find out the IP of our cluster or external LB if available. The commands that follow will differ from one cluster type to another.
 
@@ -803,13 +803,13 @@ If your cluster is running in **Docker For Mac/Windows**, the IP is `127.0.0.1` 
 LB_IP="127.0.0.1"
 ```
 
-If your cluster is running in **minikube**, the IP is can be retrieved using `minikube ip` command. Please execute the command that follows.
+If your cluster is running in **minikube**, the IP can be retrieved using `minikube ip` command. Please execute the command that follows.
 
 ```bash
 LB_IP="$(minikube ip)"
 ```
 
-If your cluster is running in **GKE**, the IP is can be retrieved from the Ingress Service. Please execute the command that follows.
+If your cluster is running in **GKE**, the IP can be retrieved from the Ingress Service. Please execute the command that follows.
 
 ```bash
 LB_IP=$(kubectl -n ingress-nginx \
@@ -833,7 +833,7 @@ The output of the second `echo` command should be similar to the one that follow
 jenkins.192.168.99.100.xip.io
 ```
 
-*xip.io* will resolve that address to `192.168.99.100` and we'll have a unique domain for our Jenkins installation. That way we can stop using different paths to distinguish applications in Ingress config. Domains work much better. Many Helm charts do not even have the option to configure unique request paths and assume that Ingress will be configured through a unique domain.
+*xip.io* will resolve that address to `192.168.99.100`, and we'll have a unique domain for our Jenkins installation. That way we can stop using different paths to distinguish applications in Ingress config. Domains work much better. Many Helm charts do not even have the option to configure unique request paths and assume that Ingress will be configured with a unique domain.
 
 W> ## A note to minishift users
 W>
@@ -887,7 +887,7 @@ rbac:
 
 Everything we need to accomplish our new requirements is available through the values. Some of them are already filled with defaults, while others are commented. When we look at all those values, it becomes clear that it would be unpractical to try to re-define them all through `--set` arguments. We'll use `--values` instead. It will allow us to specify the values in a file.
 
-I already prepared a YAML file with the values that will fullfil our requirements, so let's take a quick look at them.
+I already prepared a YAML file with the values that will fulfill our requirements, so let's take a quick look at them.
 
 ```bash
 cat helm/jenkins-values.yml
@@ -935,17 +935,17 @@ We defined that the `ImageTag` should be fixed to `2.116-alpine`.
 
 We specified that our Jenkins master will need half a CPU and 500 MB RAM. The default values of 0.2 CPU and 256 MB RAM are probably not enough. What we set is also low, but since we're not going to run any serious load (at least not yet), what we re-defined should be enough.
 
-The service was changed to `ClusterIP` to better accomodate Ingress resource we're defining further down.
+The service was changed to `ClusterIP` to better accommodate Ingress resource we're defining further down.
 
 If you are not using AWS, you can ignore `ServiceAnnotations`. They're telling ELB to use HTTP protocol.
 
 Further down, we are defining the plugins we'll use throughout the book. Their usefulness will become evident in the next chapters.
 
-The values in the `Ingress` section are defining the annotations that tell Ingress not to redirect HTTP requests to HTTPS (we don't have SSL certificates), as well as a few other less important options. We set both the old style (`ingress.kubernetes.io`) and the new style (`nginx.ingress.kubernetes.io`) of defining NGINX Ingress. That way it'll work no matter which Ingress version you're using. The `HostName` is set to a value that obviously does not exist. I could not know in advance what will be your hostname, so we'll overwrite it later on.
+The values in the `Ingress` section are defining the annotations that tell Ingress not to redirect HTTP requests to HTTPS (we don't have SSL certificates), as well as a few other less important options. We set both the old style (`ingress.kubernetes.io`) and the new style (`nginx.ingress.kubernetes.io`) of defining NGINX Ingress. That way it'll work no matter which Ingress version you're using. The `HostName` is set to a value that apparently does not exist. I could not know in advance what will be your hostname, so we'll overwrite it later on.
 
 Finally, we set `rbac.install` to `true` so that the Chart knows that it should set the proper permissions.
 
-Having all those variables defined at once might be a bit overwhelming. You might want to go through the [Jenkins Chart documentation](https://hub.kubeapps.com/charts/stable/jenkins) for more info. In some cases documentation alone is not enough and I often end up going through the files that form the chart. You'll get a grip on them with time. For now, the important thing to observe is that we can re-define any number of variables through a YAML file.
+Having all those variables defined at once might be a bit overwhelming. You might want to go through the [Jenkins Chart documentation](https://hub.kubeapps.com/charts/stable/jenkins) for more info. In some cases, documentation alone is not enough, and I often end up going through the files that form the chart. You'll get a grip on them with time. For now, the important thing to observe is that we can re-define any number of variables through a YAML file.
 
 Let's install the Chart with those variables.
 
@@ -961,7 +961,7 @@ We used the `--values` argument to pass the contents of the `helm/jenkins-values
 
 W> ## A note to minishift users
 W>
-W> The values define Ingress which does not exist in your cluster. If we'd create a set of values specifically for OpenShift, we would not define Ingress. However, since those values are supposed to work in any Kubernetes cluster, we left them intact. Given that Ingress controller does not exist, Ingress resources will have no effect so it's safe to leave those values.
+W> The values define Ingress which does not exist in your cluster. If we'd create a set of values specific to OpenShift, we would not define Ingress. However, since those values are supposed to work in any Kubernetes cluster, we left them intact. Given that Ingress controller does not exist, Ingress resources will have no effect, so it's safe to leave those values.
 
 Next, we'll wait for `jenkins` Deployment to roll out and open its UI in a browser.
 
@@ -1030,13 +1030,13 @@ kubectl delete ns jenkins
 
 Our next goal is to create a Chart for the *go-demo-3* application. We'll use the fork you created in the previous chapter.
 
-First we'll move into the fork's directory.
+First, we'll move into the fork's directory.
 
 ```bash
 cd ../go-demo-3
 ```
 
-To be on the safe side, we'll push the changes you might have made in the previous chapter and than we'll sync your fork with the upstream repository. That way we'll guarantee that you have all the changes I might have made.
+To be on the safe side, we'll push the changes you might have made in the previous chapter and then we'll sync your fork with the upstream repository. That way we'll guarantee that you have all the changes I might have made.
 
 You probably already know how to push your changes and how to sync with the upstream repository. In case you don't, the commands are as follows.
 
@@ -1154,7 +1154,7 @@ NOTES:
   kubectl port-forward $POD_NAME 8080:80
 ```
 
-The sample application is a very simple one with a Service and a Deployment. There's not much to say about it. We used it only to explore the basic commands for creating and managing Charts. We'll delete everything we did and start over with a more serious example.
+The sample application is a straightforward one with a Service and a Deployment. There's not much to say about it. We used it only to explore the basic commands for creating and managing Charts. We'll delete everything we did and start over with a more serious example.
 
 ```bash
 helm delete my-app --purge
@@ -1186,9 +1186,9 @@ templates
 values.yaml
 ```
 
-A chart is organized as a collection of files inside a directory. The directory name is the name of the chart (without versioning information). So, a Chart that describes *go-demo-3* is stored in the directory with the same name.
+A chart is organized as a collection of files inside a directory. The directory name is the name of the Chart (without versioning information). So, a Chart that describes *go-demo-3* is stored in the directory with the same name.
 
-The first file we'll explore is *Chart.yml*. It is a mandatory file with a combination of mandatory and optional fields.
+The first file we'll explore is *Chart.yml*. It is a mandatory file with a combination of compulsory and optional fields.
 
 Let's take a closer look.
 
@@ -1221,9 +1221,9 @@ The `name`, `version`, and `apiVersion` are mandatory fields. All the others are
 
 Even though most of the fields should be self-explanatory, we'll go through each of them just in case.
 
-The `name` is the name of the Chart and the `version` is the version. That's obvious, isn't it? The important thing to note is that versions must follow [SemVer 2](http://semver.org/) standard. The full identification of a Chart package in a repository is always a combination of a name and a version. If we package this Chart, its name would be *go-demo-3-0.0.1.tgz*. The `apiVersion` is the version of the Helm API and, at this moment, the only supported value is `v1`.
+The `name` is the name of the Chart, and the `version` is the version. That's obvious, isn't it? The critical thing to note is that versions must follow [SemVer 2](http://semver.org/) standard. The full identification of a Chart package in a repository is always a combination of a name and a version. If we package this Chart, its name would be *go-demo-3-0.0.1.tgz*. The `apiVersion` is the version of the Helm API and, at this moment, the only supported value is `v1`.
 
-The rest of the fields are mostly informational. You should be able to understand their meaning, so I won't bother you with lengthy explanations.
+The rest of the fields are mostly informational. You should be able to understand their meaning so I won't bother you with lengthy explanations.
 
 The next in line is the LICENSE file.
 
@@ -1257,7 +1257,7 @@ This is just a silly demo.
 
 I was too lazy to write a proper description. You shouldn't be. As a rule of thumb, README.md should contain a description of the application, a list of the pre-requisites and the requirements, a description of the options available through values.yaml, and anything else you might deem important. As the extension suggests, it should be written in Markdown format.
 
-Now we are getting to the important part.
+Now we are getting to the critical part.
 
 The values that can be used to customize the installation are defined in `values.yaml`.
 
@@ -1309,7 +1309,7 @@ dbPersistence:
 
 As you can see, all the things that may vary from one *go-demo-3* installation to another are defined here. We can set how many replicas should be deployed for both the API and the DB. Tags of both can be changed as well. We can disable Ingress and change the host. We can change the type of the Service or disable RBAC. The resources are split into two groups, so that the API and the DB can be controlled separately. Finally, we can change database persistence by specifying the `storageClass`, the `accessMode`, or the `size`.
 
-I should have described those values in more detail in `README.md`, but, as I already admitted, I was too lazy to do that. The alternative explanation of the lack of proper README is that we'll go through the YAML files where those values are used and everything will become much clearer.
+I should have described those values in more detail in `README.md`, but, as I already admitted, I was too lazy to do that. The alternative explanation of the lack of proper README is that we'll go through the YAML files where those values are used, and everything will become much more apparent.
 
 The important thing to note is that the values defined in that file are defaults that are used only if we do not overwrite them during the installation through `--set` or `--values` arguments.
 
@@ -1372,7 +1372,7 @@ The output is as follows.
 
 The content of the NOTES.txt file will be printed after the installation or upgrade. You already saw a similar one in action when we installed Jenkins. The instructions we received how to open it and how to retrieve the password came from the NOTES.txt file stored in Jenkins Chart.
 
-That file is our first direct contact with Helm templating. You'll notice that parts of it are inside `if/else` blocks. If we take a look at the second bullet, we can deduce that one set of instructions will be printed if `ingress` is `enabled`, another if the `type` of the Service is `NodePort`, and yet another if neither of the first two conditions are met.
+That file is our first direct contact with Helm templating. You'll notice that parts of it are inside `if/else` blocks. If we take a look at the second bullet, we can deduce that one set of instructions will be printed if `ingress` is `enabled`, another if the `type` of the Service is `NodePort`, and yet another if neither of the first two conditions is met.
 
 Template snippets are always inside double curly braces (e.g., `{{` and `}}`). Inside them can be (often simple) logic like an `if` statement, as well as predefined and custom made function. An example of a custom made function is `{{ template "helm.fullname" . }}`. It is defined in `_helpers.tpl` file which we'll explore soon.
 
@@ -1380,7 +1380,7 @@ Variables always start with a dot (`.`). Those coming from the `values.yaml` fil
 
 Helm also provides a set of pre-defined variables prefixed with `.Release`, `.Chart`, `.Files`, and `.Capabilities`. As an example, near the top of the NOTES.txt file is `{{ .Release.Namespace }}` snippet that will get converted to the Namespace into which we decided to install our Chart. 
 
-The full list of the pre-defined values is as follows (a copy from the official documentation).
+The full list of the pre-defined values is as follows (a copy of the official documentation).
 
 * `Release.Name`: The name of the release (not the Chart)
 * `Release.Time`: The time the chart release was last updated. This will match the Last Released time on a Release object.
@@ -1395,7 +1395,7 @@ The full list of the pre-defined values is as follows (a copy from the official 
 
 You'll also notice that our `if`, `else if`, `else`, and `end` statements start with a dash (`-`). That's the Go template way of specifying that we want all empty space before the statement (when `-` is on the left) or after the statement (when `-` is on the right) to be removed.
 
-There's much more to Go templating that what we just explored. I'll comment on other use-cases as they come. For now, this should be enough to get you going. You are free to consult [template package documentation](https://golang.org/pkg/text/template/) for more info. For now, the important thing to note is that we have the `NOTES.txt` file that will provide useful post-installation information to those who will use our Chart.
+There's much more to Go templating that what we just explored. I'll comment on other use-cases as they come. For now, this should be enough to get you going. You are free to consult [template package documentation](https://golang.org/pkg/text/template/) for more info. For now, the critical thing to note is that we have the `NOTES.txt` file that will provide useful post-installation information to those who will use our Chart.
 
 I mentioned `_helpers.tpl` as the source of custom functions and variables. Let's take a look at it.
 
@@ -1482,7 +1482,7 @@ spec:
 
 That file defines the Deployment of the *go-demo-3* API. The first thing I did was to copy the definition from the YAML file we used in the previous chapters. Afterwards, I replaced parts of it with functions and variables. The `name`, for example, is now `{{ template "helm.fullname" . }}`, which guarantees that this Deployment will have a unique name. The rest of the file follows the same logic. Some things are using pre-defined values like `{{ .Chart.Name }}` and `{{ .Release.Name }}`, while others are using those from the `values.yaml`. An example of the latter is `{{ .Values.replicaCount }}`.
 
-The last line contains a syntax we haven't seen before. `{{ toYaml .Values.resources | indent 10 }}` will take all the entries from the `resources` field in the `values.yaml`, and convert them to YAML format. Since the final YAML needs to be properly indented, we piped the output to `indent 10`. Since the `resources:` section of `deployment.yaml` is indented by eight spaces, indenting the entries from `resources` in `values.yaml` by ten will put them just two spaces inside it.
+The last line contains a syntax we haven't seen before. `{{ toYaml .Values.resources | indent 10 }}` will take all the entries from the `resources` field in the `values.yaml`, and convert them to YAML format. Since the final YAML needs to be correctly indented, we piped the output to `indent 10`. Since the `resources:` section of `deployment.yaml` is indented by eight spaces, indenting the entries from `resources` in `values.yaml` by ten will put them just two spaces inside it.
 
 Let's take a look at one more template.
 
@@ -1520,13 +1520,13 @@ spec:
 
 That YAML defines the Ingress resource that makes the API Deployment accessible through its Service. Most of the values are the same as in the Deployment. There's only one difference worthwhile commenting.
 
-The whole YAML is enveloped in the `{{- if .Values.ingress.enabled -}}` statement. The resource will be installed only if `ingress.enabled` values is set to `true`. Since that is already the default value in `values.yaml`, we'll have to explicitly disable it if we do not want Ingress.
+The whole YAML is enveloped in the `{{- if .Values.ingress.enabled -}}` statement. The resource will be installed only if `ingress.enabled` value is set to `true`. Since that is already the default value in `values.yaml`, we'll have to explicitly disable it if we do not want Ingress.
 
 Feel free to explore the rest of the templates. They are following the same logic as the two we just described.
 
-There's one potentially important file we did not define. We have not created `requirements.yaml` for *go-demo-3*. We did not need any. We will use it though in one of the next chapters, so I'll save the explanation for later.
+There's one potentially significant file we did not define. We have not created `requirements.yaml` for *go-demo-3*. We did not need any. We will use it though in one of the next chapters, so I'll save the explanation for later.
 
-Now that we went through the files that constitute the *go-demo-3* Chart, we should `lint` it to confirm that the format does not contain any obvious issues.
+Now that we went through the files that constitute the *go-demo-3* Chart, we should `lint` it to confirm that the format does not contain any apparent issues.
 
 ```bash
 helm lint helm/go-demo-3
@@ -1559,7 +1559,7 @@ We will not use the package just yet. For now, I wanted to make sure that you re
 
 ## Upgrading Charts
 
-We are about to install the *go-demo-3* Chart. You should already be familiar with the commands, so you can consider this as an exercise that aims to solidify what you already learned. There will be one difference when compared to the commands we executed earlier. It'll prove to be a simple, but important one for our continuous deployment processes.
+We are about to install the *go-demo-3* Chart. You should already be familiar with the commands, so you can consider this as an exercise that aims to solidify what you already learned. There will be one difference when compared to the commands we executed earlier. It'll prove to be a simple, and yet an important one for our continuous deployment processes.
 
 We'll start by inspecting the values.
 
@@ -1650,7 +1650,7 @@ helm upgrade -i \
     --reuse-values
 ```
 
-The reason we are using `helm upgrade` this time lies in the fact that we are practicing the commands we hope to use inside our CDP processes. Given that we want to use the same process no matter whether it's the first release (install) or those that follow (upgrade). It would be silly to have `if/else` statements that would determine whether it is the first release and thus execute the install, or to go with upgrade. We are going with a much simpler solution. We will always upgrade the Chart. The trick is in the `-i` argument that can be translated to "install unless a release by the same name doesn't already exist".
+The reason we are using `helm upgrade` this time lies in the fact that we are practicing the commands we hope to use inside our CDP processes. Given that we want to use the same process no matter whether it's the first release (install) or those that follow (upgrade). It would be silly to have `if/else` statements that would determine whether it is the first release and thus execute the install, or to go with an upgrade. We are going with a much simpler solution. We will always upgrade the Chart. The trick is in the `-i` argument that can be translated to "install unless a release by the same name doesn't already exist."
 
 The next two arguments are the name of the Chart (`go-demo-3`) and the path to the Chart (`helm/go-demo-3`). By using the path to the directory with the Chart, we are experiencing yet another way to supply the Chart files. In the next chapter will switch to using `tgz` packages.
 
@@ -1658,7 +1658,7 @@ The rest of the arguments are making sure that the correct tag is used (`1.0`), 
 
 If this command is used in the continuous deployment processes, we would need to set the tag explicitly through the `--set` argument to ensure that the correct image is used. The host, on the other hand, is static and unlikely to change often (if ever). We would be better of defining it in `values.yaml`. However, since I could not predict what will be your host, we had to define it as the `--set` argument.
 
-Please note that minishift does not support Ingress (at least not by default). So, it was created but it has no effect. I though that it is a better option than to use different commands for OpenShift than for the rest of the flavors. If minishift is your choice, feel free to add `--set ingress.enable=false` to the previous command.
+Please note that minishift does not support Ingress (at least not by default). So, it was created, but it has no effect. I thought that it is a better option than to use different commands for OpenShift than for the rest of the flavors. If minishift is your choice, feel free to add `--set ingress.enable=false` to the previous command.
 
 The output of the `upgrade` is the same as if we executed `install` (resources are removed for brevity).
 
@@ -1671,7 +1671,7 @@ STATUS: DEPLOYED
 ...
 
 NOTES:
-1. Wait until the applicaiton is rolled out:
+1. Wait until the application is rolled out:
   kubectl -n go-demo-3 rollout status deployment go-demo-3
 
 2. Test the application by running these commands:
@@ -1728,15 +1728,15 @@ helm delete go-demo-3 --purge
 kubectl delete ns go-demo-3
 ```
 
-## Helm vs OpenShift Templates
+## Helm vs. OpenShift Templates
 
-I could give you a lengthy comparison between Helm and OpenShift templates. I won't do that. The reason is simple. Helm is the de-facto standard for installing applications. It's the most widely used, and it's adoption is going through the roof. Among the similar tools, it has the biggest community, it has the most applications available, and it is becoming adopted by more software vendors than any other solution. The exception is RedHat. They created OpenShift templates long before Helm came into being. Helm borrowed many of its concepts, improved them, and added a few additional features. When we add to that the fact that OpenShift templates work only on OpenShift, the decision which one to use is pretty straight forward. Helm wins, unless you chose OpenShift as your Kubernetes flavor. In that case, the decision is harder to make. On the one hand, Routes and a few other OpenShift-specific types of resources cannot be defined (easily) in Helm. On the other hand, it is likely that OpenShift will switch to Helm at some moment. So, you might just as well jump into Helm right away.
+I could give you a lengthy comparison between Helm and OpenShift templates. I won't do that. The reason is simple. Helm is the de-facto standard for installing applications. It's the most widely used, and its adoption is going through the roof. Among the similar tools, it has the biggest community, it has the most applications available, and it is becoming adopted by more software vendors than any other solution. The exception is RedHat. They created OpenShift templates long before Helm came into being. Helm borrowed many of its concepts, improved them, and added a few additional features. When we add to that the fact that OpenShift templates work only on OpenShift, the decision which one to use is pretty straightforward. Helm wins, unless you chose OpenShift as your Kubernetes flavor. In that case, the choice is harder to make. On the one hand, Routes and a few other OpenShift-specific types of resources cannot be defined (easily) in Helm. On the other hand, it is likely that OpenShift will switch to Helm at some moment. So, you might just as well jump into Helm right away.
 
-I must give a big thumbs up to RedHat for paving the way towards some of the Kubernetes resources that are in use today. They created Routes when Ingress did not exist. They developed OpenShift templates before Helm was created. Both Ingress and Helm were heavily influenced by their counter-parts in OpenShift. The are quite a few other similar examples.
+I must give a big thumbs up to RedHat for paving the way towards some of the Kubernetes resources that are in use today. They created Routes when Ingress did not exist. They developed OpenShift templates before Helm was created. Both Ingress and Helm were heavily influenced by their counterparts in OpenShift. There are quite a few other similar examples.
 
-The problem is that RedHat does not want to let go of the things they pioneered. They stick with Routes, even though Ingress become standard. If Routes provide more features than, let's say, nginx Ingress controller, they could still maintain them as OpenShift Ingress (or whatever would be the name). Routes are not the only example. They continue forcing OpenShift templates, even though it's clear that Helm is the de-facto standard. By not switching to the standards that they themselves pioneered, they are making their platform incompatible with others. In the previous chapters we experienced the pain Routes cause when trying to define YAML files that should work on all other Kubernetes flavors. Now we experienced the same problem with Helm.
+The problem is that RedHat does not want to let go of the things they pioneered. They stick with Routes, even though Ingress become standard. If Routes provide more features than, let's say, nginx Ingress controller, they could still maintain them as OpenShift Ingress (or whatever would be the name). Routes are not the only example. They continue forcing OpenShift templates, even though it's clear that Helm is the de-facto standard. By not switching to the standards that they pioneered, they are making their platform incompatible with others. In the previous chapters, we experienced the pain Routes cause when trying to define YAML files that should work on all other Kubernetes flavors. Now we experienced the same problem with Helm.
 
-If you chose OpenShift, it's up to you to decide whether to use Helm or OpenShift templates. Both choices have pros and cons. Personally, one of the things that attracts me the most with Kubernetes is the promise that our applications can run on any hosting solution and on any Kubernetes flavor. RedHat is breaking that promise. It's not that I don't expect different solutions to come up with new things that distinguish them from the competition. I do. OpenShift has quite a few of those. But, it also has features that have equally good or better equivalents that are part of Kubernetes core or widely accepted by the community. Helm is one of those that are better then their counterpart in OpenShift.
+If you chose OpenShift, it's up to you to decide whether to use Helm or OpenShift templates. Both choices have pros and cons. Personally, one of the things that attract me the most with Kubernetes is the promise that our applications can run on any hosting solution and on any Kubernetes flavor. RedHat is breaking that promise. It's not that I don't expect different solutions to come up with new things that distinguish them from the competition. I do. OpenShift has quite a few of those. But, it also has features that have equally good or better equivalents that are part of Kubernetes core or widely accepted by the community. Helm is one of those that are better than their counterpart in OpenShift.
 
 We'll continue using Helm throughout the rest of the book. If you do choose to stick with OpenShift templates, you'll have to do a few modifications to the examples. The good news is that those changes should be relatively easy to make. I believe that you won't have a problem adapting.
 
