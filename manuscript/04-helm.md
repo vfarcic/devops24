@@ -782,7 +782,7 @@ Applying all those changes through `--set` arguments would end up as a very long
 
 We'll use [nip.io](http://nip.io) to generate valid domains. The service provides a wildcard DNS for any IP address. It extracts IP from the nip.io subdomain and sends it back in the response. For example, if we generate 192.168.99.100.nip.io, it'll be resolved to 192.168.99.100. We can even add sub-sub domains like something.192.168.99.100.nip.io, and it would still be resolved to 192.168.99.100. It's a simple and awesome service that quickly became an indispensable part of my toolbox.
 
-We could have used [xip.ip](http://xip.io) instead. For the end-users, there is no significant difference between the two. The main reason why we'll use nip.io instead of xip.io is integration with some of the tool. Minishift, for example, comes Routes pre-configured to use nip.io.
+We could have used [xip.ip](http://xip.io) instead. For the end-users, there is no significant difference between the two. The main reason why we'll use nip.io instead of xip.io is integration with some of the tool. Minishift, for example, comes with Routes pre-configured to use nip.io.
 
 First things first... We need to find out the IP of our cluster or external LB if available. The commands that follow will differ from one cluster type to another.
 
