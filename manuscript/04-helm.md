@@ -780,7 +780,9 @@ We managed to customize Jenkins by setting `ImageTag`. What if we'd like to set 
 
 Applying all those changes through `--set` arguments would end up as a very long command and would constitute an undocumented installation. We'll have to change the tactic and switch to `--values`. But before we do all that, we need to generate a domain we'll use with our cluster.
 
-We'll use [nip.io](http://nip.io/) to generate valid domains. The service provides a wildcard DNS for any IP address. It extracts IP from the nip.io subdomain and sends it back in the response. For example, if we generate 192.168.99.100.nip.io, it'll be resolved to 192.168.99.100. We can even add sub-sub domains like something.192.168.99.100.nip.io, and it would still be resolved to 192.168.99.100. It's a simple and awesome service that quickly became an indispensable part of my toolbox.
+We'll use [nip.io](http://nip.io) to generate valid domains. The service provides a wildcard DNS for any IP address. It extracts IP from the nip.io subdomain and sends it back in the response. For example, if we generate 192.168.99.100.nip.io, it'll be resolved to 192.168.99.100. We can even add sub-sub domains like something.192.168.99.100.nip.io, and it would still be resolved to 192.168.99.100. It's a simple and awesome service that quickly became an indispensable part of my toolbox.
+
+We could have used [xip.ip](http://xip.io) instead. For the end-users, there is no significant difference between the two. The main reason why we'll use nip.io instead of xip.io is integration with some of the tool. Minishift, for example, comes Routes pre-configured to use nip.io.
 
 First things first... We need to find out the IP of our cluster or external LB if available. The commands that follow will differ from one cluster type to another.
 
@@ -837,7 +839,7 @@ jenkins.192.168.99.100.nip.io
 
 W> ## A note to minishift users
 W>
-W> I did not forget about you. You already have a valid domain in the `ADDR` variable. It is based on *nip.io* which serves the same purpose as *nip.io*. All we have to do is assign it to the `HOST` variable. Please execute the command that follows.
+W> I did not forget about you. You already have a valid domain in the `ADDR` variable. All we have to do is assign it to the `HOST` variable. Please execute the command that follows.
 W> 
 W> `HOST=$ADDR && echo $HOST`.
 W> 
