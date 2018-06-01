@@ -2,5 +2,6 @@
 01-sts.md
 02-sa.md
 03-manual-cd.md
+04-helm.md
 99-appendix-a.md
 99-appendix-b.md

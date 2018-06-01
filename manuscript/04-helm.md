@@ -1,22 +1,3 @@
-## TODO
-
-- [X] Code
-- [X] Code review Docker for Mac/Windows
-- [X] Code review minikube
-- [X] Code review kops
-- [X] Code review minishift
-- [X] Code review GKE
-- [X] Write
-- [X] Text review
-- [-] Diagrams
-- [X] Gist
-- [X] Review the title
-- [X] Proofread
-- [ ] Add to slides
-- [ ] Publish on TechnologyConversations.com
-- [ ] Add to Book.txt
-- [ ] Publish on LeanPub.com
-
 # Packaging Kubernetes Applications
 
 T> Using YAML files to install or upgrade applications in a Kubernetes cluster works well only for static definitions. The moment we need to change an aspect of an application we are bound to discover the need for templating and packaging mechanisms.
@@ -784,7 +765,7 @@ We'll use [nip.io](http://nip.io) to generate valid domains. The service provide
 
 We could have used [xip.ip](http://xip.io) instead. For the end-users, there is no significant difference between the two. The main reason why we'll use nip.io instead of xip.io is integration with some of the tool. Minishift, for example, comes with Routes pre-configured to use nip.io.
 
-First things first... We need to find out the IP of our cluster or external LB if available. The commands that follow will differ from one cluster type to another.
+First things first... We need to find out the IP of our cluster, or the external LB if it is available. The commands that follow will differ from one cluster type to another.
 
 I> Feel free to skip the sections that follow if you already know how to get the IP of your cluster's entry point.
 
@@ -819,7 +800,7 @@ LB_IP=$(kubectl -n ingress-nginx \
     -o jsonpath="{.status.loadBalancer.ingress[0].ip}")
 ```
 
-Next we'll output the retrieved IP to confirm that the commands worked, and generate a sub-sub domain `jenkins`.
+Next, we'll output the retrieved IP to confirm that the commands worked, and generate a sub-domain `jenkins`.
 
 ```bash
 echo $LB_IP
@@ -841,7 +822,7 @@ W> ## A note to minishift users
 W>
 W> I did not forget about you. You already have a valid domain in the `ADDR` variable. All we have to do is assign it to the `HOST` variable. Please execute the command that follows.
 W> 
-W> `HOST=$ADDR && echo $HOST`.
+W> `HOST=$ADDR && echo $HOST`
 W> 
 W> The output should be similar to `jenkins.192.168.99.100.nip.io`.
 
