@@ -50,7 +50,7 @@ The first step is to install it.
 
 ## Installing Helm
 
-Helm is a client/server type of application. We'll start with a client. Once we have it running, we'll use it to install the server (Tiller) inside our newly created cluster.
+Helm is currently[^tillerremoval] a client/server type of application. We'll start with a client. Once we have it running, we'll use it to install the server (Tiller) inside our newly created cluster.
 
 The Helm client is a command line utility responsible for the local development of Charts, managing repositories, and interaction with the Tiller. Tiller server, on the other hand, runs inside a Kubernetes cluster and interacts with Kube API. It listens for incoming requests from the Helm client, combines Charts and configuration values to build a release, installs Charts and tracks subsequent releases, and is in charge of upgrading and uninstalling Charts through interaction with Kube API.
 
@@ -1728,3 +1728,5 @@ We'll continue using Helm throughout the rest of the book. If you do choose to s
 We have a couple of problems left to solve. We did not yet figure out how to store the Helm charts in a way that they can be easily retrieved and used by others. We'll tackle that issue in the next chapter.
 
 I suggest you take a rest. You deserve it. If you do feel that way, please destroy the cluster. Otherwise, jump to the next chapter right away. The choice is yours.
+
+[^tillerremoval]: Tiller will be removed with Helm 3. It will go back to client only architecture, so we won't be going into it in depth.
