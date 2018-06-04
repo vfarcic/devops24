@@ -1619,7 +1619,7 @@ echo $HOST
 In my case, the output is as follows.
 
 ```
-jenkins.192.168.99.100.nip.io
+go-demo-3.192.168.99.100.nip.io
 ```
 
 Now we are finally ready to install the Chart. However, we won't use `helm install` as before. We'll use `upgrade` instead.
