@@ -1,11 +1,11 @@
 ## The DevOps 2.4 Toolkit
 
 - [ ] 00-preface.md
-- [ ] 01-sts.md
-- [ ] 02-sa.md
-- [ ] 03-manual-cd.md
-- [ ] 04-helm.md
-- [ ] 05-monocular.md
+- [X] 01-sts.md
+- [X] 02-sa.md
+- [X] 03-manual-cd.md
+- [X] 04-helm.md
+- [ ] 05-chart-museum.md
 - [ ] 06-jenkins-setup.md
 - [ ] 07-jenkins-cd.md
 - [ ] 08-codeship.md

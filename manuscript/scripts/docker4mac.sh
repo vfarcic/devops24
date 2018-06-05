@@ -1,6 +1,6 @@
-######################
-# Create The Cluster #
-######################
+####################
+# Create A Cluster #
+####################
 
 # Open Docker Preferences, select the Kubernetes tab, and select the "Enable Kubernetes" checkbox
 
@@ -8,11 +8,15 @@
 
 # Make sure that your current kubectl context is pointing to your Docker for Mac/Windows cluster
 
-# To install Ingress: execute the commands that follow from a terminal
+###################
+# Install Ingress #
+###################
 
-kubectl apply -f https://raw.githubusercontent.com/kubernetes/ingress-nginx/master/deploy/mandatory.yaml
+kubectl apply -f \
+    https://raw.githubusercontent.com/kubernetes/ingress-nginx/master/deploy/mandatory.yaml
 
-kubectl apply -f https://raw.githubusercontent.com/kubernetes/ingress-nginx/master/deploy/provider/cloud-generic.yaml
+kubectl apply -f \
+    https://raw.githubusercontent.com/kubernetes/ingress-nginx/master/deploy/provider/cloud-generic.yaml
 
 #######################
 # Destroy the cluster #
