@@ -272,6 +272,8 @@ spec:
   }
 }
 ```
+ 
+> Note: recent kuberneted plugin  favor's the yaml format, make sure to use recent version of plugin, code been tested against kubernetes:1.7.1 
 
 
 
