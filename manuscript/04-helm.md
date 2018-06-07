@@ -270,6 +270,16 @@ Below the general information is the list of the installed resources. We can see
 
 Don't worry if you feel overwhelmed. We'll do a couple of iterations of the Jenkins installation process, and that will give us plenty of opportunities to explore this Chart in more details. If you are impatient, please `describe` any of those resources to get more insight into what's installed.
 
+One thing worthwhile commenting right away is the type of the `jenkins` Service. It is, by default, set to `LoadBalancer`. We did not explore that type in [The DevOps 2.3 Toolkit: Kubernetes](https://amzn.to/2GvzDjy), primarily because the book is, for the most part, based on minikube.
+
+On cloud providers which support external load balancers, setting the type field to `LoadBalancer` will provision an external load balancer for the Service. The actual creation of the load balancer happens asynchronously, and information about the provisioned balancer is published in the Service’s `status.loadBalancer` field.
+
+When a Service is of the `LoadBalancer` type, it publishes a random port just as if it is the `NodePort` type. The additional feature is that it also communicates that change to the external load balancer (LB) which, in turn, should open a port as well. In most cases, the port opened in the external LB will be the same as the Service's `TargetPort`. For example, if the `TargetPort` of a Service is `8080` and the published port is `32456`, the external LB will be configured to accept traffic on the port `8080`, and it will forward it to one of the healthy nodes on the port `32456`. From there on, requests will be picked up by the Service and the standard process of forwarding it further towards the replicas will be initiated. From user's perspective, it seems as if the published port is the same as the `TargetPort`.
+
+The problem is that not all load balancers and hosting vendors support the `LoadBalancer` type, so we'll have to change it to `NodePort` in some of the cases. Those changes will be outlined as notes specific to the Kubernetes flavor.
+
+Going back to the Helm output...
+
 At the bottom of the output, we can see the post-installation instructions provided by the authors of the Chart. In our case, those instructions tell us how to retrieve the administrative password from the Secret, how to open Jenkins in a browser, and how to log in.
 
 W> ## A note to minikube users
