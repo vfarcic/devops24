@@ -4,7 +4,7 @@
 - [X] Code review Docker for Mac/Windows
 - [X] Code review minikube
 - [X] Code review kops
-- [ ] Code review minishift
+- [X] Code review minishift
 - [ ] Code review GKE
 - [ ] Write
 - [ ] Text review
