@@ -21,6 +21,10 @@
 
 I> Being able to package applications is of no use unless we can distribute them. A Kubernetes application is a combination of one of more container images and YAML files that describe them. If we are to distribute our applications, we need to store both in repositories.
 
+At this point you might think that being able to run Charts located on your laptop is a good way to go. All you have to do is to checkout the code of an application hoping that the Chart is there and execute a command like `helm upgrade -i go-demo-3 helm/go-demo-3`. You'd be correct that's the easiest way to install or upgrade an application that you are developing. However, your application is not the only one you'll be installation.
+
+You will almost certainly want to run many applications while developing on your laptop. If you need to check whether your application intergrated with those developed by your colleagues, you'll want to run their as well. You can continue down the same path of checkout out their code and installing local Charts. But that already starts being tedious. You'll need to know which repositories they're using and checkout more code than you truly need. Wouldn't it be better to install your colleagues applications in the same way as installing publicly available third-party applications? Wouldn't it be great if you could execute something like `helm search my-company-repo/`, get the list of all the applications created in your organization, and install the one you need?
+
 TODO: Write
 
 ## Setup

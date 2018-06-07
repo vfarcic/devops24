@@ -1,6 +1,7 @@
 ## The DevOps 2.4 Toolkit
 
 - [ ] 00-preface.md
+- [ ] 00-big-picture.md
 - [X] 01-sts.md
 - [X] 02-sa.md
 - [X] 03-manual-cd.md
@@ -8,9 +9,10 @@
 - [ ] 05-chart-museum.md
 - [ ] 06-jenkins-setup.md
 - [ ] 07-jenkins-cd.md
-- [ ] 08-codeship.md
-- [ ] 09-jenkins-openshift.md
-- [ ] 10-jenkinx.md
+- [ ] 08-big-picture-jenkins.md
+- [ ] 09-codeship.md
+- [ ] 10-jenkins-openshift.md
+- [ ] 11-jenkinsx.md
 - [ ] Write CD with CJE
 - [ ] Write CD with Argo (https://applatix.com/open-source/argo/)
 - [ ] Spinnaker
