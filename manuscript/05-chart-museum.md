@@ -1,8 +1,8 @@
 # TODO
 
 - [X] Code
-- [ ] Code review Docker for Mac/Windows
-- [ ] Code review minikube
+- [X] Code review Docker for Mac/Windows
+- [X] Code review minikube
 - [X] Code review kops
 - [ ] Code review minishift
 - [ ] Code review GKE
@@ -35,11 +35,13 @@ git pull
 
 NOTE: New requirements: Helm
 
-* [docker4mac-3cpu.sh](https://gist.github.com/bf08bce43a26c7299b6bd365037eb074): **Docker for Mac** with 3 CPUs, 3 GB RAM, and with nginx Ingress.
-* [minikube-3cpu.sh](https://gist.github.com/871b5d7742ea6c10469812018c308798): **minikube** with 3 CPUs, 3 GB RAM, and with `ingress`, `storage-provisioner`, and `default-storageclass` addons enabled.
-* [kops-helm.sh](https://gist.github.com/6c1ebd59305fba9eb0102a5a8cea863b): **kops in AWS** with 3 t2.small masters and 2 t2.medium nodes spread in three availability zones, with **nginx Ingress** and **tiller**. The Gist assumes that the prerequisites are set through [Appendix B](#appendix-b).
-* [minishift-3cpu.sh](https://gist.github.com/2074633688a85ef3f887769b726066df): **minishift** with 3 CPUs, 3 GB RAM, and version 1.16+.
-* [gke-2cpu.sh](https://gist.github.com/e3a2be59b0294438707b6b48adeb1a68): **Google Kubernetes Engine (GKE)** with 3 n1-highcpu-2 (2 CPUs, 1.8 GB RAM) nodes (one in each zone), and with nginx Ingress controller running on top of the "standard" one that comes with GKE. We'll use nginx Ingress for compatibility with other platforms. Feel free to modify the YAML files if you prefer NOT to install nginx Ingress.
+NOTE: minishift memory increased to 4GB
+
+* [docker4mac-helm.sh](https://gist.github.com/7e6b068c6d3d56fc53416ac2cd4086e3): **Docker for Mac** with 3 CPUs, 3 GB RAM, with **nginx Ingress**, and with **tiller**.
+* [minikube-helm.sh](https://gist.github.com/728246d8be349ffb52770f72c39e9564): **minikube** with 3 CPUs, 3 GB RAM, with `ingress`, `storage-provisioner`, and `default-storageclass` addons enabled, and with **tiller**.
+* [kops-helm.sh](https://gist.github.com/6c1ebd59305fba9eb0102a5a8cea863b): **kops in AWS** with 3 t2.small masters and 2 t2.medium nodes spread in three availability zones, with **nginx Ingress** and with **tiller**. The Gist assumes that the prerequisites are set through [Appendix B](#appendix-b).
+* [minishift-helm.sh](https://gist.github.com/945ab1e68afa9e49f85cec3bc6df4959): **minishift** with 3 CPUs, 3 GB RAM, with version 1.16+, and with **tiller**.
+* TODO: [gke-2cpu.sh](TODO): **Google Kubernetes Engine (GKE)** with 3 n1-highcpu-2 (2 CPUs, 1.8 GB RAM) nodes (one in each zone), and with nginx Ingress controller running on top of the "standard" one that comes with GKE. We'll use nginx Ingress for compatibility with other platforms. Feel free to modify the YAML files if you prefer NOT to install nginx Ingress.
 
 ```bash
 # If AWS with kops
@@ -53,6 +55,9 @@ LB_IP="$(dig +short $LB_HOST \
 
 # If Docker For Mac/Windows
 LB_IP="127.0.0.1"
+
+# If minikube
+LB_IP=$(minikube ip)
 
 # If minishift
 LB_IP=$(minishift ip)
@@ -242,6 +247,12 @@ If none of those methods is secure enough, you can implement the best security m
 
 We won't implement any of those security hardenings, just yet. In this chapter, I'll simplify the setup with the assumption that protecting images through Registry authentication is enough, and that Charts themselves do not have any confidential information. We will be able to push and pull charts without any authentication. Later on, in one of the next chapters, we'll remove Ingress and allow only Pods to access the repository. Humans will be out of the game.
 
+W> ## A note to minishift users
+W>
+W> OpenShift ignores Ingress resources so we'll have to create a Route to accomplish the same effect. Please execute the command that follows.
+W> 
+W> `oc -n charts create route edge --service cm-chartmuseum --hostname $CM_ADDR --insecure-policy Allow`
+
 By now, the resources we installed should be up-and-running. We'll confirm that just to be on the safe side.
 
 ```bash
@@ -428,9 +439,15 @@ helm upgrade -i go-demo-3 \
 
 We can see from the first line of the output that the `release "go-demo-3" does not exist`, so Helm decided to install it instead doing the upgrade. The rest of the output is the same as the one you saw in the previous chapter. It contains the list of the resources created from the Chart as well as the post-installation instructions.
 
+W> ## A note to minishift users
+W>
+W> OpenShift ignores Ingress resources so we'll have to create a Route to accomplish the same effect. Please execute the command that follows.
+W> 
+W> `oc -n go-demo-3 create route edge --service go-demo-3 --hostname $GD3_ADDR --insecure-policy Allow`
+
 Next, we'll wait until the application is rolled out and confirm that we can access it.
 
-```
+```bash
 kubectl -n go-demo-3 \
     rollout status deploy go-demo-3
 
@@ -458,13 +475,7 @@ The output is as follows.
 {"deleted":true}
 ```
 
-The chart is deleted from the repository. However, we did that only for the purpose of demonstrating how to delete a Chart. We do need *go-demo-3* in that repository for a while longer. So, we'll push it one more time.
-
-```bash
-helm push \
-    ../go-demo-3/helm/go-demo-3/ \
-    chartmuseum
-```
+The chart is deleted from the repository.
 
 Now you know everything there is to know about ChartMuseum. OK, maybe you don't know everything you should know, but you do know the basics that will allow you to explore it further.
 
@@ -581,6 +592,10 @@ The output of the latter command should be similar to the one that follows.
 monocular.18.221.122.90.nip.io
 ```
 
+W> ## A note to minishift users
+W>
+W> Installing Monocular in OpenShift creates quite a few issues and requires quite a few changes to the commands that follow. Please use the instructions from [Deploy Monocular on OpenShift](https://blog.openshift.com/deploy-monocular-openshift/) article instead of the command that follows.
+
 Now we are ready to install Monocular Chart.
 
 ```bash
@@ -601,7 +616,7 @@ kubectl -n charts \
     deploy monocular-monocular-api
 ```
 
-It will take a while until the API rolls out. Be patient.
+It will take a while until the API rolls out and the `monocular-api` Pods might fail a few times. Be patient.
 
 Now we can open Monocular in a browser.
 
