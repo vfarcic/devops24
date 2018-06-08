@@ -9,7 +9,7 @@
 - [X] Write
 - [X] Text review
 - [-] Diagrams
-- [ ] Gist
+- [X] Gist
 - [ ] Review the title
 - [ ] Proofread
 - [ ] Add to slides
@@ -38,6 +38,8 @@ As always, we need to start from somewhere, and that is a Kubernetes cluster.
 You know the drill. Create a new cluster or reuse the one you dedicated to the exercises.
 
 First we'll go to the local copy of the *vfarcic/k8s-specs* repository and make sure that we have the latest revision. Who knows? I might have changed something since you read the last chapter.
+
+I> All the commands from this chapter are available in the [05-chart-museum.sh](https://gist.github.com/e0657623045b43259fe258a146f05e1a) Gist.
 
 ```bash
 cd k8s-specs
