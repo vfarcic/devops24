@@ -1,25 +1,62 @@
 # Installing CJE In Digital Ocean
 
+The goal of this document is to describe how to install a Kubernets cluster in **DigitalOcean** using **Rancher**. Unlike AWS, GCE, and Azure, DigitalOcean does not offer many services and it's used mostly for spinning up VMs. As such, running a cluster in DigitalOcean is very close to what we'd experience when running a cluster **on-prem**, be it **bare metal or VMs** created with, for example, VMWare.
+
+You will be able to choose between **Ubuntu** and **CentOS** as operating systems. For storage, the instructions explain setup of a Kubernetes **NFS** client. We'll use Digital Ocean's load balancer. The logic behind its setup should be applicable to any other load balancer.
+
+Throughout the document, we'll have sets of validations aimed at confirming that the cluster is set up correctly and can be used to install **CJE**. Feel free to jump straight into validations if you already have an operational cluster. The validations are focused on **RBAC** and **ServiceAccounts**, **load balancers** and **Ingress**, and **storage**.
+
+Once we're confident that the cluster works as expected, we'll proceed with the CJE installation. We'll create CJOC, a managed master, and a job that will run in a separate Namespace.
+
+We'll try to do as much work as possible through CLI. In a few cases, it will not be possible (or practical) to accomplish some tasks through a terminal window, so we'll have to jump into UIs. Hopefully, that will be only for very brief periods. The reason for insisting on CLI over UI, lies in the fact that commands are easier to reproduce and lead us towards automation. More importantly, I have a medical condition that results in severe pain when surrounded with many colors. The only medically allowed ones are black, white, and green. Unfortunatelly, most UIs are not designed for people with disabilities like mine.
+
+At some later date, this document will be extended with the following items. Feel free to suggest additional ones.
+
+* HAProxy as external LB
+* nginx as external LB
+* Ceph storage
+* Gluster storage
+* Basic CNI networking
+* Flannel networking
+* Calico networking
+* Weave networking
+
 ## Requirements
 
-* [kubectl](TODO)
-* [jq](TODO)
-* [ssh-keygen](TODO)
-* [GitBash (if Windows)](TODO)
+We'll need a few prerequisites first.
+
+Please make sure that you have the following items.
+
+* [kubectl](TODO): Used for communication with a Kubernetes cluster.
+* [jq](TODO): Used for formatting and filtering of JSON outputs.
+* [ssh-keygen](TODO): Used for generating SSH keys required for accessing nodes.
+* [GitBash (if Windows)](TODO): Used for compatibility with other operating systems. Please use it **only if you are a Windows user**.
+* [DigitalOcean account](TODO): That's where we'll create a cluster.
+* [doctl](TODO): CLI used for interaction with DigitalOcean API.
 
 ## Creating A Rancher Server
 
+We'll need a DigitalOcean token that will allow us to authenticate with its API. Please open the API Tokens screen.
+
 ```bash
 open "https://cloud.digitalocean.com/settings/api/tokens"
+```
 
-# Type *cje* as the token name
+> If you are a **Windows user**, you might not be able to use `open` command to interact with your browser. If that's the case, please replace `open` with `echo`, copy the output, and paste it into a new tab of your favorite browser.
 
-# Click the *Generate Token* button
+Please type *cje* as the token name and click the *Generate Token* button. This is the first and the last time you will be able to see the token through DigitalOcean UI. Please store it somewhere safe. We'll need it soon.
 
-# Store the token somewhere
+Next, we'll create an SSH key that will allow us to enter into the virtual machines we'll create soon.
 
+Please execute the command that follows.
+
+```bash
 ssh-keygen -t rsa
+```
 
+TODO: Continue
+
+```bash
 # Type `cje` as the file, answer with the enter key to the rest of the questions
 
 doctl auth init
@@ -122,9 +159,6 @@ yum install -y docker-ce
 
 # If CentOS
 systemctl start docker
-
-# If RHEL
-# TODO
 
 docker version
 ```
@@ -249,9 +283,6 @@ Jun 06 21:22:13 rancher systemd[1]: Started NFS server and services.
 ```
 
 ```bash
-# If RHEL
-# TODO
-
 mkdir /var/nfs/cje -p
 
 # If Ubuntu
@@ -271,9 +302,6 @@ systemctl status nfs-kernel-server
 
 # If CentOS
 exportfs -a
-
-# If RHEL
-# TODO
 
 exit
 ```
@@ -499,14 +527,6 @@ echo $LB_IP
 LB_ADDR=$LB_IP.nip.io
 ```
 
-### HAProxy
-
-TODO
-
-### nginx
-
-TODO
-
 ## Validating Load Balancer And Ingress
 
 ```bash
@@ -712,14 +732,6 @@ ssh -i cje root@$NFS_SERVER_ADDR \
 drwxrwxrwx. 2 nfsnobody nfsnobody 21 Jun  7 00:44 archived-cjoc-test-claim-pvc-d5fa9106-69eb-11e8-b65a-ea9238c4f6a5
 ```
 
-### CEPH
-
-TODO
-
-### Gluster
-
-TODO
-
 ## Validating StorageClasses
 
 ```bash
@@ -877,28 +889,6 @@ persistentvolumeclaim "test-data-test-0" deleted
 ```
 
 TODO: Speed tests
-
-## Setting Up Networking
-
-### Basic CNI
-
-TODO
-
-### Flannel
-
-TODO
-
-### Calico
-
-TODO
-
-### Weave
-
-TODO
-
-## Validating Networking
-
-TODO
 
 ## Installing CJE
 

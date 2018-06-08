@@ -5,9 +5,9 @@
 - [X] Code review minikube
 - [X] Code review kops
 - [X] Code review minishift
-- [ ] Code review GKE
-- [ ] Write
-- [ ] Text review
+- [X] Code review GKE
+- [X] Write
+- [X] Text review
 - [-] Diagrams
 - [ ] Gist
 - [ ] Review the title
@@ -19,17 +19,25 @@
 
 # Distributing Kubernetes Applications
 
-I> Being able to package applications is of no use unless we can distribute them. A Kubernetes application is a combination of one of more container images and YAML files that describe them. If we are to distribute our applications, we need to store both in repositories.
+I> Being able to package applications is of no use unless we can distribute them. A Kubernetes application is a combination of one or more container images and YAML files that describe them. If we are to distribute our applications, we need to store both container images and YAML definitions in repositories.
 
-At this point you might think that being able to run Charts located on your laptop is a good way to go. All you have to do is to checkout the code of an application hoping that the Chart is there and execute a command like `helm upgrade -i go-demo-3 helm/go-demo-3`. You'd be correct that's the easiest way to install or upgrade an application that you are developing. However, your application is not the only one you'll be installation.
+We are already storing our images in [Docker Hub](https://hub.docker.com/). We could have chosen a different container registry but, since Docker Hub is so convenient, we'll continue using it throughout the book. Even though that might not be the best choice, if we move the discussion about repositories for container images out of the way, we can focus on YAML files or, to be more concrete, Helm Charts.
 
-You will almost certainly want to run many applications while developing on your laptop. If you need to check whether your application intergrated with those developed by your colleagues, you'll want to run their as well. You can continue down the same path of checkout out their code and installing local Charts. But that already starts being tedious. You'll need to know which repositories they're using and checkout more code than you truly need. Wouldn't it be better to install your colleagues applications in the same way as installing publicly available third-party applications? Wouldn't it be great if you could execute something like `helm search my-company-repo/`, get the list of all the applications created in your organization, and install the one you need?
+At this point, you might be thinking that being able to run Charts located on your laptop is a good way to go. All you have to do is checkout the code of an application hoping that the Chart is there and execute a command like `helm upgrade -i go-demo-3 helm/go-demo-3`. You'd be correct that's the easiest way to install or upgrade an application that you are developing. However, your application is not the only one you'll be installing.
 
-TODO: Write
+If you are a developer, you will almost certainly want to run many applications on your laptop. If you need to check whether your application integrates with those developed by your colleagues, you'll want to run theirs as well. You can continue down the same path of checking out their code and installing local Charts. But that already starts being tedious. You'll need to know which repositories they're using and checkout more code than you truly need. Wouldn't it be better to install your colleagues' applications in the same way as installing publicly available third-party applications? Wouldn't it be great if you could execute something like `helm search my-company-repo/`, get the list of all the applications created in your organization, and install those you need? We are already using the same approach with container images (e.g. `docker image pull`), with Linux packages (`apt install vim`), and many other packages and distributions. Why not do the same with Helm Charts? Why would we restrict the ability to pull a definition of an application only to those created by third-parties? We should be able to distribute our own applications throughout our organization in the same way.
+
+Helm Charts are still very young. The project just started and there aren't many repositories to choose from. Today (June 2018), [ChartMuseum](https://github.com/kubernetes-helm/chartmuseum) is one of the few, if not the only one available. So, picking the right solution is very straightforward. When there aren't many choices, the selection process is easy.
+
+In this chapter we'll explore Helm repositories and how we can leverage them to distribute our Charts across an organization, or even publish them to a wider audience if we are in the business of providing software to a wider public.
+
+As always, we need to start from somewhere, and that is a Kubernetes cluster.
 
 ## Setup
 
-TODO: Write
+You know the drill. Create a new cluster or reuse the one you dedicated to the exercises.
+
+First we'll go to the local copy of the *vfarcic/k8s-specs* repository and make sure that we have the latest revision. Who knows? I might have changed something since you read the last chapter.
 
 ```bash
 cd k8s-specs
@@ -37,53 +45,108 @@ cd k8s-specs
 git pull
 ```
 
-NOTE: New requirements: Helm
+The requirements for the cluster are now slightly different. We'll need **Helm server** (**tiller**). On top of that, if you are a **minishift** user, you'll need a cluster with 4GB RAM.
 
-NOTE: minishift memory increased to 4GB
+For your convenience, the new Gists and the specs are available.
 
 * [docker4mac-helm.sh](https://gist.github.com/7e6b068c6d3d56fc53416ac2cd4086e3): **Docker for Mac** with 3 CPUs, 3 GB RAM, with **nginx Ingress**, and with **tiller**.
 * [minikube-helm.sh](https://gist.github.com/728246d8be349ffb52770f72c39e9564): **minikube** with 3 CPUs, 3 GB RAM, with `ingress`, `storage-provisioner`, and `default-storageclass` addons enabled, and with **tiller**.
 * [kops-helm.sh](https://gist.github.com/6c1ebd59305fba9eb0102a5a8cea863b): **kops in AWS** with 3 t2.small masters and 2 t2.medium nodes spread in three availability zones, with **nginx Ingress** and with **tiller**. The Gist assumes that the prerequisites are set through [Appendix B](#appendix-b).
 * [minishift-helm.sh](https://gist.github.com/945ab1e68afa9e49f85cec3bc6df4959): **minishift** with 3 CPUs, 3 GB RAM, with version 1.16+, and with **tiller**.
-* TODO: [gke-2cpu.sh](TODO): **Google Kubernetes Engine (GKE)** with 3 n1-highcpu-2 (2 CPUs, 1.8 GB RAM) nodes (one in each zone), and with nginx Ingress controller running on top of the "standard" one that comes with GKE. We'll use nginx Ingress for compatibility with other platforms. Feel free to modify the YAML files if you prefer NOT to install nginx Ingress.
+* [gke-helm.sh](https://gist.github.com/1593ed36c4b768a462b1a32d5400649b): **Google Kubernetes Engine (GKE)** with 3 n1-highcpu-2 (2 CPUs, 1.8 GB RAM) nodes (one in each zone), and with **nginx Ingress** controller running on top of the "standard" one that comes with GKE, and with **tiller**. We'll use nginx Ingress for compatibility with other platforms. Feel free to modify the YAML files and Helm Charts if you prefer NOT to install nginx Ingress.
+
+Besides creating a cluster, we'll need an IP through which we can access it. The instructions that follow differ from one Kubernetes flavor to another. Please make sure you execute those matching your cluster.
+
+If your cluster is running in **AWS** and if it was created with **kops**, we'll retrieve the IP by digging the hostname of the Elastic Load Balancer (ELB). Please execute the commands that follow.
 
 ```bash
-# If AWS with kops
 LB_HOST=$(kubectl -n kube-ingress \
     get svc ingress-nginx \
     -o jsonpath="{.status.loadBalancer.ingress[0].hostname}")
 
-# If AWS with kops
 LB_IP="$(dig +short $LB_HOST \
     | tail -n 1)"
+```
 
-# If Docker For Mac/Windows
+If you're using **Docker For Mac or Windows**, the cluster is accessible through localhost. Since we need an IP, we'll use `127.0.0.1` instead. Please execute the command that follows.
+
+```bash
 LB_IP="127.0.0.1"
+```
 
-# If minikube
+**Minikube** users can retrieve the IP through `minikube ip`. If you are one of them, please execute the command that follows.
+
+```bash
 LB_IP=$(minikube ip)
+```
 
-# If minishift
+Retrieving IP from **minishift** is similar to minikube. If that's your Kubernetes flavor, please execute the command that follows.
+
+```bash
 LB_IP=$(minishift ip)
+```
 
+Finally, if you are using **GKE**, the IP we're looking for is available through the `ingress-nginx` service. Please execute the command that follows.
+
+```bash
+LB_IP=$(kubectl -n ingress-nginx \
+    get svc ingress-nginx \
+    -o jsonpath="{.status.loadBalancer.ingress[0].ip}")
+```
+
+No matter how you retrieved the IP of your cluster, we'll validate it by echoing the `LB_IP` variable.
+
+```bash
 echo $LB_IP
 ```
 
-```
-52.15.140.221
-```
+The output will differ from one case to another. In my case, it is `52.15.140.221`.
+
+There's only one more thing left before we jump into Chart repositories. We'll merge your fork of the *go-demo-3* code repository with the origin and thus ensure that you are up-to-date with changes I might have made in the mean time.
+
+First, we'll move into the fork's directory.
 
 ```bash
-# TODO: Merge go-demo-3 fork with the origin, and pull the latest
+cd ../go-demo-3
 ```
+
+To be on the safe side, we'll push the changes you might have made in the previous chapter, and then we'll sync your fork with the upstream repository. That way, we'll guarantee that you have all the changes I might have made.
+
+You probably already know how to push your changes and how to sync with the upstream repository. In case you don't, the commands are as follows.
+
+```bash
+git add .
+
+git commit -m \
+    "Packaging Kubernetes Applications chapter"
+
+git push
+
+git remote add upstream \
+    https://github.com/vfarcic/go-demo-3.git
+
+git fetch upstream
+
+git checkout master
+
+git merge upstream/master
+```
+
+We pushed the changes we made in the previous chapter, we fetched the upstream repository *vfarcic/go-demo-3*, and we merged the latest code from it. The only thing left is to go back to the `k8s-specs` directory.
+
+```bash
+cd ../k8s-specs
+```
+
+Now we are ready to explore Helm repositories with *ChartMuseum*.
 
 ## ChartMuseum
 
-Just as [Docker Registry](https://docs.docker.com/registry/) is a place where we can publish our container images and make them accessible to others, we can use [ChartMuseum](https://github.com/kubernetes-helm/chartmuseum) to accomplish similar goals with our Charts.
+Just as [Docker Registry](https://docs.docker.com/registry/) is a place where we can publish our container images and make them accessible to others, we can use Chart repository to accomplish similar goals with our Charts.
 
-A Chart repository is a location where packaged Charts can be stored and retrieved. We'll use [ChartMuseum](https://github.com/kubernetes-helm/chartmuseum) for that. There aren't many other choices to choose from. We can say that we choose it because there were no alternatives. That will change soon. I'm sure that Helm Charts will become integrated into general purpose repositories. At the time of this writing, Charts are already supported by JFrog's [Artifactory](https://www.jfrog.com/confluence/display/RTF/Helm+Chart+Repositories). You could easily build one yourself, if you're adventurous. All you'd need is a way to store `index.yaml` file that contains all the Charts and an API that could be used to push and retrieve packaged Charts. Anything else would be a bonus, not a requirement.
+A Chart repository is a location where packaged Charts can be stored and retrieved. We'll use [ChartMuseum](https://github.com/kubernetes-helm/chartmuseum) for that. There aren't many other solutions to choose from. We can say that we chose it because there were no alternatives. That will change soon. I'm sure that Helm Charts will become integrated into general purpose repositories. At the time of this writing (June 2018), Charts are already supported by JFrog's [Artifactory](https://www.jfrog.com/confluence/display/RTF/Helm+Chart+Repositories). You could easily build one yourself, if you're adventurous. All you'd need is a way to store `index.yaml` file that contains all the Charts and an API that could be used to push and retrieve packages. Anything else would be a bonus, not a requirement.
 
-That's it. That's all the explanation you need, except a note that we'll go with the easiest solution. We won't build a Charts repository ourselves. We'll use ChartMuseum.
+That's it. That's all the explanation you need, except a note that we'll go with the easiest solution. We won't build a Charts repository ourselves nor we are going to pay for Artifactory. We'll use ChartMuseum.
 
 ChartMuseum is already available in the official Helm repository. We'll add it to your Helm installation just in case you removed it accidentally.
 
@@ -148,17 +211,15 @@ ingress:
 ...
 ```
 
-Just as with Docker Registry, we can change the image tag. We'll try to make that our practice with all installations. We'll always use a specific tag, and leave latest for developers and others who might not be concerned with stability of the system.
+We can and we will change the image tag. We'll try to make that our practice with all installations. We'll always use a specific tag, and leave latest for developers and others who might not be concerned with stability of the system.
 
-By default, access to the API is disabled through the `DISABLE_API: true` entry. We'll have to enable it if we are to interact with the API. We'll discuss the security implications soon.
+By default, access to the API is disabled through the `DISABLE_API: true` entry. We'll have to enable it if we are to interact with the API. We can see that there are, among others, `BASIC_AUTH_USER` and `BASIC_AUTH_PASS` secrets which we can use if we'd like to provide a basic HTTP authentication.
 
-We can see that there are, among others, `BASIC_AUTH_USER` and `BASIC_AUTH_PASS` secrets which we can use if we'd like to provide a basic HTTP authentication.
-
-Further down, are the commented resources. We'll have to define them ourselves.
+Further down are the commented resources. We'll have to define them ourselves.
 
 We'll need to persist the state of the application and make it accessible through Ingress. Both can be accomplished by changing related `enabled` entries to `true` and, in case of Ingress, by adding a few annotations and a host.
 
-Now that we went through the values we're interested in, we can proceed. We'll need to define the address (domain) we'll use for ChartMuseum.
+Now that we went through the values we're interested in, we can proceed with the practical parts. We'll need to define the address (domain) we'll use for ChartMuseum.
 
 We already have the IP of the cluster (hopefully the IP of the external LB), and we can use it to create a `nip.io` domain, just as we did in the previous chapter.
 
@@ -174,7 +235,7 @@ echo $CM_ADDR
 
 In my case, the output is `cm.18.221.122.90.nip.io`.
 
-If you go back to the values output, you'll notice that the Chart requires host to be defined as a key, with paths as values. We need to escape "special" characters if they are used as keys. In the case of our address, we need to escape all the dots. We'll use a bit of `sed` magic for that.
+If you go back to the values output, you'll notice that the Chart requires host to be defined as a key, with paths as values. The problem with that lies in the fact that "special" characters cannot be used as keys. In the case of our address, we need to escape all the dots. We'll use a bit of `sed` magic for that.
 
 ```bash
 CM_ADDR_ESC=$(echo $CM_ADDR \
@@ -183,13 +244,13 @@ CM_ADDR_ESC=$(echo $CM_ADDR \
 echo $CM_ADDR_ESC
 ```
 
-We echoed the address and send that output to a `sed` command that replaced every `.` character with `\.`. The output of the latter command should be similar to the one that follows.
+We echoed the address and we sent the output to the `sed` command that replaced every `.` character with `\.`. The output of the latter command should be similar to the one that follows.
 
 ```
 cm\.18\.221\.122\.90\.nip\.io
 ```
 
-Just as with the registry, I already prepared a file with all the values we'll want to customize. Let's take a quick look at it.
+I already prepared a file with all the values we'll want to customize. Let's take a quick look at it.
 
 ```bash
 cat helm/chartmuseum-values.yml
@@ -223,33 +284,37 @@ ingress:
     - /
 ```
 
-This is becoming monotonous. It should be that way. Installations should be boring and follow the same pattern. We found that pattern in Helm.
+This is becoming monotonous, and that's OK. It should be that way. Installations should be boring and follow the same pattern. We found that pattern in Helm.
 
-The `chartmuseum-values.yml` file defines the values we discussed. It sets the `tag` we'll use, and it enables the API. It defines the `resources`, and you already know that the values we're using should be taken with a lot of skepticism. In "real" production, they will differ.
+The *chartmuseum-values.yml* file defines the values we discussed. It sets the `tag` we'll use, and it enables the API. It defines the `resources`, and you already know that the values we're using should be taken with a lot of skepticism. In the "real" production, the amount of memory and CPU your applications require will differ greatly from what we can observe in our examples.
 
-We enabled `persistence` and, as the result, we'll use the default StorageClass, since we did not specify any explicitly.
+We enabled `persistence` and we'll use the default StorageClass, since we did not specify any explicitly.
 
-Ingress section defines the same annotations as those we used with the other Helm installations. It also defines a single host that will handle requests from all paths (`/`).
+Ingress section defines the same annotations as those we used with the other Helm installations. It also defines a single host that will handle requests from all paths (`/`). Think of it as a reminder only. We cannot rely on the host in the *chartmuseum-values.yml* file since it likely differs from the `nip.io` address you defined. I could not predict which one will be in your case. So, we'll overwrite that value with a `--set` argument.
 
-The important thing to note is that we cannot rely on the host in that file. I could not predict which one will be in your case. So, we'll overwrite that value with a `--set` argument.
-
-Let's install it.
+Let's install the Chart.
 
 ```bash
 helm install stable/chartmuseum \
     --namespace charts \
     --name cm \
     --values helm/chartmuseum-values.yml \
-    --set ingress.hosts."$CM_ADDR_ESC"={"/"}
+    --set ingress.hosts."$CM_ADDR_ESC"={"/"} \
+    --set env.secret.BASIC_AUTH_USER=admin \
+    --set env.secret.BASIC_AUTH_PASS=admin
 ```
 
-We should discuss security before we proceed. Personally, I believe that there's no reason to hide the Charts. They do not (should not) contain anything confidential. The applications are stored in a container registry. Even if someone decides to use your Charts, that person would not be able to deploy your images, if your registry is configured to require authentication.
+The Chart is installed. Instead of waiting in silence for all the Pods to start running, we'll briefly discuss security.
 
-If that is not enough and you do want to protect your Charts as well, you should ask yourself who should not be allowed to access them. If you want to prevent only outsiders from accessing your Charts, the fix is easy. Put your cluster inside a VPN and make the domain accesible only to internal users. On the other hand, if you want to prevent even internal users from accessing your Chart (those who are inside your VPN), you can add basic HTTP authentication. You already saw the `secret` section in values. You could set `env.secret.BASIC_AUTH_USER` and `env.secret.BASIC_AUTH_PASS` values.
+We defined the username and the password through `--set` arguments. They shouldn't be stored in `helm/chartmuseum-values.yml` since that would defy the purpose of secrecy.
 
-If none of those methods is secure enough, you can implement the best security measure of all. You can disable access to all humans by removing Ingress and changing the Service type to `ClusterIP`. That would result in only processes running in Pods being able to access the Charts. A good example would be to allow Jenkins to push and pull the Charts, and no one else.
+Personally, I believe that there's no reason to hide the Charts. They do not (should not) contain anything confidential. The applications are stored in a container registry. Even if someone decides to use out Charts, that person would not be able to deploy our images, if our registry is configured to require authentication.
 
-We won't implement any of those security hardenings, just yet. In this chapter, I'll simplify the setup with the assumption that protecting images through Registry authentication is enough, and that Charts themselves do not have any confidential information. We will be able to push and pull charts without any authentication. Later on, in one of the next chapters, we'll remove Ingress and allow only Pods to access the repository. Humans will be out of the game.
+If that is not enough, and we do want to protect our Charts besides protecting images, we should ask yourself who should not be allowed to access them. If we want to prevent only outsiders from accessing our Charts, the fix is easy. Put can put our cluster inside a VPN and make the domain accessible only to internal users. On the other hand, if we want to prevent even internal users from accessing our Charts, we can add basic HTTP authentication. We already saw the `secret` section when we inspected the values. You could set `env.secret.BASIC_AUTH_USER` and `env.secret.BASIC_AUTH_PASS` to enable basic authentication. That's what we did in our example.
+
+If none of those methods is secure enough, we can implement the best security measure of all. We can disable access to all humans by removing Ingress and changing the Service type to `ClusterIP`. That would result in only processes running in Pods being able to access the Charts. A good example would be to allow Jenkins to push and pull the Charts, and no one else. Even though that approach is more secure, it does not provide access to the Charts to people who might need it. Humans are true users of ChartMuseum. For scripts, it is easy to know which repository contains the definitions they need and to clone the code, even if that is only for the purpose of retrieving Charts. Humans need a way to search for Charts, to inspect them, and to run them on their laptops or servers.
+
+We opted to a middle solution. We set up basic authentication which is better than no authentication, but still less secure than allowing only those within a VPN to access Charts or disabling human access altogether.
 
 W> ## A note to minishift users
 W>
@@ -279,11 +344,13 @@ The output is as follows.
 {"healthy":true}
 ```
 
-Now we cna open ChartMuseum in browser.
+Now we can open ChartMuseum in browser.
 
 ```bash
 open "http://$CM_ADDR"
 ```
+
+You will be asked for a username and a password. Please use *admin* for both and click the *Sign in* button.
 
 ![Figure 5-1: ChartMuseum's welcome screen](images/ch05/chartmuseum-ui.png)
 
@@ -293,6 +360,15 @@ Let's see the index.
 
 ```bash
 curl "http://$CM_ADDR/index.yaml"
+```
+
+Since we did not specify the username and the password, we got `{"error":"unauthorized"}` as the output. We'll need to authenticate every time we want to interact with ChartMuseum API.
+
+Let's try again but, this time, with the authentication info.
+
+```bash
+curl -u admin:admin \
+    "http://$CM_ADDR/index.yaml"
 ```
 
 The output is as follows.
@@ -307,12 +383,14 @@ It should come as no surprise that we have no entries to the museum. We did not 
 
 ```bash
 helm repo add chartmuseum \
-    http://$CM_ADDR
+    http://$CM_ADDR \
+    --username admin \
+    --password admin
 ```
 
-The output states that `"chartmuseum" has been added to your repositories`. From now on, all the Charts we stored in our ChartMuseum installation will be available through our Helm client.
+The output states that `"chartmuseum" has been added to your repositories`. From now on, all the Charts we store in our ChartMuseum installation will be available through our Helm client.
 
-The only thing left is to start pushing Charts to ChartMuseum. We could do that through by sending `curl` requests. However, there is a better way so we'll skip HTTP requests and install a Helm plugin instead.
+The only thing left is to start pushing Charts to ChartMuseum. We could do that by sending `curl` requests. However, there is a better way, so we'll skip HTTP requests and install a Helm plugin instead.
 
 ```bash
 helm plugin install \
@@ -324,7 +402,9 @@ This plugin added a new command `helm push`. Let's give it a spin.
 ```bash
 helm push \
     ../go-demo-3/helm/go-demo-3/ \
-    chartmuseum
+    chartmuseum \
+    --username admin \
+    --password admin
 ```
 
 The output is as follows.
@@ -334,10 +414,11 @@ Pushing go-demo-3-0.0.1.tgz to chartmuseum...
 Done.
 ```
 
-We pushed a Chart located in the `../go-demo-3/helm/go-demo-3/` directory into a repository `chartmuseum`. We can confirm that the push was indeed successfull by retrieving `index.yaml` file from the repository.
+We pushed a Chart located in the `../go-demo-3/helm/go-demo-3/` directory into a repository `chartmuseum`. We can confirm that the push was indeed successful by retrieving `index.yaml` file from the repository.
 
 ```bash
-curl "http://$CM_ADDR/index.yaml"
+curl "http://$CM_ADDR/index.yaml" \
+    -u admin:admin
 ```
 
 The output is as follows.
@@ -371,7 +452,7 @@ generated: "2018-06-02T21:39:28Z"
 
 We can see that the `go-demo-3` Chart is now in the repository. Most of the information comes from the `Chart.yaml` file we explored in the previous chapter.
 
-Finally, we should validate that our local Helm client indeed sees the new chart.
+Finally, we should validate that our local Helm client indeed sees the new Chart.
 
 ```bash
 helm search chartmuseum/
@@ -393,7 +474,7 @@ Hang tight while we grab the latest from your chart repositories...
 Update Complete. ⎈ Happy Helming!⎈
 ```
 
-If you added more repositories to your Helm client, you might see a bigger output. Those additional repositories do not matter in this context. What does matter is that the `chartmuseum` repository was updated, and that we can try to search it again.
+If you added more repositories to your Helm client, you might see a bigger output. Those additional repositories do not matter in this context. What does matter is that the `chartmuseum` was updated, and that we can try to search it again.
 
 ```bash
 helm search chartmuseum/
@@ -412,9 +493,9 @@ Our Chart is now available in ChartMuseum and we can access it with our Helm cli
 helm inspect chartmuseum/go-demo-3
 ```
 
-We won't go through the output since it is the same as the one we explored in the previous chapter. The only difference is that, this time, it is not retrieve from the Chart stored locally, but from ChartMuseum running inside our cluster. From now on, anyone with the access to that repository can deploy the *go-demo-3* application.
+We won't go through the output since it is the same as the one we explored in the previous chapter. The only difference is that, this time, it is not retrieved from the Chart stored locally, but from ChartMuseum running inside our cluster. From now on, anyone with the access to that repository can deploy the *go-demo-3* application.
 
-To be on the safe side, and fully confident in the solution, we'll deploy the Chart before announcing to everyone that they can use the new repository to install the applications.
+To be on the safe side, and fully confident in the solution, we'll deploy the Chart before announcing to everyone that they can use the new repository to install applications.
 
 Just as with the other applications, we'll start by defining a domain we'll use for *go-demo-3*.
 
@@ -441,7 +522,7 @@ helm upgrade -i go-demo-3 \
     --reuse-values
 ```
 
-We can see from the first line of the output that the `release "go-demo-3" does not exist`, so Helm decided to install it instead doing the upgrade. The rest of the output is the same as the one you saw in the previous chapter. It contains the list of the resources created from the Chart as well as the post-installation instructions.
+We can see from the first line of the output that the `release "go-demo-3" does not exist`, so Helm decided to install it, instead of doing the upgrade. The rest of the output is the same as the one you saw in the previous chapter. It contains the list of the resources created from the Chart as well as the post-installation instructions.
 
 W> ## A note to minishift users
 W>
@@ -470,7 +551,8 @@ Unfortunately, there is no Helm plugin that will allow us to delete a Chart from
 
 ```bash
 curl -XDELETE \
-    "http://$CM_ADDR/api/charts/go-demo-3/0.0.1"
+    "http://$CM_ADDR/api/charts/go-demo-3/0.0.1" \
+    -u admin:admin
 ```
 
 The output is as follows.
@@ -483,17 +565,17 @@ The chart is deleted from the repository.
 
 Now you know everything there is to know about ChartMuseum. OK, maybe you don't know everything you should know, but you do know the basics that will allow you to explore it further.
 
-Now that you know how to push and pull Charts to/from ChartMuseum, you might still be wondering if there is an UI that will allow us to visualize Charts. Read on.
+Now that you know how to push and pull Charts to and from ChartMuseum, you might still be wondering if there is an UI that will allow us to visualize Charts. Read on.
 
 ## Monocular
 
-I don't think that UIs are useful. We tend to focus on the features they provide and that distracts us from command line and code. We often get so immersed into filling fields and clicking buttons, that we often forget that the key to automation is to master CLIs and write code that lives in a code repository. I think that UIs do more damage than good to software engineers.
+I don't think that UIs are useful. We tend to focus on the features they provide and that distracts us from command line and code. We often get so immersed into filling fields and clicking buttons, that we often forget that the key to automation is to master CLIs and to write code that lives in a code repository. I think that UIs do more damage than good to software engineers.
 
 That being said, I am fully aware that not everyone shares my views. Some like UIs and prefer pretty colors over black and white terminal screens. For those, I will guide you how to get a UI that will utilize Helm repositories and allow you to do some of the things we did through CLI by clicking buttons. We'll explore [Monocular](https://github.com/kubernetes-helm/monocular).
 
 Monocular is web-based UI for managing Kubernetes applications packaged as Helm Charts. It allows us to search and discover available charts from multiple repositories, and install them in our clusters with one click.
 
-Monocular can be installed with Helm. It is available through a Chart available in its own repository. So, our first step is to add [the repository](https://kubernetes-helm.github.io/monocular) to our Helm client.
+Monocular can be installed with Helm. It is available through a Chart available in its own [repository](https://kubernetes-helm.github.io/monocular). So, our first step is to add the repository to our Helm client.
 
 ```bash
 helm repo add monocular \
@@ -545,7 +627,7 @@ ingress:
     ...
 ```
 
-Just as with other Charts, we'll use a fixed version of the images by customizing `image.tag` values in both the `api` and the `ui` sections.
+Just as with the other Charts, we'll use a fixed version of the images by customizing `image.tag` values in both the `api` and the `ui` sections.
 
 We'll need to increase the resources since those specified by default are too low.
 
@@ -598,7 +680,7 @@ monocular.18.221.122.90.nip.io
 
 W> ## A note to minishift users
 W>
-W> Installing Monocular in OpenShift creates quite a few issues and requires quite a few changes to the commands that follow. Please use the instructions from [Deploy Monocular on OpenShift](https://blog.openshift.com/deploy-monocular-openshift/) article instead of the command that follows.
+W> Installing Monocular in OpenShift creates a few issues and requires quite a few changes to the commands that follow. Please use the instructions from [Deploy Monocular on OpenShift](https://blog.openshift.com/deploy-monocular-openshift/) article instead of the command that follows.
 
 Now we are ready to install Monocular Chart.
 
@@ -632,29 +714,29 @@ open "http://$MONOCULAR_ADDR"
 
 If we click on the *Charts* link in top-right corner of the screen, we'll see all the charts available in the two default repositories (*stable* and *incubator*). We can use the link on the left-hand menu to filter them by a repository and to change the ordering. We can also use the *Search charts...* field to filter charts.
 
-The *Repositories* screen can be used to list the currently configured ones as well as to add new ones.
+The *Repositories* screen can be used to list those that are currently configured, as well as to add new ones.
 
 The *Deployments* screen list all the Helm installations. At the moment, we have *cm* (ChartMuseum) and *monocular* running through Helm Charts. Additionally, there is the *New deployment* button that we can use to install a new Chart. Please click it and observe that you are taken back to the *Charts* screen. We are about to install Jenkins.
 
-Type *jenkins* in the *Search charts...* field. The list of the Charts will be filtered and we'll see only Jenkins. Click on the *jenkins* Chart.
+Type *jenkins* in the *Search charts...* field. The list of the Charts will be filtered and we'll see only Jenkins. Click on the only Chart.
 
 On the left-hand side of the screen is the same information we can see by executing `helm inspect stable/jenkins` command. On the right-hand side there is the *Install* section which we can use for *one click installation* or to copy *Helm CLI* commands.
 
-Please remain in the *One Click Installation* tab and click the *Install jenkins v...* button. You will be presented with a popup with a field to specify Namespace where the Chart should be installed. Please type *jenkins* and click the *Deploy* button.
+Please remain in the *One Click Installation* tab and click the *Install jenkins v...* button. You will be presented with a popup with a field to specify a Namespace where the Chart will be installed. Please type *jenkins* and click the *Deploy* button.
 
 We were redirected to the screen with the same information we'd get if we executed `helm install stable/jenkins --namespace jenkins`.
 
-Even though using Monocular might seem tempting at the begging, it has its serious drawbacks. We'll discuss them soon. For now, please click the red *Delete deployment* button to remove Jenkins.
+Even though using Monocular might seem tempting at the begging, it has a few serious drawbacks. We'll discuss them soon. For now, please click the red *Delete deployment* button to remove Jenkins.
 
-The major problem with Monocular is that it does not allow us to specify values during Charts installation. There will hardly ever be the case when we'll install Charts without any custom values. That inability alone should be enough to discard Monocular to anything serious usage. On top of that, it does not provide the option to upgrade Charts.
+The major problem with Monocular is that it does not allow us to specify values during Charts installation. There will hardly ever be the case when we'll install Charts without any custom values. That inability alone should be enough to discard Monocular for any serious usage. On top of that, it does not provide the option to upgrade Charts.
 
-Today (June 2018) Monocular project is still too young to be taken seriously. That will probably change as the project matures. For now, my recommendation is not to use it. This might provoke a negative reaction. You might feel that I wasted your time by showing you a tool that is not useful. I felt that you should know that the UI exists and that it is the only free option we have today. I'll leave that decision to you. You know what it does and how to install it.
+Today (June 2018) Monocular project is still too young to be taken seriously. That will probably change as the project matures. For now, my recommendation is not to use it. That might provoke a negative reaction. You might feel that I wasted your time by showing you a tool that is not useful. However, I felt that you should know that the UI exists and that it is the only free option we have today. I'll leave that decision to you. You know what it does and how to install it.
 
 # What Now?
 
 We will continue using ChartMuseum throughout the rest of the book and I will leave it to you to decide whether Monocular is useful or a waste of compute resources.
 
-We could have set up a container registry, but we didn't. There are too many tools in the market ranging from free solutions like [Docker Registry](https://docs.docker.com/registry/) until enterprise products like [Docker Trusted Registry](https://docs.docker.com/ee/dtr/) and JFrog' [Artifactory](https://www.jfrog.com/confluence/display/RTF/Docker+Registry). The problem is that Docker Registry is very insecure. It provides only a very basic authentication. Still, the price is right (it's free). On the other hand, you might opt for commercial solution and leverage the additional features they provide. Never the less, I felt that for our use-case it is the best if we stick with [Docker Hub](https://hub.docker.com/). Almost everyone has an account there and it is an excellent choice for the examples we're having. Once you translate the knowledge from here to your "real" processes, you should have no problem to switch to any other container registry if you choose to do so. By now, you should have all the skills required to run a registry in your cluster.
+We could have set up a container registry, but we didn't. There are too many tools in the market ranging from free solutions like [Docker Registry](https://docs.docker.com/registry/) all the way until enterprise products like [Docker Trusted Registry](https://docs.docker.com/ee/dtr/) and JFrog' [Artifactory](https://www.jfrog.com/confluence/display/RTF/Docker+Registry). The problem is that Docker Registry (free version) is very insecure. It provides only a very basic authentication. Still, the price is right (it's free). On the other hand, you might opt for one of the commercial solutions and leverage the additional features they provide. Never the less, I felt that for our use-case it is the best if we stick with [Docker Hub](https://hub.docker.com/). Almost everyone has an account there and it is an excellent choice for the examples we're having. Once you translate the knowledge from here to your "real" processes, you should have no problem switching to any other container registry if you choose to do so. By now, you should have all the skills required to run a registry in your cluster.
 
 All in all, we'll continue using Docker Hub for storing container images and we'll run Monocular in our cluster and use it to distribute Helm Charts.
 
