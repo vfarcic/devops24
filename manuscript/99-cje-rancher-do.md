@@ -36,6 +36,8 @@ Please make sure that you have the following items.
 
 ## Creating A Rancher Server
 
+The first step towards having a Kubernetes cluster is to have a Rancher server. Once it's up and running, we'll be able to use it to spin a Kubernetes cluster.
+
 We'll need a DigitalOcean token that will allow us to authenticate with its API. Please open the API Tokens screen.
 
 ```bash
@@ -54,29 +56,43 @@ Please execute the command that follows.
 ssh-keygen -t rsa
 ```
 
-TODO: Continue
+Please type `cje` as the file name. Feel free to answer to all the other question with the enter key.
+
+Now that we have the SSH key, we can upload it to DigitalOcean. But, before we do that, we need to authenticate first.
 
 ```bash
-# Type `cje` as the file, answer with the enter key to the rest of the questions
-
 doctl auth init
 ```
 
+If this is the first time you're using `doctl`, you will be asked for the authentication token we created earlier.
+
+The output should be similar to the one that follows.
+
 ```
-Using token [c8c54c9cd375eb144d5d5d556ade43be13bf3f6316152ea9de99bdab436c9331]
+Using token [...]
 
 Validating token... OK
 ```
+
+We can upload the SSH key with the `ssh-key create` command.
+
+Please execute the command the follows.
 
 ```bash
 doctl compute ssh-key create cje \
     --public-key "$(cat cje.pub)"
 ```
 
+We created a new SSH key in DigitalOcean and named it `cje`. The content of the key was provided with the `--public-key` argument.
+
+The output should be simialr to the one that follows.
+
 ```
 ID       Name FingerPrint
 21418650 cje  28:f8:51:f0...
 ```
+
+We'll need the ID of the new key. Instead of copying and pasting it from the output, we'll execute a query that will retrieve the ID from DigitalOcean. That way, we can retrieve it at any time instead of saving the output of the previous command.
 
 ```bash
 KEY_ID=$(doctl compute ssh-key list \
@@ -86,17 +102,33 @@ KEY_ID=$(doctl compute ssh-key list \
 echo $KEY_ID
 ```
 
+We executed `ssh-key list` command that retrieve all the SSH keys available in our DigitalOcean account. Further on, we used `grep` to filter the result so that only the key named `cje` is output. Finally, we used `aws` to output only the first colume that contains the ID we're looking for.
+
+The output of the latter command should be similar to the one that follows.
+
 ```
 21418650
 ```
 
+Next, we need to find out the ID of the image we'll use to create a VM that will host Rancher.
+
+If your operating system of choice is **Ubuntu**, please execute the command that follows.
+
 ```bash
-# If Ubuntu
 DISTRIBUTION=ubuntu-18-04-x64
+```
 
-# If CentOS
+Otherwise, if you prefer CentOS, the command is as follows.
+
+```bash
 DISTRIBUTION=centos-7-x64
+```
 
+Now matter which operating system we prefer, the important thing to note is that we have the environment variable `DISTRIBUTION` that holds the `slug` we can use to find out the ID of the image we'll use. Slag is DigitalOcean term that, in this context, describes the name of a distribution.
+
+Now we can retrieve the ID of the image we'll use.
+
+```bash
 IMAGE_ID=$(doctl compute \
     image list-distribution \
     -o json \
@@ -105,23 +137,39 @@ IMAGE_ID=$(doctl compute \
 echo $IMAGE_ID
 ```
 
+The command retrieved the list of all the distributions and sent the output to `jq` which, in turn, filtered it so that only the ID of the image that matches our desired distribution is retrieved.
+
+The output of the latter command should be similar to the one that follows.
+
 ```
 34487567
 ```
+
+Now we are finally ready to create a new VM that will soon how our Rancher server.
 
 ```bash
 doctl compute droplet create rancher \
     --enable-private-networking \
     --image $IMAGE_ID \
     --size s-2vcpu-4gb \
-    --region nyc1 \
+    --region nyc3 \
     --ssh-keys $KEY_ID
 ```
 
+We executed a `compute droplet command` that created a Droplet (DigitalOcean name for a node or a VM). We named it `rancher`, enabled private networking, and set the image to the ID we retrieved previously. We used `s-2vcpu-4gb` VM size that provides 2 CPUs and 4 GB RAM. The server will run in New York 3 region for no particular reason besides the fact that we had to choose one. Finally, we specify the SSH key ID we retrieved earlier so that we can enter into the newly created VM and complete the installation.
+
+The output is as follows.
+
 ```
-ID       Name Public IPv4 Private IPv4 Public IPv6 Memory VCPUs Disk Region Image          Status Tags Features Volumes
-96650503 rancher                                   4096   2     80   nyc1   CentOS 7.5 x64 new
+ID       Name Public IPv4 Private IPv4 Public IPv6 Memory VCPUs Disk Region Image            Status Tags Features Volumes
+96650503 rancher                                   4096   2     80   nyc1   Ubuntu 18.04 x64 new
 ```
+
+Please note that your ID will be different as we'll as the `Image` if you chose CentOS as your operating system of choice.
+
+Next, we need to retrieve the IP of the new droplet (VM).
+
+Please execute the command the follows.
 
 ```bash
 RANCHER_IP=$(doctl compute droplet list \
@@ -131,37 +179,55 @@ RANCHER_IP=$(doctl compute droplet list \
 echo $RANCHER_IP
 ```
 
+We retrieved the list of all the droplets (VMs) in JSON format and sent the output to `jq`. It filtered the results so that only `rancher` is retrieved and output the IP address. We stored the final output as `RAnCHER_IP` variable.
+
+The output of the latter command will differ from one case to another. Mine is as follows.
+
 ```
 208.68.39.72
 ```
 
+Now we can enter into the droplet.
+
 ```bash
 ssh -i cje root@$RANCHER_IP
+```
 
-# If Ubuntu
+Rancher runs as a container. So, our first step towards setting it up is to install Docker.
+
+Please execute only the commands that match your operating system.
+
+If you chose **Ubuntu**, the commands are as follows.
+
+```bash
 apt update
 
-# If Ubuntu
 apt install -y docker.io
+```
 
-# If CentOS
+If, on the other hand, your operating system is **CentOS**, the commands are as follows.
+
+```bash
 yum install -y \
     yum-utils \
     device-mapper-persistent-data \
     lvm2
 
-# If CentOS
 yum-config-manager --add-repo \
     https://download.docker.com/linux/centos/docker-ce.repo
 
-# If CentOS
 yum install -y docker-ce
 
-# If CentOS
 systemctl start docker
+```
 
+No matter the operating system of choice, we'll validate that Docker was installed correctly by outputting its version.
+
+```bash
 docker version
 ```
+
+The output is as follows.
 
 ```
 Client:
@@ -185,6 +251,8 @@ Server:
   Experimental: false
 ```
 
+Now we are ready to set up Rancher.
+
 ```bash
 docker run -d \
     --restart=unless-stopped \
@@ -192,39 +260,43 @@ docker run -d \
     rancher/server:preview
 ```
 
-```
-Unable to find image 'rancher/server:preview' locally
-preview: Pulling from rancher/server
-68393378db12: Pull complete
-9e3366501e0e: Pull complete
-156ec05da9a5: Pull complete
-281cba1133d9: Pull complete
-0acdc2cc8ed1: Pull complete
-a8cef3d8a877: Pull complete
-3e968117f1c2: Pull complete
-cf62fef10dfd: Pull complete
-098edd097869: Pull complete
-77a837c0bf2d: Pull complete
-Digest: sha256:38839bb19bdcac084a413a4edce7efb97ab99b6d896bda2f433dfacfd27f8770
-Status: Downloaded newer image for rancher/server:preview
-660b65bf9b0db1a88ab902c9fccb28c31ac8f63cbeaec3786228e49f1addc162
-```
+We used `-d` to run the container in background (detached). We specified `restart` strategy to `unless-stopped` which will guarantee that Docker will make sure that the container is running even if the process inside it fails. Please note that this strategy does not make your Rancher fault tolerant. If the node hosting our Rancher server goes down, we'd loose everything. However, for the purpose of this exercise, a single Rancher container should be enough.
+
+We published ports `80` and `443`, even though we do not have SL certificates.
+
+Finally, we're using `preview` tag since, at the time of this writing, Rancher 2 is still not production ready. Yet, version two brings a complete overhaul and it would be pointless to invest time in setting up Rancher 1.x.
+
+Let's exit the node and test whether Rancher indeed works.
 
 ```bash
 exit
+```
 
+We'll use [nip.io](http://nip.io) to generate valid domain for Rancher, as well as for the CJE later on. The service provides a wildcard DNS for any IP address. It extracts IP from the nip.io subdomain and sends it back in the response. For example, if we generate 192.168.99.100.nip.io, it'll be resolved to 192.168.99.100. We can even add sub-sub domains like something.192.168.99.100.nip.io, and it would still be resolved to 192.168.99.100. It's a simple and awesome service that quickly became an indispensable part of my toolbox.
+
+```bash
 RANCHER_ADDR=$RANCHER_IP.nip.io
 
 echo $RANCHER_ADDR
 ```
 
+The output of the latter command should be similar to the one that follows.
+
 ```
 208.68.39.72.nip.io
 ```
 
+Now we can finally open Rancher UI in browser.
+
 ```bash
 open "https://$RANCHER_ADDR"
+```
 
+> If you are a **Windows* user, Git Bash might not be able to use the `open` command. If that's the case, replace the `open` command with `echo`. As a result, you'll get the full address that should be opened directly in your browser of choice.
+
+TODO: Continue
+
+```bash
 # If you see *This site can’t be reached* message, wait a few moments and refresh the screen.
 
 # There are no certificates. In Chrome, click the *ADVANCED* link, followed with *Proceed to 208.68.39.72.nip.io (unsafe)*.

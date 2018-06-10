@@ -6,7 +6,7 @@
 - [X] 02-sa.md
 - [X] 03-manual-cd.md
 - [X] 04-helm.md
-- [ ] 05-chart-museum.md
+- [X] 05-chart-museum.md
 - [ ] 06-jenkins-setup.md
 - [ ] 07-jenkins-cd.md
 - [ ] 08-big-picture-jenkins.md
