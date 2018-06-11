@@ -37,6 +37,12 @@ helm init --service-account tiller
 kubectl -n kube-system \
     rollout status deploy tiller-deploy
 
+##################
+# Get Cluster IP #
+##################
+
+export LB_IP=$(minikube ip)
+    
 #######################
 # Destroy the cluster #
 #######################
