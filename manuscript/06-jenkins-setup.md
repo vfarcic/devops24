@@ -1,7 +1,7 @@
 ## Chapter
 
 - [X] Code
-- [ ] Code review Docker for Mac/Windows
+- [X] Code review Docker for Mac/Windows
 - [X] Code review minikube
 - [ ] Code review kops
 - [ ] Code review minishift
@@ -39,9 +39,9 @@ The requirements for the cluster are now slightly different. We'll need **Helm s
 
 For your convenience, the new Gists and the specs are available.
 
-* [docker4mac-helm.sh](TODO): **Docker for Mac** with 3 CPUs, 3 GB RAM, with **nginx Ingress**, and with **tiller**.
+* [docker4mac-ip.sh](TODO): **Docker for Mac** with 3 CPUs, 3 GB RAM, with **nginx Ingress**, and with **tiller**.
 * [minikube-ip.sh](TODO): **minikube** with 3 CPUs, 3 GB RAM, with `ingress`, `storage-provisioner`, and `default-storageclass` addons enabled, and with **tiller**.
-* [kops-helm.sh](TODO): **kops in AWS** with 3 t2.small masters and 2 t2.medium nodes spread in three availability zones, with **nginx Ingress**, and with **tiller**. The Gist assumes that the prerequisites are set through [Appendix B](#appendix-b).
+* [kops-ip.sh](TODO): **kops in AWS** with 3 t2.small masters and 2 t2.medium nodes spread in three availability zones, with **nginx Ingress**, and with **tiller**. The Gist assumes that the prerequisites are set through [Appendix B](#appendix-b).
 * [minishift-helm.sh](TODO): **minishift** with 3 CPUs, 3 GB RAM, with version 1.16+, and with **tiller**.
 * [gke-helm.sh](TODO): **Google Kubernetes Engine (GKE)** with 3 n1-highcpu-2 (2 CPUs, 1.8 GB RAM) nodes (one in each zone), and with **nginx Ingress** controller running on top of the "standard" one that comes with GKE, and with **tiller**. We'll use nginx Ingress for compatibility with other platforms. Feel free to modify the YAML files and Helm Charts if you prefer NOT to install nginx Ingress.
 
@@ -165,6 +165,8 @@ jenkins-slave-6hssz-250tw   0/3       ContainerCreating   0          16s
 
 open "http://$JENKINS_ADDR/job/my-k8s-job/configure"
 
+# Click the *Pipeline* tab
+
 # Replace the script with the one that follows
 ```
 
@@ -224,6 +226,8 @@ open "http://$JENKINS_ADDR/blue/organizations/jenkins/my-k8s-job/activity"
 
 # Click the *Run* button
 
+# Click the row with the new build
+
 kubectl -n jenkins get pods
 ```
 
@@ -235,9 +239,11 @@ jenkins-slave-qnkwc-s6jfx   0/5       ContainerCreating   0          19s
 
 ```bash
 # Observe the results in UI
-```
 
-NOTE: Output from the `helm version` command
+# Click the *helm* stage
+
+# Click the *helm version* step
+```
 
 ```
 [my-k8s-job] Running shell script
@@ -266,6 +272,10 @@ jenkins-c7f7c77b4-cgxx8   1/1       Running   0          42m
 
 ```bash
 open "http://$JENKINS_ADDR/job/my-k8s-job/configure"
+
+# Click the *Pipeline* tab
+
+# Replace the script with the one that follows
 ```
 
 ```groovy
@@ -322,7 +332,7 @@ spec:
 ```
 
 ```bash
-# Click *Save*
+# Click the *Save* button
 
 open "http://$JENKINS_ADDR/blue/organizations/jenkins/my-k8s-job/activity"
 
@@ -607,7 +617,6 @@ vagrant ssh -c "sudo docker version"
 ```
 
 ```
-...
 Client:
  Version:      1.13.1
  API version:  1.26
@@ -867,6 +876,10 @@ podTemplate(
 
 ```bash
 open "http://$JENKINS_ADDR/job/my-k8s-job/configure"
+
+# Click the *Pipeline* tab
+
+# Replace the script with the one that follows
 ```
 
 ```groovy
@@ -1379,7 +1392,7 @@ open "http://$JENKINS_ADDR/newJob"
 ```groovy
 podTemplate(
     label: "kubernetes",
-    namespace: "go-demo-3-build", 
+    namespace: "go-demo-3-build",
     serviceAccount: "build",
     yaml: """
 apiVersion: v1
