@@ -3,8 +3,8 @@
 - [X] Code
 - [X] Code review Docker for Mac/Windows
 - [X] Code review minikube
-- [ ] Code review kops
-- [ ] Code review minishift
+- [X] Code review kops
+- [X] Code review minishift
 - [ ] Code review GKE
 - [ ] Write
 - [ ] Text review
@@ -39,11 +39,11 @@ The requirements for the cluster are now slightly different. We'll need **Helm s
 
 For your convenience, the new Gists and the specs are available.
 
-* [docker4mac-ip.sh](TODO): **Docker for Mac** with 3 CPUs, 3 GB RAM, with **nginx Ingress**, and with **tiller**.
-* [minikube-ip.sh](TODO): **minikube** with 3 CPUs, 3 GB RAM, with `ingress`, `storage-provisioner`, and `default-storageclass` addons enabled, and with **tiller**.
-* [kops-ip.sh](TODO): **kops in AWS** with 3 t2.small masters and 2 t2.medium nodes spread in three availability zones, with **nginx Ingress**, and with **tiller**. The Gist assumes that the prerequisites are set through [Appendix B](#appendix-b).
-* [minishift-helm.sh](TODO): **minishift** with 3 CPUs, 3 GB RAM, with version 1.16+, and with **tiller**.
-* [gke-helm.sh](TODO): **Google Kubernetes Engine (GKE)** with 3 n1-highcpu-2 (2 CPUs, 1.8 GB RAM) nodes (one in each zone), and with **nginx Ingress** controller running on top of the "standard" one that comes with GKE, and with **tiller**. We'll use nginx Ingress for compatibility with other platforms. Feel free to modify the YAML files and Helm Charts if you prefer NOT to install nginx Ingress.
+* [docker4mac-ip.sh](https://gist.github.com/66842a54ef167219dc18b03991c26edb): **Docker for Mac** with 3 CPUs, 3 GB RAM, with **nginx Ingress**, and with **tiller**.
+* [minikube-ip.sh](https://gist.github.com/df5518b24bc39a8b8cca95cc37617221): **minikube** with 3 CPUs, 3 GB RAM, with `ingress`, `storage-provisioner`, and `default-storageclass` addons enabled, and with **tiller**.
+* [kops-ip.sh](https://gist.github.com/7ee11f4dd8a130b51407582505c817cb): **kops in AWS** with 3 t2.small masters and 2 t2.medium nodes spread in three availability zones, with **nginx Ingress**, and with **tiller**. The Gist assumes that the prerequisites are set through [Appendix B](#appendix-b).
+* [minishift-ip.sh](https://gist.github.com/fa902cc2e2f43dcbe88a60138dd20932): **minishift** with 3 CPUs, 3 GB RAM, with version 1.16+, and with **tiller**.
+* [gke-ip.sh](https://gist.github.com/3e53def041591f3c0f61569d49ffd879): **Google Kubernetes Engine (GKE)** with 3 n1-highcpu-2 (2 CPUs, 1.8 GB RAM) nodes (one in each zone), and with **nginx Ingress** controller running on top of the "standard" one that comes with GKE, and with **tiller**. We'll use nginx Ingress for compatibility with other platforms. Feel free to modify the YAML files and Helm Charts if you prefer NOT to install nginx Ingress.
 
 NOTE: Retrieval of cluster IP is now in the Gists
 
@@ -60,6 +60,9 @@ jenkins.52.15.140.221.nip.io
 ```
 
 ```bash
+# If minishift
+oc patch scc restricted -p '{"runAsUser":{"type": "RunAsAny"}}'
+
 helm install stable/jenkins \
     --name jenkins \
     --namespace jenkins \
@@ -76,6 +79,9 @@ deployment "jenkins" successfully rolled out
 ```
 
 ```bash
+# If minishift
+oc -n jenkins create route edge --service jenkins --insecure-policy Allow --hostname $JENKINS_ADDR
+
 open "http://$JENKINS_ADDR"
 
 JENKINS_PASS=$(kubectl -n jenkins \
@@ -240,9 +246,21 @@ jenkins-slave-qnkwc-s6jfx   0/5       ContainerCreating   0          19s
 ```bash
 # Observe the results in UI
 
-# Click the *helm* stage
+# Click the *helm* stage once the build reaches it
 
 # Click the *helm version* step
+```
+
+```
+[my-k8s-job] Running shell script
+
++ helm version
+
+Client: &version.Version{SemVer:"v2.8.2", GitCommit:"a80231648a1473929271764b920a8e346f6de844", GitTreeState:"clean"}
+```
+
+```bash
+# It will take around 5 minutes until it's finished running
 ```
 
 ```
@@ -351,6 +369,8 @@ No resources found.
 ```
 
 ```bash
+# Docker For Mac/Windows is exception
+
 # Click the *Stop* button in the top-right corner
 
 cat ../go-demo-3/k8s/build-ns.yml
@@ -526,6 +546,7 @@ default           Active    3h
 go-demo-3         Active    1m
 go-demo-3-build   Active    5m
 jenkins           Active    3h
+kube-ingress      Active    3h
 kube-public       Active    3h
 kube-system       Active    3h
 ```
@@ -588,7 +609,7 @@ tiller-deploy-f844d6b64-gmdxb   1/1       Running   0          3m
 
 ## Docker Node
 
-### Vagrant w/VirtualBox (Docker for Mac/Windows, minikube)
+### Vagrant w/VirtualBox (Docker for Mac/Windows, minikube, minishift)
 
 ```bash
 cd cd/docker-build
@@ -694,21 +715,37 @@ cat .vagrant/machines/docker-build/virtualbox/private_key
 cd ../../
 ```
 
-### AWS Manual
-
-TODO: Review
+### AWS
 
 ```bash
+# Make sure that AWS_ACCESS_KEY_ID, AWS_SECRET_ACCESS_KEY, and AWS_DEFAULT_REGION are set (e.g., `source cluster/kops`)
+
 aws ec2 create-security-group \
     --description "For building Docker images" \
     --group-name docker \
     | tee cluster/sg.json
+```
 
+```json
+{
+    "GroupId": "sg-5fe96935"
+}
+```
+
+```bash
 SG_ID=$(cat cluster/sg.json \
     | jq -r ".GroupId")
 
+echo $SG_ID
+```
+
+```
+sg-5fe96935
+```
+
+```bash
 echo "export SG_ID=$SG_ID" \
-    | tee -a cluster/kops
+    | tee -a cluster/docker-ec2
 
 aws ec2 \
     authorize-security-group-ingress \
@@ -719,83 +756,83 @@ aws ec2 \
 
 # Install Packer
 
-packer build -machine-readable \
-    jenkins/docker.json \
-    | tee cluster/docker-packer.log
+cat jenkins/docker-ami.json
+```
 
+```json
+{
+  "builders": [{
+    "type": "amazon-ebs",
+    "region": "us-east-2",
+    "source_ami_filter": {
+      "filters": {
+        "virtualization-type": "hvm",
+        "name": "*ubuntu-xenial-16.04-amd64-server-*",
+        "root-device-type": "ebs"
+      },
+      "most_recent": true
+    },
+    "instance_type": "t2.micro",
+    "ssh_username": "ubuntu",
+    "ami_name": "docker",
+    "force_deregister": true
+  }],
+  "provisioners": [{
+    "type": "shell",
+    "inline": [
+      "sleep 15",
+      "sudo apt-get clean",
+      "sudo apt-get update",
+      "sudo apt-get install -y apt-transport-https ca-certificates nfs-common",
+      "curl -fsSL https://download.docker.com/linux/ubuntu/gpg | sudo apt-key add -",
+      "sudo add-apt-repository \"deb [arch=amd64] https://download.docker.com/linux/ubuntu $(lsb_release -cs) stable\"",
+      "sudo add-apt-repository -y ppa:openjdk-r/ppa",
+      "sudo apt-get update",
+      "sudo apt-get install -y docker-ce",
+      "sudo usermod -aG docker ubuntu",
+      "sudo apt-get install -y openjdk-8-jdk"
+    ]
+  }]
+}
+```
+
+```bash
+packer build -machine-readable \
+    jenkins/docker-ami.json \
+    | tee cluster/docker-ami.log
+```
+
+```
+...
+1528917568,,ui,say,==> amazon-ebs: Deleting temporary security group...
+1528917568,,ui,say,==> amazon-ebs: Deleting temporary keypair...
+1528917568,,ui,say,Build 'amazon-ebs' finished.
+1528917568,,ui,say,\n==> Builds finished. The artifacts of successful builds are:
+1528917568,amazon-ebs,artifact-count,1
+1528917568,amazon-ebs,artifact,0,builder-id,mitchellh.amazonebs
+1528917568,amazon-ebs,artifact,0,id,us-east-2:ami-ea053b8f
+1528917568,amazon-ebs,artifact,0,string,AMIs were created:\nus-east-2: ami-ea053b8f\n
+1528917568,amazon-ebs,artifact,0,files-count,0
+1528917568,amazon-ebs,artifact,0,end
+1528917568,,ui,say,--> amazon-ebs: AMIs were created:\nus-east-2: ami-ea053b8f\n
+```
+
+```bash
 AMI_ID=$(grep 'artifact,0,id' \
-    cluster/docker-packer.log \
+    cluster/docker-ami.log \
     | cut -d: -f2)
 
 echo $AMI_ID
-
-echo "export AMI_ID=$AMI_ID" \
-    | tee -a cluster/kops
-
-aws ec2 run-instances \
-    --image-id $AMI_ID \
-    --count 1 \
-    --instance-type t2.micro \
-    --key-name devops23 \
-    --security-groups docker \
-    --tag-specifications 'ResourceType=instance,Tags=[{Key=Name,Value=docker}]' \
-    | tee cluster/docker-ec2.json
-
-INSTANCE_ID=$(cat \
-    cluster/docker-ec2.json \
-    | jq -r ".Instances[0].InstanceId")
-
-aws ec2 describe-instances \
-    --instance-ids $INSTANCE_ID \
-    | jq -r ".Reservations[0]\
-    .Instances[0].State.Name"
-
-# Wait until it's `running`, and then wait some more
-
-aws ec2 describe-instances \
-    --instance-ids $INSTANCE_ID \
-    | jq -r ".Reservations[0]\
-    .Instances[0].PublicIpAddress"
-
-PUBLIC_IP=$(aws ec2 \
-    describe-instances \
-    --instance-ids $INSTANCE_ID \
-    | jq -r ".Reservations[0]\
-    .Instances[0].PublicIpAddress")
-
-ssh -i cluster/devops23.pem \
-    ubuntu@$PUBLIC_IP
-
-docker version
-
-export GH_USER=[...]
-
-git clone \
-    https://github.com/$GH_USER/go-demo-3.git
-
-cd go-demo-3
-
-export DH_USER=[...]
-
-docker image build \
-    -t $DH_USER/go-demo-3:1.0-beta .
-
-docker login -u $DH_USER
-
-docker image push \
-    $DH_USER/go-demo-3:1.0-beta
-
-exit
-
-aws ec2 terminate-instances \
-    --instance-ids $INSTANCE_ID
 ```
 
-## Docker Jenkins AWS
-
-TODO: Review
+```
+ami-ea053b8f
+```
 
 ```bash
+echo "export AMI_ID=$AMI_ID" \
+    | tee -a cluster/docker-ec2
+
 open "http://$JENKINS_ADDR/configure"
 
 # Click the *Add a new cloud* drop-down list
@@ -818,6 +855,8 @@ echo $AWS_SECRET_ACCESS_KEY
 # Choose the newly created credentials
 # Select *us-east-2* as the *Region*
 
+# TODO: Create the `devops23.pem` key
+
 cat cluster/devops23.pem
 
 # Copy the output and paste it into the *EC2 Key Pair's Private Key* field
@@ -836,40 +875,174 @@ echo $AMI_ID
 # Type *docker* as labels
 # Type *1* as *Idle termination time*
 # Click the *Save* button
-
-open "http://$JENKINS_ADDR/job/my-k8s-job/configure"
 ```
 
-```groovy
-podTemplate(
-    label: "kubernetes",
-    containers: [
-        containerTemplate(name: "maven", image: "maven:alpine", ttyEnabled: true, command: "cat"),
-        containerTemplate(name: "golang", image: "golang:alpine", ttyEnabled: true, command: "cat")
-    ],
-    namespace: "go-demo-3-build"
-) {
-    node("docker") {
-        stage("build") {
-            sh "sleep 5"
-            sh "docker version"
-        }    
-    }
-    node("kubernetes") {
-        container("maven") {
-            stage("unit-test") {
-                sh "sleep 5"
-                sh "java -version"
-            }
-        }
-        container("golang") {
-            stage("deploy") {
-                sh "sleep 5"
-                sh "go version"
-            }
-        }
-    }
+### GCE
+
+```bash
+gcloud iam service-accounts create jenkins
+```
+
+```
+Created service account [jenkins].
+```
+
+```bash
+export G_PROJECT=$(gcloud info \
+    --format='value(config.project)')
+
+export SA_EMAIL=$(gcloud iam \
+    service-accounts list \
+    --filter="name:jenkins" \
+    --format='value(email)')
+
+gcloud projects add-iam-policy-binding \
+    --member serviceAccount:$SA_EMAIL \
+    --role roles/compute.admin \
+    $G_PROJECT
+
+gcloud projects add-iam-policy-binding \
+    --member serviceAccount:$SA_EMAIL \
+    --role roles/iam.serviceAccountUser \
+    $G_PROJECT
+
+gcloud iam service-accounts \
+    keys create \
+    --iam-account $SA_EMAIL \
+    cluster/gce-jenkins.json
+
+cat cluster/gce-jenkins.json
+```
+
+```json
+{
+  "type": "service_account",
+  "project_id": "devops24-book",
+  "private_key_id": "dfce27679642cc7920d4535a82c0d18456ee4ebc",
+  "private_key": "-----BEGIN PRIVATE KEY-----\n...\n-----END PRIVATE KEY-----\n",
+  "client_email": "jenkins@devops24-book.iam.gserviceaccount.com",
+  "client_id": "107184483848459278542",
+  "auth_uri": "https://accounts.google.com/o/oauth2/auth",
+  "token_uri": "https://accounts.google.com/o/oauth2/token",
+  "auth_provider_x509_cert_url": "https://www.googleapis.com/oauth2/v1/certs",
+  "client_x509_cert_url": "https://www.googleapis.com/robot/v1/metadata/x509/jenkins%40devops24-book.iam.gserviceaccount.com"
 }
+```
+
+```bash
+cat jenkins/docker-gce.json
+```
+
+```json
+{
+  "variables": {
+    "project_id": ""
+  },
+  "builders": [{
+    "type": "googlecompute",
+    "account_file": "cluster/gce-jenkins.json",
+    "project_id": "{{user `project_id`}}",
+    "source_image_project_id": "ubuntu-os-cloud",
+    "source_image_family": "ubuntu-1604-lts",
+    "ssh_username": "ubuntu",
+    "zone": "us-east1-b",
+    "image_name": "docker"
+  }],
+  "provisioners": [{
+    "type": "shell",
+    "inline": [
+      "sleep 15",
+      "sudo apt-get clean",
+      "sudo apt-get update",
+      "sudo apt-get install -y apt-transport-https ca-certificates nfs-common",
+      "curl -fsSL https://download.docker.com/linux/ubuntu/gpg | sudo apt-key add -",
+      "sudo add-apt-repository \"deb [arch=amd64] https://download.docker.com/linux/ubuntu $(lsb_release -cs) stable\"",
+      "sudo add-apt-repository -y ppa:openjdk-r/ppa",
+      "sudo apt-get update",
+      "sudo apt-get install -y docker-ce",
+      "sudo usermod -aG docker ubuntu",
+      "sudo apt-get install -y openjdk-8-jdk"
+    ]
+  }]
+}
+```
+
+```bash
+packer build -machine-readable \
+    --force \
+    -var "project_id=$G_PROJECT" \
+    jenkins/docker-gce.json \
+    | tee cluster/docker-gce.log
+
+G_IMAGE_ID=$(grep 'artifact,0,id' \
+    cluster/docker-gce.log \
+    | cut -d: -f2)
+
+echo $G_IMAGE_ID
+```
+
+```
+TODO: Output
+```
+
+```bash
+open "http://$JENKINS_ADDR/configure"
+
+# Click the *Add a new cloud* drop-down list (near the bottom of the screen)
+
+# Select *Google Compute Engine*
+
+# Type *docker* as the *Name*
+
+echo $G_PROJECT
+
+# Copy the output and paste it to the *Project ID* field
+
+# Expand the *Add* drop-down list next to *Service Account Credentials*
+
+# Select *Jenkins*
+
+# Select *Google Service Account from private key* as the *Kind*
+
+# Paste the name of the project to the *Project Name* field
+
+# Click *Choose File* butotn in the *JSON Key* field
+
+# Select *gce-jenkins.json* file we created earlier
+
+# Click the *Add* button
+```
+
+![Figure 6-TODO: Jenkins Google credentials screen](images/ch06/jenkins-google-credentials.png)
+
+```bash
+# Select the newly created credential
+
+# Click the *Add* button next to *Instance Configurations*
+
+# Type *docker* as the *Name Prefix*
+
+# Type *Docker build instances* as the *Description*
+
+# Type *1* as the *Node Retention Time*
+
+# Type *docker ubuntu linux* as the *Labels*
+
+# Select *us-east1* as the *Region*
+
+# Select *us-east1-b* as the *Region*
+
+# Select *n1-standard-2* as the *Machine Type*
+
+# Select *default* as the *Network*
+
+# Select *default* as the *Subnetwork*
+
+# Select $G_PROJECT as the *Image project*
+
+# Select *docker* as the *Image name*
+
+# Click the *Save* button
 ```
 
 ## Test Docker Builds
@@ -1084,6 +1257,20 @@ kubectl -n jenkins cp \
     $JENKINS_POD:var/jenkins_home/secrets/master.key \
     cluster/jenkins/secrets
 
+# If GKE
+kubectl -n jenkins cp \
+    $JENKINS_POD:var/jenkins_home/gauth/ \
+    cluster/jenkins/secrets
+
+# If GKE
+cd cluster/jenkins/secrets
+
+# If GKE
+G_AUTH_FILE=$(ls key*.json)
+
+# If GKE
+cd ../../../
+
 helm delete jenkins --purge
 ```
 
@@ -1119,7 +1306,7 @@ helm inspect values helm/jenkins
 ```yaml
 jenkins:
   Master:
-    ImageTag: "2.126-alpine"
+    ImageTag: "2.121.1-alpine"
     Cpu: "500m"
     Memory: "500Mi"
     ServiceType: ClusterIP
@@ -1155,6 +1342,9 @@ jenkins:
     CustomConfigMap: true
     CredentialsXmlSecret: jenkins-credentials
     SecretsFilesSecret: jenkins-secrets
+    # DockerAMI:
+    # DockerEC2PrivateKey:
+    # GProject:
   rbac:
     install: true
 ```
@@ -1173,186 +1363,29 @@ kubectl -n jenkins \
 helm install helm/jenkins \
     --name jenkins \
     --namespace jenkins \
-    --set jenkins.Master.HostName=$JENKINS_ADDR
+    --set jenkins.Master.HostName=$JENKINS_ADDR \
+    --set jenkins.Master.DockerAMI=$AMI_ID \
+    --set jenkins.Master.GProject=$G_PROJECT \
+    --set jenkins.Master.GAuthFile=$G_AUTH_FILE
 
 kubectl -n jenkins describe cm jenkins
 ```
 
 ```
-Name:         jenkins
-Namespace:    jenkins
-Labels:       <none>
-Annotations:  <none>
-
-Data
-====
-apply_config.sh:
-----
-mkdir -p /usr/share/jenkins/ref/secrets/;
-echo "false" > /usr/share/jenkins/ref/secrets/slave-to-master-security-kill-switch;
-cp -n /var/jenkins_config/config.xml /var/jenkins_home;
-cp -n /var/jenkins_config/jenkins.CLI.xml /var/jenkins_home;
-mkdir -p /var/jenkins_home/nodes/docker-build
-cp /var/jenkins_config/docker-build /var/jenkins_home/nodes/docker-build/config.xml;
-# Install missing plugins
-cp /var/jenkins_config/plugins.txt /var/jenkins_home;
-rm -rf /usr/share/jenkins/ref/plugins/*.lock
-/usr/local/bin/install-plugins.sh `echo $(cat /var/jenkins_home/plugins.txt)`;
-# Copy plugins to shared volume
-cp -n /usr/share/jenkins/ref/plugins/* /var/jenkins_plugins;
-cp -n /var/jenkins_credentials/credentials.xml /var/jenkins_home;
-cp -n /var/jenkins_secrets/* /usr/share/jenkins/ref/secrets;
-config.xml:
-----
-<?xml version='1.0' encoding='UTF-8'?>
-<hudson>
-  <disabledAdministrativeMonitors/>
-  <version>2.126-alpine</version>
-  <numExecutors>0</numExecutors>
-  <mode>NORMAL</mode>
-  <useSecurity>true</useSecurity>
-  <authorizationStrategy class="hudson.security.FullControlOnceLoggedInAuthorizationStrategy">
-    <denyAnonymousReadAccess>true</denyAnonymousReadAccess>
-  </authorizationStrategy>
-  <securityRealm class="hudson.security.LegacySecurityRealm"/>
-  <disableRememberMe>false</disableRememberMe>
-  <projectNamingStrategy class="jenkins.model.ProjectNamingStrategy$DefaultProjectNamingStrategy"/>
-  <workspaceDir>${JENKINS_HOME}/workspace/${ITEM_FULLNAME}</workspaceDir>
-  <buildsDir>${ITEM_ROOTDIR}/builds</buildsDir>
-  <markupFormatter class="hudson.markup.EscapedMarkupFormatter"/>
-  <jdks/>
-  <viewsTabBar class="hudson.views.DefaultViewsTabBar"/>
-  <myViewsTabBar class="hudson.views.DefaultMyViewsTabBar"/>
-  <clouds>
-    <org.csanchez.jenkins.plugins.kubernetes.KubernetesCloud plugin="kubernetes@1.7.1">
-      <name>kubernetes</name>
-      <templates>
-        <org.csanchez.jenkins.plugins.kubernetes.PodTemplate>
-          <inheritFrom></inheritFrom>
-          <name>default</name>
-          <instanceCap>2147483647</instanceCap>
-          <idleMinutes>0</idleMinutes>
-          <label>jenkins-jenkins-slave</label>
-          <nodeSelector></nodeSelector>
-            <nodeUsageMode>NORMAL</nodeUsageMode>
-          <volumes>
-          </volumes>
-          <containers>
-            <org.csanchez.jenkins.plugins.kubernetes.ContainerTemplate>
-              <name>jnlp</name>
-              <image>jenkins/jnlp-slave:3.10-1</image>
-              <privileged>false</privileged>
-              <alwaysPullImage>false</alwaysPullImage>
-              <workingDir>/home/jenkins</workingDir>
-              <command></command>
-              <args>${computer.jnlpmac} ${computer.name}</args>
-              <ttyEnabled>false</ttyEnabled>
-              <resourceRequestCpu>200m</resourceRequestCpu>
-              <resourceRequestMemory>256Mi</resourceRequestMemory>
-              <resourceLimitCpu>200m</resourceLimitCpu>
-              <resourceLimitMemory>256Mi</resourceLimitMemory>
-              <envVars>
-                <org.csanchez.jenkins.plugins.kubernetes.ContainerEnvVar>
-                  <key>JENKINS_URL</key>
-                  <value>http://jenkins.jenkins:8080</value>
-                </org.csanchez.jenkins.plugins.kubernetes.ContainerEnvVar>
-              </envVars>
-            </org.csanchez.jenkins.plugins.kubernetes.ContainerTemplate>
-          </containers>
-          <envVars/>
-          <annotations/>
-          <imagePullSecrets/>
-          <nodeProperties/>
-        </org.csanchez.jenkins.plugins.kubernetes.PodTemplate></templates>
-      <serverUrl>https://kubernetes.default</serverUrl>
-      <skipTlsVerify>false</skipTlsVerify>
-      <namespace>jenkins</namespace>
-      <jenkinsUrl>http://jenkins.jenkins:8080</jenkinsUrl>
-      <jenkinsTunnel>jenkins-agent.jenkins:50000</jenkinsTunnel>
-      <containerCap>10</containerCap>
-      <retentionTimeout>5</retentionTimeout>
-      <connectTimeout>0</connectTimeout>
-      <readTimeout>0</readTimeout>
-    </org.csanchez.jenkins.plugins.kubernetes.KubernetesCloud>
-  </clouds>
-  <quietPeriod>5</quietPeriod>
-  <scmCheckoutRetryCount>0</scmCheckoutRetryCount>
-  <views>
-    <hudson.model.AllView>
-      <owner class="hudson" reference="../../.."/>
-      <name>All</name>
-      <filterExecutors>false</filterExecutors>
-      <filterQueue>false</filterQueue>
-      <properties class="hudson.model.View$PropertyList"/>
-    </hudson.model.AllView>
-  </views>
-  <primaryView>All</primaryView>
-  <slaveAgentPort>50000</slaveAgentPort>
-  <disabledAgentProtocols>
-    <string>JNLP-connect</string>
-    <string>JNLP2-connect</string>
-  </disabledAgentProtocols>
-  <label></label>
-  <crumbIssuer class="hudson.security.csrf.DefaultCrumbIssuer">
-    <excludeClientIPFromCrumb>true</excludeClientIPFromCrumb>
-  </crumbIssuer>
-  <nodeProperties/>
-  <globalNodeProperties/>
-  <noUsageStatistics>true</noUsageStatistics>
-</hudson>
-docker-build:
-----
-<?xml version='1.1' encoding='UTF-8'?>
-<slave>
-  <name>docker-build</name>
-  <description></description>
-  <remoteFS>/tmp</remoteFS>
-  <numExecutors>2</numExecutors>
-  <mode>NORMAL</mode>
-  <retentionStrategy class="hudson.slaves.RetentionStrategy$Always"/>
-  <launcher class="hudson.plugins.sshslaves.SSHLauncher" plugin="ssh-slaves@1.26">
-    <host>10.100.198.200</host>
-    <port>22</port>
-    <credentialsId>docker-build</credentialsId>
-    <maxNumRetries>0</maxNumRetries>
-    <retryWaitTime>0</retryWaitTime>
-    <sshHostKeyVerificationStrategy class="hudson.plugins.sshslaves.verifiers.NonVerifyingKeyVerificationStrategy"/>
-  </launcher>
-  <label>docker ubuntu</label>
-  <nodeProperties/>
-</slave>
-jenkins.CLI.xml:
-----
-<?xml version='1.1' encoding='UTF-8'?>
-<jenkins.CLI>
-  <enabled>false</enabled>
-</jenkins.CLI>
-plugins.txt:
-----
-blueocean:1.5.0
-credentials:2.1.16
-ec2:1.39
-git:3.9.1
-git-client:2.7.2
-github:1.29.1
-kubernetes:1.7.1
-pipeline-utility-steps:2.1.0
-script-security:1.44
-slack:2.3
-thinBackup:1.9
-workflow-aggregator:2.5
-ssh-slaves:1.26
-ssh-agent:1.15
-jdk-tool:1.1
-command-launcher:1.2
-github-oauth:0.29
-Events:  <none>
+TODO: Output
 ```
 
 ```bash
 kubectl -n jenkins \
     rollout status deployment jenkins
+```
 
+```
+Waiting for rollout to finish: 0 of 1 updated replicas are available...
+deployment "jenkins" successfully rolled out
+```
+
+```bash
 open "http://$JENKINS_ADDR"
 
 JENKINS_PASS=$(kubectl -n jenkins \
@@ -1366,15 +1399,37 @@ echo $JENKINS_PASS
 
 open "http://$JENKINS_ADDR/configure"
 
-# Observe that the *cloud* section fields *Jenkins URL* and *Jenkins tunnel* are correctly populated.
+# Observe that the *Cloud Kubernetes* section fields *Jenkins URL* and *Jenkins tunnel* are correctly populated.
 
+# Observe that the *Cloud Kubernetes* section fields *Jenkins URL* and *Jenkins tunnel* are correctly populated.
+
+# Only if AWS
+cat cluster/devops23.pem
+
+# Only if AWS
+# Copy the output
+
+# Only if AWS
+# Scroll to the *EC2 Key Pair's Private Key* field
+
+# Only if AWS
+# Paste the output
+
+# Only if Vagrant VM
 open "http://$JENKINS_ADDR/credentials/store/system/domain/_/credential/docker-build/update"
+
+# Only if AWS
+open "http://$JENKINS_ADDR/credentials/store/system/domain/_/credential/aws/update"
 
 # Observe that the credential is created
 
 open "http://$JENKINS_ADDR/computer"
 
+# Only if Vagrant VM
 # Observe that the *docker-build* agent is created and available
+
+# Only if AWS
+# Observe that the *Provision via docker-agents* drop-down list is available
 
 open "http://$JENKINS_ADDR/newJob"
 
@@ -1467,9 +1522,12 @@ helm delete $(helm ls -q) --purge
 kubectl delete ns \
     go-demo-3 go-demo-3-build jenkins
 
+# Only if Vagrant
 cd cd/docker-build
 
+# Only if Vagrant
 vagrant suspend
 
+# Only if Vagrant
 cd ../../
 ```

@@ -21,6 +21,7 @@ NODE_COUNT=2 NODE_SIZE=t2.medium \
 ##################
 
 # If using Linux or MacOS, `export LB` command is already part of the output of the `cluster-setup.sh` script.
+
 # Please execute the commands that follow only if you're using Windows.
 
 LB_HOST=$(kubectl -n kube-ingress \

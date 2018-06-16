@@ -8,7 +8,10 @@
 - [X] 04-helm.md
 - [X] 05-chart-museum.md
 - [ ] 06-jenkins-setup.md
+- [ ] terraform/kubeadm
+- [ ] eks
 - [ ] 07-jenkins-cd.md
+- [ ] aks
 - [ ] 08-big-picture-jenkins.md
 - [ ] 09-codeship.md
 - [ ] 10-jenkins-openshift.md
@@ -55,6 +58,7 @@
 - [ ] Write deploy-advanced.md (staged update, canary, phased roll outs, bg)
 - [ ] Write write-addons.md
 - [ ] Write the-end.md
+- [ ] Serverless
 - [ ] https://github.com/heptio/sonobuoy
 - [ ] Publish to Amazon
 - [ ] Change rs YAMLs to v1
@@ -76,7 +80,6 @@
 - [ ] https://github.com/jaegertracing/jaeger-kubernetes
 - [ ] Chaos testing (e.g., https://github.com/bloomberg/powerfulseal/blob/master/README.md)
 - [ ] https://medium.com/google-cloud/mgob-a-mongodb-backup-agent-for-kubernetes-cfc9b30c6c92
-- [ ] Serverless, OpenFaas
 - [ ] Service mesh (Istio, https://akomljen.com/kubernetes-service-mesh/, http://philcalcado.com/2017/08/03/pattern_service_mesh.html)
 - [ ] Security (RBAC, PodSecurityPolicy, NetworkPolicy, KaraContainers, https://sysdig.com/blog/20-docker-security-tools/, gVisor)
 - [ ] CRI and alternative container runtimes (CRI-O, etc)
