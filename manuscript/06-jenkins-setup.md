@@ -5,7 +5,7 @@
 - [X] Code review minikube
 - [X] Code review kops
 - [X] Code review minishift
-- [ ] Code review GKE
+- [X] Code review GKE
 - [ ] Write
 - [ ] Text review
 - [ ] Diagrams
@@ -17,7 +17,7 @@
 - [ ] Add to Book.txt
 - [ ] Publish on LeanPub.co
 
-# Jenkins Setup
+# Setting Up Jenkins
 
 ## Creating A Cluster And Retrieving Its IP
 
@@ -559,7 +559,11 @@ open "http://$JENKINS_ADDR/configure"
 # Change *Jenkins tunnel* to *jenkins-agent.jenkins:50000*
 
 # Click the *Save* button
+```
 
+![Figure 6-TODO: Jenkins configuration screen with Kubernetes plugin configured for cross-Namespace usage](images/ch06/jenkins-configure-k8s-ns.png)
+
+```bash
 helm init --service-account build \
     --tiller-namespace go-demo-3-build
 ```
@@ -880,6 +884,8 @@ echo $AMI_ID
 ### GCE
 
 ```bash
+gcloud auth login
+
 gcloud iam service-accounts create jenkins
 ```
 
@@ -891,26 +897,95 @@ Created service account [jenkins].
 export G_PROJECT=$(gcloud info \
     --format='value(config.project)')
 
+echo $G_PROJECT
+```
+
+```
+devops24-book
+```
+
+```bash
 export SA_EMAIL=$(gcloud iam \
     service-accounts list \
     --filter="name:jenkins" \
     --format='value(email)')
 
+echo $SA_EMAIL
+```
+
+```
+jenkins@devops24-book.iam.gserviceaccount.com
+```
+
+```bash
 gcloud projects add-iam-policy-binding \
     --member serviceAccount:$SA_EMAIL \
     --role roles/compute.admin \
     $G_PROJECT
+```
 
+```yaml
+bindings:
+- members:
+  - serviceAccount:jenkins@devops24-book.iam.gserviceaccount.com
+  role: roles/compute.admin
+- members:
+  - serviceAccount:service-152824630010@container-engine-robot.iam.gserviceaccount.com
+  role: roles/container.serviceAgent
+- members:
+  - serviceAccount:152824630010-compute@developer.gserviceaccount.com
+  - serviceAccount:152824630010@cloudservices.gserviceaccount.com
+  - serviceAccount:service-152824630010@containerregistry.iam.gserviceaccount.com
+  role: roles/editor
+- members:
+  - user:viktor@farcic.com
+  role: roles/owner
+etag: ...
+version: 1
+```
+
+```bash
 gcloud projects add-iam-policy-binding \
     --member serviceAccount:$SA_EMAIL \
     --role roles/iam.serviceAccountUser \
     $G_PROJECT
+```
 
+```yaml
+bindings:
+- members:
+  - serviceAccount:jenkins@devops24-book.iam.gserviceaccount.com
+  role: roles/compute.admin
+- members:
+  - serviceAccount:service-152824630010@container-engine-robot.iam.gserviceaccount.com
+  role: roles/container.serviceAgent
+- members:
+  - serviceAccount:152824630010-compute@developer.gserviceaccount.com
+  - serviceAccount:152824630010@cloudservices.gserviceaccount.com
+  - serviceAccount:service-152824630010@containerregistry.iam.gserviceaccount.com
+  role: roles/editor
+- members:
+  - serviceAccount:jenkins@devops24-book.iam.gserviceaccount.com
+  role: roles/iam.serviceAccountUser
+- members:
+  - user:viktor@farcic.com
+  role: roles/owner
+etag: ...
+version: 1
+```
+
+```bash
 gcloud iam service-accounts \
     keys create \
     --iam-account $SA_EMAIL \
     cluster/gce-jenkins.json
+```
 
+```
+created key [...] of type [json] as [cluster/gce-jenkins.json] for [jenkins@devops24-book.iam.gserviceaccount.com]
+```
+
+```bash
 cat cluster/gce-jenkins.json
 ```
 
@@ -973,21 +1048,50 @@ packer build -machine-readable \
     -var "project_id=$G_PROJECT" \
     jenkins/docker-gce.json \
     | tee cluster/docker-gce.log
+```
 
+```
+...
+1529242865,,ui,say,\n==> Builds finished. The artifacts of successful builds are:
+1529242865,googlecompute,artifact-count,1
+1529242865,googlecompute,artifact,0,builder-id,packer.googlecompute
+1529242865,googlecompute,artifact,0,id,docker
+1529242865,googlecompute,artifact,0,string,A disk image was created: docker
+1529242865,googlecompute,artifact,0,files-count,0
+1529242865,googlecompute,artifact,0,end
+1529242865,,ui,say,--> googlecompute: A disk image was created: docker
+```
+
+```bash
 G_IMAGE_ID=$(grep 'artifact,0,id' \
     cluster/docker-gce.log \
-    | cut -d: -f2)
+    | cut -d, -f6)
 
 echo $G_IMAGE_ID
 ```
 
 ```
-TODO: Output
+docker
 ```
 
 ```bash
 open "http://$JENKINS_ADDR/configure"
 
+# Only if session expired
+JENKINS_PASS=$(kubectl -n jenkins \
+    get secret jenkins \
+    -o jsonpath="{.data.jenkins-admin-password}" \
+    | base64 --decode; echo)
+
+# Only if session expired
+echo $JENKINS_PASS
+```
+
+```
+Ucg2tab4FK
+```
+
+```bash
 # Click the *Add a new cloud* drop-down list (near the bottom of the screen)
 
 # Select *Google Compute Engine*
@@ -1008,7 +1112,7 @@ echo $G_PROJECT
 
 # Click *Choose File* butotn in the *JSON Key* field
 
-# Select *gce-jenkins.json* file we created earlier
+# Select *gce-jenkins.json* file we created earlier in the *cluster* directory
 
 # Click the *Add* button
 ```
@@ -1044,6 +1148,8 @@ echo $G_PROJECT
 
 # Click the *Save* button
 ```
+
+![Figure 6-TODO: Part of the Google Compute Engine configuration screen](images/ch06/jenkins-gce-config.png)
 
 ## Test Docker Builds
 
@@ -1125,7 +1231,7 @@ open "http://$JENKINS_ADDR/blue/organizations/jenkins/my-k8s-job/activity"
 # Wait until all the stages are executed
 ```
 
-![Figure 6-TODO: Jenkins job for testing tools](images/ch06/jenkins-tools-with-docker-build)
+![Figure 6-TODO: Jenkins job for testing tools](images/ch06/jenkins-tools-with-docker-build.png)
 
 ## Automate Setup
 
@@ -1263,14 +1369,19 @@ kubectl -n jenkins cp \
     cluster/jenkins/secrets
 
 # If GKE
-cd cluster/jenkins/secrets
+G_AUTH_FILE=$(ls \
+    cluster/jenkins/secrets/key*json \
+    | xargs -n 1 basename)
 
 # If GKE
-G_AUTH_FILE=$(ls key*.json)
+echo $G_AUTH_FILE
+```
 
-# If GKE
-cd ../../../
+```
+key7754885476942296969.json
+```
 
+```bash
 helm delete jenkins --purge
 ```
 
@@ -1345,6 +1456,7 @@ jenkins:
     # DockerAMI:
     # DockerEC2PrivateKey:
     # GProject:
+    # GAuthFile:
   rbac:
     install: true
 ```
@@ -1372,7 +1484,227 @@ kubectl -n jenkins describe cm jenkins
 ```
 
 ```
-TODO: Output
+Name:         jenkins
+Namespace:    jenkins
+Labels:       <none>
+Annotations:  <none>
+
+Data
+====
+docker-build:
+----
+<?xml version='1.1' encoding='UTF-8'?>
+<slave>
+  <name>docker-build</name>
+  <description></description>
+  <remoteFS>/tmp</remoteFS>
+  <numExecutors>2</numExecutors>
+  <mode>NORMAL</mode>
+  <retentionStrategy class="hudson.slaves.RetentionStrategy$Always"/>
+  <launcher class="hudson.plugins.sshslaves.SSHLauncher" plugin="ssh-slaves@1.26">
+    <host>10.100.198.200</host>
+    <port>22</port>
+    <credentialsId>docker-build</credentialsId>
+    <maxNumRetries>0</maxNumRetries>
+    <retryWaitTime>0</retryWaitTime>
+    <sshHostKeyVerificationStrategy class="hudson.plugins.sshslaves.verifiers.NonVerifyingKeyVerificationStrategy"/>
+  </launcher>
+  <label>docker ubuntu</label>
+  <nodeProperties/>
+</slave>
+jenkins.CLI.xml:
+----
+<?xml version='1.1' encoding='UTF-8'?>
+<jenkins.CLI>
+  <enabled>false</enabled>
+</jenkins.CLI>
+plugins.txt:
+----
+blueocean:1.5.0
+credentials:2.1.16
+ec2:1.39
+git:3.9.1
+git-client:2.7.2
+github:1.29.1
+kubernetes:1.7.1
+pipeline-utility-steps:2.1.0
+script-security:1.44
+slack:2.3
+thinBackup:1.9
+workflow-aggregator:2.5
+ssh-slaves:1.26
+ssh-agent:1.15
+jdk-tool:1.1
+command-launcher:1.2
+github-oauth:0.29
+google-compute-engine:1.0.4
+apply_config.sh:
+----
+mkdir -p /usr/share/jenkins/ref/secrets/;
+echo "false" > /usr/share/jenkins/ref/secrets/slave-to-master-security-kill-switch;
+cp -n /var/jenkins_config/config.xml /var/jenkins_home;
+cp -n /var/jenkins_config/jenkins.CLI.xml /var/jenkins_home;
+mkdir -p /var/jenkins_home/nodes/docker-build
+cp /var/jenkins_config/docker-build /var/jenkins_home/nodes/docker-build/config.xml;
+mkdir -p /var/jenkins_home/gauth
+cp -n /var/jenkins_secrets/key7754885476942296969.json /var/jenkins_home/gauth;
+# Install missing plugins
+cp /var/jenkins_config/plugins.txt /var/jenkins_home;
+rm -rf /usr/share/jenkins/ref/plugins/*.lock
+/usr/local/bin/install-plugins.sh `echo $(cat /var/jenkins_home/plugins.txt)`;
+# Copy plugins to shared volume
+cp -n /usr/share/jenkins/ref/plugins/* /var/jenkins_plugins;
+cp -n /var/jenkins_credentials/credentials.xml /var/jenkins_home;
+cp -n /var/jenkins_secrets/* /usr/share/jenkins/ref/secrets;
+config.xml:
+----
+<?xml version='1.0' encoding='UTF-8'?>
+<hudson>
+  <disabledAdministrativeMonitors/>
+  <version>2.121.1-alpine</version>
+  <numExecutors>0</numExecutors>
+  <mode>NORMAL</mode>
+  <useSecurity>true</useSecurity>
+  <authorizationStrategy class="hudson.security.FullControlOnceLoggedInAuthorizationStrategy">
+    <denyAnonymousReadAccess>true</denyAnonymousReadAccess>
+  </authorizationStrategy>
+  <securityRealm class="hudson.security.LegacySecurityRealm"/>
+  <disableRememberMe>false</disableRememberMe>
+  <projectNamingStrategy class="jenkins.model.ProjectNamingStrategy$DefaultProjectNamingStrategy"/>
+  <workspaceDir>${JENKINS_HOME}/workspace/${ITEM_FULLNAME}</workspaceDir>
+  <buildsDir>${ITEM_ROOTDIR}/builds</buildsDir>
+  <markupFormatter class="hudson.markup.EscapedMarkupFormatter"/>
+  <jdks/>
+  <viewsTabBar class="hudson.views.DefaultViewsTabBar"/>
+  <myViewsTabBar class="hudson.views.DefaultMyViewsTabBar"/>
+  <clouds>
+    <org.csanchez.jenkins.plugins.kubernetes.KubernetesCloud plugin="kubernetes@1.7.1">
+      <name>kubernetes</name>
+      <templates>
+        <org.csanchez.jenkins.plugins.kubernetes.PodTemplate>
+          <inheritFrom></inheritFrom>
+          <name>default</name>
+          <instanceCap>2147483647</instanceCap>
+          <idleMinutes>0</idleMinutes>
+          <label>jenkins-jenkins-slave</label>
+          <nodeSelector></nodeSelector>
+            <nodeUsageMode>NORMAL</nodeUsageMode>
+          <volumes>
+          </volumes>
+          <containers>
+            <org.csanchez.jenkins.plugins.kubernetes.ContainerTemplate>
+              <name>jnlp</name>
+              <image>jenkins/jnlp-slave:3.10-1</image>
+              <privileged>false</privileged>
+              <alwaysPullImage>false</alwaysPullImage>
+              <workingDir>/home/jenkins</workingDir>
+              <command></command>
+              <args>${computer.jnlpmac} ${computer.name}</args>
+              <ttyEnabled>false</ttyEnabled>
+              <resourceRequestCpu>200m</resourceRequestCpu>
+              <resourceRequestMemory>256Mi</resourceRequestMemory>
+              <resourceLimitCpu>200m</resourceLimitCpu>
+              <resourceLimitMemory>256Mi</resourceLimitMemory>
+              <envVars>
+                <org.csanchez.jenkins.plugins.kubernetes.ContainerEnvVar>
+                  <key>JENKINS_URL</key>
+                  <value>http://jenkins.jenkins:8080</value>
+                </org.csanchez.jenkins.plugins.kubernetes.ContainerEnvVar>
+              </envVars>
+            </org.csanchez.jenkins.plugins.kubernetes.ContainerTemplate>
+          </containers>
+          <envVars/>
+          <annotations/>
+          <imagePullSecrets/>
+          <nodeProperties/>
+        </org.csanchez.jenkins.plugins.kubernetes.PodTemplate></templates>
+      <serverUrl>https://kubernetes.default</serverUrl>
+      <skipTlsVerify>false</skipTlsVerify>
+      <namespace>jenkins</namespace>
+      <jenkinsUrl>http://jenkins.jenkins:8080</jenkinsUrl>
+      <jenkinsTunnel>jenkins-agent.jenkins:50000</jenkinsTunnel>
+      <containerCap>10</containerCap>
+      <retentionTimeout>5</retentionTimeout>
+      <connectTimeout>0</connectTimeout>
+      <readTimeout>0</readTimeout>
+    </org.csanchez.jenkins.plugins.kubernetes.KubernetesCloud>
+    <com.google.jenkins.plugins.computeengine.ComputeEngineCloud plugin="google-compute-engine@1.0.4">
+      <name>gce-docker</name>
+      <instanceCap>2147483647</instanceCap>
+      <projectId>devops24-book</projectId>
+      <credentialsId>devops24-book</credentialsId>
+      <configurations>
+        <com.google.jenkins.plugins.computeengine.InstanceConfiguration>
+          <description>Docker build instances</description>
+          <namePrefix>docker</namePrefix>
+          <region>https://www.googleapis.com/compute/v1/projects/devops24-book/regions/us-east1</region>
+          <zone>https://www.googleapis.com/compute/v1/projects/devops24-book/zones/us-east1-b</zone>
+          <machineType>https://www.googleapis.com/compute/v1/projects/devops24-book/zones/us-east1-b/machineTypes/n1-standard-2</machineType>
+          <numExecutorsStr>1</numExecutorsStr>
+          <startupScript></startupScript>
+          <preemptible>false</preemptible>
+          <labels>docker ubuntu linux</labels>
+          <runAsUser>jenkins</runAsUser>
+          <bootDiskType>https://www.googleapis.com/compute/v1/projects/devops24-book/zones/us-east1-b/diskTypes/pd-ssd</bootDiskType>
+          <bootDiskAutoDelete>true</bootDiskAutoDelete>
+          <bootDiskSourceImageName>https://www.googleapis.com/compute/v1/projects/devops24-book/global/images/docker</bootDiskSourceImageName>
+          <bootDiskSourceImageProject>devops24-book</bootDiskSourceImageProject>
+          <networkConfiguration class="com.google.jenkins.plugins.computeengine.AutofilledNetworkConfiguration">
+            <network>https://www.googleapis.com/compute/v1/projects/devops24-book/global/networks/default</network>
+            <subnetwork>default</subnetwork>
+          </networkConfiguration>
+          <externalAddress>false</externalAddress>
+          <useInternalAddress>false</useInternalAddress>
+          <networkTags></networkTags>
+          <serviceAccountEmail></serviceAccountEmail>
+          <mode>NORMAL</mode>
+          <retentionTimeMinutesStr>6</retentionTimeMinutesStr>
+          <launchTimeoutSecondsStr>300</launchTimeoutSecondsStr>
+          <bootDiskSizeGbStr>10</bootDiskSizeGbStr>
+          <googleLabels>
+            <entry>
+              <string>jenkins_cloud_id</string>
+              <string>-1723728540</string>
+            </entry>
+            <entry>
+              <string>jenkins_config_name</string>
+              <string>docker</string>
+            </entry>
+          </googleLabels>
+          <numExecutors>1</numExecutors>
+          <retentionTimeMinutes>6</retentionTimeMinutes>
+          <launchTimeoutSeconds>300</launchTimeoutSeconds>
+          <bootDiskSizeGb>10</bootDiskSizeGb>
+        </com.google.jenkins.plugins.computeengine.InstanceConfiguration>
+      </configurations>
+    </com.google.jenkins.plugins.computeengine.ComputeEngineCloud>
+  </clouds>
+  <quietPeriod>5</quietPeriod>
+  <scmCheckoutRetryCount>0</scmCheckoutRetryCount>
+  <views>
+    <hudson.model.AllView>
+      <owner class="hudson" reference="../../.."/>
+      <name>All</name>
+      <filterExecutors>false</filterExecutors>
+      <filterQueue>false</filterQueue>
+      <properties class="hudson.model.View$PropertyList"/>
+    </hudson.model.AllView>
+  </views>
+  <primaryView>All</primaryView>
+  <slaveAgentPort>50000</slaveAgentPort>
+  <disabledAgentProtocols>
+    <string>JNLP-connect</string>
+    <string>JNLP2-connect</string>
+  </disabledAgentProtocols>
+  <label></label>
+  <crumbIssuer class="hudson.security.csrf.DefaultCrumbIssuer">
+    <excludeClientIPFromCrumb>true</excludeClientIPFromCrumb>
+  </crumbIssuer>
+  <nodeProperties/>
+  <globalNodeProperties/>
+  <noUsageStatistics>true</noUsageStatistics>
+</hudson>
+Events:  <none>
 ```
 
 ```bash
@@ -1394,14 +1726,18 @@ JENKINS_PASS=$(kubectl -n jenkins \
     | base64 --decode; echo)
 
 echo $JENKINS_PASS
+```
 
+```
+Ucg2tab4FK
+```
+
+```bash
 # Login with user `admin`
 
 open "http://$JENKINS_ADDR/configure"
 
-# Observe that the *Cloud Kubernetes* section fields *Jenkins URL* and *Jenkins tunnel* are correctly populated.
-
-# Observe that the *Cloud Kubernetes* section fields *Jenkins URL* and *Jenkins tunnel* are correctly populated.
+# Observe that the *Kubernetes* section fields *Jenkins URL* and *Jenkins tunnel* are correctly populated.
 
 # Only if AWS
 cat cluster/devops23.pem
@@ -1415,11 +1751,17 @@ cat cluster/devops23.pem
 # Only if AWS
 # Paste the output
 
+# Only if GKE
+# Observe that the *Google Compute Section* section fields look OK and that there is the message *The credential successfully made an API request to Google Compute Engine* below the *Service Account Credentials* field.
+
 # Only if Vagrant VM
 open "http://$JENKINS_ADDR/credentials/store/system/domain/_/credential/docker-build/update"
 
 # Only if AWS
 open "http://$JENKINS_ADDR/credentials/store/system/domain/_/credential/aws/update"
+
+# Only if GKE
+open "http://$JENKINS_ADDR/credentials/store/system/domain/_/credential/$G_PROJECT/update"
 
 # Observe that the credential is created
 
@@ -1428,8 +1770,14 @@ open "http://$JENKINS_ADDR/computer"
 # Only if Vagrant VM
 # Observe that the *docker-build* agent is created and available
 
+# Only if NOT Vagrant VM
+# Observe that the *docker-build* agent is created and but it is NOT available
+
 # Only if AWS
 # Observe that the *Provision via docker-agents* drop-down list is available
+
+# Only if AWS
+# Observe that the *Provision via docker* drop-down list is available
 
 open "http://$JENKINS_ADDR/newJob"
 
@@ -1517,6 +1865,8 @@ open "http://$JENKINS_ADDR/blue/organizations/jenkins/my-k8s-job/activity"
 ## Destroying The Cluster
 
 ```bash
+# If AWS or GKE, make sure that Jenkins removed the nodes before proceeding.
+
 helm delete $(helm ls -q) --purge
 
 kubectl delete ns \
