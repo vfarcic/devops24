@@ -479,7 +479,7 @@ vfarcic/go-demo-3 1.0-beta ...      54 seconds ago     25.8MB
 
 The first two images are the result of our build. The final image (`vfarcic/go-demo-3`) is only 25 MB. It's that small because Docker discarded all but the last stage. If you'd like to know how big your image would be if everything was built in a single stage, please combine the size of the `vfarcic/go-demo-3` image with the size of the temporary image used in the first stage (it's just below `vfarcic/go-demo-3 1.0-beta`).
 
-W> If you had to tag my image as yours as a workaround for build problems, you won't see the second image (the one that is ~780 MB), on the other hand, if you succeded to build your own image name will be prefixed with your docker hub username.
+W> If you had to tag my image as yours as a workaround for build problems, you won't see the second image (the one that is ~780 MB), on the other hand, if you succeded to build your own image, image name will be prefixed with your docker hub username.
 
 
 The only thing missing is to push the image to the registry (e.g., Docker Hub).
