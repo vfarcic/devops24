@@ -1,4 +1,4 @@
-# Packaging Kubernetes Applications
+# Packaging Kubernetes Applications {#chartmuseum}
 
 T> Using YAML files to install or upgrade applications in a Kubernetes cluster works well only for static definitions. The moment we need to change an aspect of an application we are bound to discover the need for templating and packaging mechanisms.
 
