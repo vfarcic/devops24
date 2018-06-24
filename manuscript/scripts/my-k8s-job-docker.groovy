@@ -25,6 +25,11 @@ spec:
     args: ["100000"]
 """
 ) {
+    node("docker") {
+        stage("docker") {
+            sh "sudo docker version"
+        }
+    }
     node("kubernetes") {
         container("kubectl") {
             stage("kubectl") {

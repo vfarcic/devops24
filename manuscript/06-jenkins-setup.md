@@ -2,11 +2,11 @@
 
 - [X] Code
 - [X] Code review Docker for Mac/Windows
-- [X] Code review minikube
+- [ ] Code review minikube
 - [X] Code review kops
 - [X] Code review minishift
 - [X] Code review GKE
-- [ ] Write
+- [X] Write
 - [ ] Text review
 - [ ] Diagrams
 - [ ] Gist
@@ -15,11 +15,17 @@
 - [ ] Add to slides
 - [ ] Publish on TechnologyConversations.com
 - [ ] Add to Book.txt
-- [ ] Publish on LeanPub.co
+- [ ] Publish on LeanPub.com
 
 # Setting Up Jenkins
 
-TODO: Write
+T> When used by engineers, UIs are evil. They sidetrack us from repeatability and automation. That does not mean that UIs do not have their purpose. They do. They are supposed to provide enough colors and random graphs for CIO, CTO, and other C-level executives and mid-level managers to get off our backs. In other words, management works in color, while engineers should be limited to dual-color terminals, mixed with slightly increased color pallet of IDEs and editors we use to code. We produce commits, while managers fake interest by looking at UIs.
+
+The above phrase is a bit exaggerated. It's not true that UIs are useful only to managers nor that they fake interest. At least, that not true for all of them. UIs do provide a lot of value but, unfortunately, they are often abused to the level of even preventing automation. We'll try to make an additional effort to remove Jenkins UI for any setup related tasks. We'll try to automate everything.
+
+We already improved a lot our ability to install Jenkins. A mere switch from custom-made YAML files to Helm Charts is a huge improvement from the operational perspective. The addition of ServiceAccounts bound to Roles improved security. But, there's still one big things left only partly explored. We did not yet reach the point where we can install Jenkins fully from command line. So far, there were always a few things we had to do manually from its UI. We'll try to get rid of those steps in hopes that the only command we'll need to execute is `helm install`.
+
+Still, we cannot hope to fully automate the setup without going thorough manual steps first. So, we'll start by trying to explore different use-cases. If we hit a road-block, we'll try to figure out how to overcome it. The chances are that another one will be waiting for us after the first, and another one after that. We're yet to see which steps we're missing until we make Jenkins fully operational and, at the same time, secure. Only once we're confident in the way we set up Jenkins manually, will be proceed and try to automate the process.
 
 ## Creating A Cluster And Retrieving Its IP
 
@@ -77,7 +83,7 @@ helm install stable/jenkins \
 
 Jenkins Helm Chart comes with one big drawback. It uses ClusterRoleBinding to binding with the ServiceAccount `jenkins`. As a result, we cannot fine-tune permissions. We cannot define that, for example, Jenkins can operate only in the `jenkins` Namespace. Instead, the permissions we bind will apply to all Namespaces. That, as you can imagine, is a huge security risk. Jenkins could, for example, remove all the Pods from `kube-system`. Even if we have full trust in all the people working in our company, and we're sure that no one will try to define any malicious Pipeline, having cluster-wide permissions introduces a possible risk of doing something wrong by accident.
 
-I made a [PR](https://github.com/kubernetes/charts/pull/6190) that should allow us to switch from ClusterRoleBinding to RoleBinding. I'll update the book once the PR is merged. Until than, we'll remedy the issue with a workaround.
+I> I made a [pull request](https://github.com/kubernetes/charts/pull/6190) that should allow us to switch from ClusterRoleBinding to RoleBinding. I'll update the book once the PR is merged. Until than, we'll remedy the issue with a workaround.
 
 First, we'll remove the ClusterRoleBinding created through the Chart.
 
@@ -1202,114 +1208,53 @@ spec:
 }
 ```
 
-TODO: Continue
+I> If you prefer to copy and paste, the job is available in the [my-k8s-job-docker.groovy Gist](https://gist.github.com/fbf9fc6611fe400c7950f43cfc89f406).
+
+The only important difference when compared with the previous version of the job is that we added the second `node` segment. Most of the steps will be executed inside the `kubernetes` node that hosts a few containers. The new `node` called `docker` will be in charge of the steps that require Docker server. Depending on the path you took, that node might be a static VM, a dynamically created (and destroyed) node in AWS or GCE, or something completelly different. From job's perspective, it does not matter how is that node created, but that it exists or that it will be created on demand. The job will request nodes `docker` and `kubernetes` and it is up to Jenkins' internal configuration to figure out how to get them.
+
+Please click the *Save* button to persist the updated job.
+
+Next, we'll open the job in BlueOcean and run it as a way to confirm that everything works as expected.
 
 ```bash
-# Click the *Save* button
-
 open "http://$JENKINS_ADDR/blue/organizations/jenkins/my-k8s-job/activity"
-
-# Click the *Run* button
-
-# Click the row with the new build
-
-# Wait until all the stages are executed
 ```
+
+Press the *Run* button, followed with a click on the row of the new build. Wait until all the stages are executed.
 
 ![Figure 6-TODO: Jenkins job for testing tools](images/ch06/jenkins-tools-with-docker-build.png)
 
-## Automate Setup
+## Automating Jenkins Deployment And Setup
+
+One of the important parts of Jenkins automation is the management of credentials. Jenkins uses `hudson.util.Secret` and `master.key` files to encrypt all the credentials. Those two are stored in *secrets* directory inside Jenkins home. The credentials we uploaded or pasted are stored in `credentials.yml`. On top of those, each plugin (e.g., Google cloud) can add their own files with credentials.
+
+Obviously, we need the credentials as well and the secrets if we are to automate Jenkins setup. One solution could be to generate the secrets, use them to encrypt credentials, and store them as Kubernetes secrets or config maps. However, that is a tedious process. Since we already have a fully configured Jenkins, we might just as well copy the files we need from it.
+
+We'll persist the files we need to the local directories `cluster/jenkins` and `cluster/jenkins/secrets`. So, our first step is to create them.
 
 ```bash
 mkdir -p cluster/jenkins/secrets
+```
 
+Next, we need to copy the files from the existing Jenkins instance. To do that, we need to find out the name of the Pod with Jenkins. We'll describe `jenkins` Deployment and check whether Jenkins Pods have labels that uniquelly describe them.
+
+```bash
 kubectl -n jenkins \
     describe deployment jenkins
 ```
 
+The output, limited to the `Labels` section, is as follows.
+
 ```
-Name:                   jenkins
-Namespace:              jenkins
-CreationTimestamp:      Mon, 11 Jun 2018 19:13:37 +0200
-Labels:                 chart=jenkins-0.16.1
-                        component=jenkins-jenkins-master
-                        heritage=Tiller
-                        release=jenkins
-Annotations:            deployment.kubernetes.io/revision=1
-Selector:               component=jenkins-jenkins-master
-Replicas:               1 desired | 1 updated | 1 total | 1 available | 0 unavailable
-StrategyType:           RollingUpdate
-MinReadySeconds:        0
-RollingUpdateStrategy:  1 max unavailable, 1 max surge
-Pod Template:
-  Labels:           app=jenkins
-                    chart=jenkins-0.16.1
-                    component=jenkins-jenkins-master
-                    heritage=Tiller
-                    release=jenkins
-  Annotations:      checksum/config=67ba4de5bdd4b6e03bc4256e9d73c9ede8ba5b0618af4be548ccfe93eb7d8498
-  Service Account:  jenkins
-  Init Containers:
-   copy-default-config:
-    Image:      jenkins/jenkins:2.116-alpine
-    Port:       <none>
-    Host Port:  <none>
-    Command:
-      sh
-      /var/jenkins_config/apply_config.sh
-    Environment:  <none>
-    Mounts:
-      /usr/share/jenkins/ref/secrets/ from secrets-dir (rw)
-      /var/jenkins_config from jenkins-config (rw)
-      /var/jenkins_home from jenkins-home (rw)
-      /var/jenkins_plugins from plugin-dir (rw)
-  Containers:
-   jenkins:
-    Image:       jenkins/jenkins:2.116-alpine
-    Ports:       8080/TCP, 50000/TCP
-    Host Ports:  0/TCP, 0/TCP
-    Args:
-      --argumentsRealm.passwd.$(ADMIN_USER)=$(ADMIN_PASSWORD)
-      --argumentsRealm.roles.$(ADMIN_USER)=admin
-    Requests:
-      cpu:      500m
-      memory:   500Mi
-    Liveness:   http-get http://:http/login delay=60s timeout=5s period=10s #success=1 #failure=12
-    Readiness:  http-get http://:http/login delay=60s timeout=1s period=10s #success=1 #failure=3
-    Environment:
-      JAVA_OPTS:       
-      JENKINS_OPTS:    
-      ADMIN_PASSWORD:  <set to the key 'jenkins-admin-password' in secret 'jenkins'>  Optional: false
-      ADMIN_USER:      <set to the key 'jenkins-admin-user' in secret 'jenkins'>      Optional: false
-    Mounts:
-      /usr/share/jenkins/ref/plugins/ from plugin-dir (rw)
-      /usr/share/jenkins/ref/secrets/ from secrets-dir (rw)
-      /var/jenkins_config from jenkins-config (ro)
-      /var/jenkins_home from jenkins-home (rw)
-  Volumes:
-   jenkins-config:
-    Type:      ConfigMap (a volume populated by a ConfigMap)
-    Name:      jenkins
-    Optional:  false
-   plugin-dir:
-    Type:    EmptyDir (a temporary directory that shares a pod's lifetime)
-    Medium:  
-   secrets-dir:
-    Type:    EmptyDir (a temporary directory that shares a pod's lifetime)
-    Medium:  
-   jenkins-home:
-    Type:       PersistentVolumeClaim (a reference to a PersistentVolumeClaim in the same namespace)
-    ClaimName:  jenkins
-    ReadOnly:   false
-Conditions:
-  Type           Status  Reason
-  ----           ------  ------
-  Available      True    MinimumReplicasAvailable
-  Progressing    True    NewReplicaSetAvailable
-OldReplicaSets:  jenkins-c7f7c77b4 (1/1 replicas created)
-NewReplicaSet:   <none>
-Events:          <none>
+...
+Labels: chart=jenkins-0.16.1
+        component=jenkins-jenkins-master
+        heritage=Tiller
+        release=jenkins
+...
 ```
+
+The `component` label seem to be unique and we can use it to retrieve only Jenkins Pod.
 
 ```bash
 kubectl -n jenkins \
@@ -1317,10 +1262,14 @@ kubectl -n jenkins \
     -l component=jenkins-jenkins-master
 ```
 
+The output is as follows.
+
 ```
-NAME                      READY     STATUS    RESTARTS   AGE
-jenkins-c7f7c77b4-cgxx8   1/1       Running   0          3h
+NAME                    READY STATUS  RESTARTS AGE
+jenkins-c7f7c77b4-cgxx8 1/1   Running 0        3h
 ```
+
+We can combine that command with `jsonpath` output to retrieve only the name of the Pod and store it in a environment variable we'll use later on to copy the files we need.
 
 ```bash
 JENKINS_POD=$(kubectl -n jenkins \
@@ -1331,9 +1280,15 @@ JENKINS_POD=$(kubectl -n jenkins \
 echo $JENKINS_POD
 ```
 
+The output of the latter command is as follows.
+
 ```
 jenkins-c7f7c77b4-cgxx8
 ```
+
+Now we can copy the files we need.
+
+As a minimum, we'll need `credentials.xml`, where (most of) the credentials are stored. Since Jenkins uses the secrets to encrypt and decrypt credentials, we'll need them as well. Otherwise, Jenkins would generate new secrets when initializing and it could not decrypt the credentials.
 
 ```bash
 kubectl -n jenkins cp \
@@ -1347,57 +1302,91 @@ kubectl -n jenkins cp \
 kubectl -n jenkins cp \
     $JENKINS_POD:var/jenkins_home/secrets/master.key \
     cluster/jenkins/secrets
-
-# If GKE
-kubectl -n jenkins cp \
-    $JENKINS_POD:var/jenkins_home/gauth/ \
-    cluster/jenkins/secrets
-
-# If GKE
-G_AUTH_FILE=$(ls \
-    cluster/jenkins/secrets/key*json \
-    | xargs -n 1 basename)
-
-# If GKE
-echo $G_AUTH_FILE
 ```
 
-```
-key7754885476942296969.json
-```
+W> ## A note to GKE users
+W>
+W> Google cloud plugin stores authentication in a JSON file in `gauth` directory. We'll need to copy the files from that folder as well.
+W>
+W> `kubectl -n jenkins cp $JENKINS_POD:var/jenkins_home/gauth/ cluster/jenkins/secrets`
+W>
+W> `G_AUTH_FILE=$(ls cluster/jenkins/secrets/key*json | xargs -n 1 basename)`
+W>
+W> `echo $G_AUTH_FILE`
+W>
+W> The first command copied all the files from `gauth` directory inside Jenkins home, the second stored the name of the JSON file in the environment variable `G_AUTH_FILE`, and the last command output the name of the file so that we can confirm that it looks OK. In my case, the output of the latter command is `key7754885476942296969.json`.
+
+Now that we stored the secrets and the credentials, we can remove Jenkins altogether and start over. This time, the goal is to have the installation and the setup fully automated or, if that's not possible, to reduce the number of manual steps to a minimum.
 
 ```bash
 helm delete jenkins --purge
 ```
 
-```
-release "jenkins" deleted
-```
+The output clearly states that the `release "jenkins"` was `deleted`.
+
+We'll use a custom made Helm chart this time. It is located in *helm/jenkins* directory inside the [vfarcic/k8s-specs](https://github.com/vfarcic/k8s-specs) repository that we already cloned.
+
+Let's take a look at the files.
 
 ```bash
-helm dependency update helm/jenkins
+ls -1 helm/jenkins
 ```
 
+The output is as follows.
+
 ```
-Hang tight while we grab the latest from your chart repositories...
-...Unable to get an update from the "local" chart repository (http://127.0.0.1:8879/charts):
-        Get http://127.0.0.1:8879/charts/index.yaml: dial tcp 127.0.0.1:8879: connect: connection refused
-...Unable to get an update from the "chartmuseum" chart repository (http://cm.127.0.0.1.nip.io):
-        Get http://cm.127.0.0.1.nip.io/index.yaml: dial tcp 127.0.0.1:80: connect: connection refused
-...Successfully got an update from the "azure-samples" chart repository
-...Successfully got an update from the "monocular" chart repository
-...Successfully got an update from the "coreos" chart repository
-...Successfully got an update from the "stable" chart repository
-...Successfully got an update from the "jenkins-x" chart repository
-Update Complete. ⎈Happy Helming!⎈
-Saving 1 charts
-Downloading jenkins from repo https://kubernetes-charts.storage.googleapis.com
-Deleting outdated charts
+Chart.yaml
+requirements.yaml
+templates
+values.yaml
 ```
+
+We can see that Chart follows a similar logic as the others. `Chart.yaml` defines metadata. You already used `values.yaml` so that should not come as a surprise, even though there is a twist which we'll experience a bit later. The `templates` directory contains the templates that form the Chart even though, as you will discover later, it has only one file. What makes this Chart unique, when compared with those we used so far, is the `requirements.yaml` file. We'll explore it first since it'll provide insights into the twists and weirdness we'll encounter in other files.
 
 ```bash
-helm inspect values helm/jenkins
+cat helm/jenkins/requirements.yaml
 ```
+
+The output is as follows.
+
+```yaml
+dependencies:
+  - name: jenkins
+    version: 0.16.1
+    repository:  https://kubernetes-charts.storage.googleapis.com
+```
+
+The `requirements.yaml` file lists all the dependencies of out Chart. Since all we need is Jenkins, it is the only requirement we specified.
+
+Normally, we'd define our Chart and use `requirements.yaml` to add the dependencies our application needs. However, this use-case is a bit different. We do not have a Chart or, at least, we did not define even a single YAML file in templates. All we want to is install Jenkins, customized to serve our needs.
+
+At this point, you might be wondering why we do not install `stable/jenkins` directly with `--values` argument that will customize. The reason behind using the requirements approch lies in our need to customize Jenkins `config.xml` file. README available in `stable/jenkins` Chart provides more insight.
+
+```bash
+helm inspect readme stable/jenkins
+```
+
+The output, limited to the `Custom ConfigMap` section, is as follows.
+
+```
+...
+## Custom ConfigMap
+
+When creating a new parent chart with this chart as a dependency, the `CustomConfigMap` parameter can be used to override the default config.xml provided.
+It also allows for providing additional xml configuration files that will be copied into `/var/jenkins_home`. In the parent chart's values.yaml,
+set the `jenkins.Master.CustomConfigMap` value to true...
+...
+and provide the file `templates/config.tpl` in your parent chart for your use case. You can start by copying the contents of `config.yaml` from this chart into your parent charts `templates/config.tpl` as a basis for customization. Finally, you'll need to wrap the contents of `templates/config.tpl`...
+...
+```
+
+To comply with those instructions, we have a `values.yaml` file, so let's take a quick look at it.
+
+```bash
+cat helm/jenkins/values.yaml
+```
+
+The output is as follows
 
 ```yaml
 jenkins:
@@ -1426,8 +1415,10 @@ jenkins:
       - jdk-tool:1.1
       - command-launcher:1.2
       - github-oauth:0.29
+      - google-compute-engine:1.0.4
     Ingress:
       Annotations:
+        kubernetes.io/ingress.class: "nginx"
         nginx.ingress.kubernetes.io/ssl-redirect: "false"
         nginx.ingress.kubernetes.io/proxy-body-size: 50m
         nginx.ingress.kubernetes.io/proxy-request-buffering: "off"
@@ -1438,13 +1429,184 @@ jenkins:
     CustomConfigMap: true
     CredentialsXmlSecret: jenkins-credentials
     SecretsFilesSecret: jenkins-secrets
-    # DockerAMI:
-    # DockerEC2PrivateKey:
+    # DockerAMI: 
     # GProject:
     # GAuthFile:
   rbac:
     install: true
+    # roleBindingKind: RoleBinding
 ```
+
+If you compare that with `helm/jenkins-values.yml`, most entries are almost the same. There is one significant difference though. This time, all the entries are inside `jenkins`. That way, we're telling Helm that the values should be applied to the dependency named `jenkins` and defined in `requirements.yaml`.
+
+If we ignore the fact that all the entries are now inside `jenkins`, another significant difference is that we set `jenkins.Master.CustomConfigMap` to `true`. According to the instructions we saw in the README, that will allow us to provide a custom ConfigMap that will replace Jenkins' `config.xml` file by parsing `templates/config.tmpl` file. We'll take a closer look at it soon.
+
+The other new parameters are `CredentialsXmlSecret` which holds the name of the Kubernetes secret where we'll store Jenkins' `credentials.xml` file we copied earlier. That parameter is tightly coupled with `SecretsFilesSecret` which holds the name of yet another Kubernetes secret which, this time, will contain the secrets which we copied to the local directory `cluster/jenkins/secrets`.
+
+Further on, we have four commented parameters which will enable certain behavior if they are set. We'll use `DockerAMI` to set AWS AMI in case we're hosting our cluster in AWS. The last pair of (new) parameters is `GProject` and `GAuthFile`. The former is the GCE project we'll use if we choose to use Google as our hosting vendor and the latter is the authentication file which, if you followed that part, we also copied from the prior Jenkins installation. The usage of those parameters will become clearer once we explore `config.tpl` file.
+
+The `helm/jenkins/templates/config.tpl` file is the key to our goals, so let's take a closer look at it.
+
+```bash
+cat helm/jenkins/templates/config.tpl
+```
+
+The output is too big to be digested at once, so we'll break the explanation into different pieces.
+
+How did I create that file? I started by following the instructions in Chart's README. I copied `config.yaml` and made the minor changes documented in the README. That was the easy part. Then I inspected the changes we made to `config.xml` inside our manually configured Jenkins (the one we deleted a few moments ago).
+
+Than I started modifying `config.tpl` file. The first change is in the snipped that follows.
+
+```tpl
+{{- define "override_config_map" }}
+
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: {{ template "jenkins.fullname" . }}
+data:
+  config.xml: |-
+    <?xml version='1.0' encoding='UTF-8'?>
+    <hudson>
+      ...
+      <clouds>
+        <org.csanchez.jenkins.plugins.kubernetes.KubernetesCloud plugin="kubernetes@{{ template "jenkins.kubernetes-version" . }}">
+          <name>kubernetes</name>
+          <templates>
+{{- if .Values.Agent.Enabled }}
+            <org.csanchez.jenkins.plugins.kubernetes.PodTemplate>
+              ...
+              <containers>
+                <org.csanchez.jenkins.plugins.kubernetes.ContainerTemplate>
+                  ...
+                  <envVars>
+                    <org.csanchez.jenkins.plugins.kubernetes.ContainerEnvVar>
+                      <key>JENKINS_URL</key>
+                      <value>http://{{ template "jenkins.fullname" . }}.{{ .Release.Namespace }}:{{.Values.Master.ServicePort}}{{ default "" .Values.Master.JenkinsUriPrefix }}</value>
+                    </org.csanchez.jenkins.plugins.kubernetes.ContainerEnvVar>
+                  </envVars>
+                </org.csanchez.jenkins.plugins.kubernetes.ContainerTemplate>
+              </containers>
+              ...
+            </org.csanchez.jenkins.plugins.kubernetes.PodTemplate>
+{{- end -}}
+          ...
+          <jenkinsUrl>http://{{ template "jenkins.fullname" . }}.{{ .Release.Namespace }}:{{.Values.Master.ServicePort}}{{ default "" .Values.Master.JenkinsUriPrefix }}</jenkinsUrl>
+          <jenkinsTunnel>{{ template "jenkins.fullname" . }}-agent.{{ .Release.Namespace }}:50000</jenkinsTunnel>
+          ...
+```
+
+If you pay closer attention, you'll notice that those are the changes we did previsly to the Kubernetes cloud section in Jenkins configuration. We added `.{{ .Release.Namespace }}` to Jenkins URL and the tunnel so that Pods spun up in a different Namespace can establish communication with the master.
+
+The next difference is the section that follows.
+
+```tpl
+...
+{{- if .Values.Master.DockerAMI }}
+  <hudson.plugins.ec2.EC2Cloud plugin="ec2@1.39">
+    <name>ec2-docker-agents</name>
+    ...
+    <templates>
+      <hudson.plugins.ec2.SlaveTemplate>
+        <ami>{{.Values.Master.DockerAMI}}</ami>
+        ...
+{{- end }}
+...
+```
+
+It represents the addition created if we use Jenkins' EC2 plugin. I'll be honest here and admit that I did not write that XML snippet. I don't think that anyone could. Instead, I copied it from the previous Jenkins setup, pasted it to `config.tpl`, wrapped it with `{{- if .Values.Master.DockerAMI }}` and `{{- end }}`, and changed `<ami>` entry to use `{{.Values.Master.DockerAMI}}` as the value. That way, the section will be rendered only if we provide `jenkins.Master.DockerAMI` value and the `ami` entry will be set to whatever our AMI ID is.
+
+Similarly to the section enabled through the existence of the `jenkins.Master.DockerAMI` value, we can enable Google cloud through the XML wrapped inside `{{- if .Values.Master.GProject }}` and `{{- end }}`. The relevant snippet of the `config.tpl` file is as follows.
+
+```tpl
+...
+{{- if .Values.Master.GProject }}
+  <com.google.jenkins.plugins.computeengine.ComputeEngineCloud plugin="google-compute-engine@1.0.4">
+    <name>gce-docker</name>
+    <instanceCap>2147483647</instanceCap>
+    <projectId>{{.Values.Master.GProject}}</projectId>
+    <credentialsId>{{.Values.Master.GProject}}</credentialsId>
+    ...
+{{- end }}
+...
+```
+
+Just as with the EC2, that snippet was copied from the previous Jenkins instance and enveloped it with the `ìf`/`end` block. All occurences of the Google project were replaced with `{{.Values.Master.GProject}}`.
+
+Unfortunatelly, changing the template that produces Jenkins' `config.xml` file is not enough, so I had to modify a few other entries in `config.tpl`.
+
+If we continue walking through the differences, the next one is `docker-build` entry of the ConfigMap. It contains the exact copy of the `docker-build` node we created when we configered a VM using Vagrant. Since all the credentials are external and the IP is fixed to `10.100.198.200`, we did not have to modify it in any form or way and a simple copy & paste did the trick. However, we still need to figure out how to move the `docker-build` ConfigMap entry to `nodes/docker-build/config.xml` inside Jenkins home.
+
+We're almost done with the exploration of the changes, the only thing missing is the mechanism with which we'll transfer the files generated through the ConfigMap into the adequate folders inside Jenkins home.
+
+The last snippet from `config.tpl` comes from the `apply_config.sh` entry in the ConfigMap. The relevant parts are as follows.
+
+```tpl
+...
+  apply_config.sh: |-
+    ...
+    mkdir -p /var/jenkins_home/nodes/docker-build
+    cp /var/jenkins_config/docker-build /var/jenkins_home/nodes/docker-build/config.xml;
+{{- if .Values.Master.GAuthFile }}
+    mkdir -p /var/jenkins_home/gauth
+    cp -n /var/jenkins_secrets/{{.Values.Master.GAuthFile}} /var/jenkins_home/gauth;
+{{- end }}
+...
+{{- if .Values.Master.CredentialsXmlSecret }}
+    cp -n /var/jenkins_credentials/credentials.xml /var/jenkins_home;
+{{- end }}
+{{- if .Values.Master.SecretsFilesSecret }}
+    cp -n /var/jenkins_secrets/* /usr/share/jenkins/ref/secrets;
+{{- end }}
+...
+```
+
+The `apply_config.sh` script will be executed during Jenkins initialization. We added `mkdir` and `cp` commands that will copy `docker-build` config into `/var/jenkins_home/nodes/docker-build/config.xml`. That should take care of the `docker-build` agent that uses the Vagrant VM we created earlier. If you choose to skip in favor of AWS EC2 or Google cloud options, the agent will be created nevertheless but it will be disconnected.
+
+Further down, we can see a similar logic for the `gauth` directory that will be populated with the file provided as the Kubernetes secret with the name defined as the `jenkins.Master.GAuthFile` value.
+
+Finally, it is worth mentioning the parts inside `{{- if .Values.Master.CredentialsXmlSecret }}` and `{{- if .Values.Master.SecretsFilesSecret }}` blocks. Those already existed in the original `config.yaml` file used as the base for `config.tpl`. They are responsible for copying the credentials and the secrets into the appropriate directories inside Jenkins home.
+
+I must admit that all those steps we had to add to (almost) fully automate Jenkins setup are anything but intuitive. They require knowledge about internal Jenkins workings and are anything but intuitive. I should probably submit a few other pull requests to the Jenkins Helm project to simplify the setup. Nevertheless, the current configuration should provide everything we need, even though it might not easy to understand how we got here.
+
+Now that we got a bit clearer understanding of the changes we did to the `config.tpl` file and the reasons behind creating a new Chart with `stable/jenkins` as the requirement, we can move forward and update the dependencies in the Chart located in the `helm/jenkins` directory.
+
+```bash
+helm dependency update helm/jenkins
+```
+
+The output is as follows.
+
+```
+Hang tight while we grab the latest from your chart repositories...
+...Unable to get an update from the "local" chart repository (http://127.0.0.1:8879/charts):
+        Get http://127.0.0.1:8879/charts/index.yaml: dial tcp 127.0.0.1:8879: connect: connection refused
+...Unable to get an update from the "chartmuseum" chart repository (http://cm.127.0.0.1.nip.io):
+        Get http://cm.127.0.0.1.nip.io/index.yaml: dial tcp 127.0.0.1:80: connect: connection refused
+...Successfully got an update from the "stable" chart repository
+Update Complete. ⎈Happy Helming!⎈
+Saving 1 charts
+Downloading jenkins from repo https://kubernetes-charts.storage.googleapis.com
+Deleting outdated charts
+```
+
+We can ignore the failures from the `local` and `chartmusesum` repositories. They are still configured in our local Helm even though they're not currently running.
+
+The important part of the output are the last entries showing that Helm downloaded `jenkins` from the official repository. We can confirm that further by listing the files in the `helm/jenkins/charts` directory.
+
+```bash
+ls -1 helm/jenkins/charts
+```
+
+The output is as follows.
+
+```
+jenkins-0.16.1.tgz
+```
+
+We can see that the dependencies specified in the `requirements.yaml` file are downloaded to the `charts` directory. Since we specified `jenkins` as the only one, Helm downloaded a single `tgz` file.
+
+We're only one step away from being able to install custom Jenkins Chart with (almost) fully automated setup. The only thing missing are the `jenkins-credentials` and `jenkins-secrets` Secrets.
 
 ```bash
 kubectl -n jenkins \
@@ -1456,7 +1618,13 @@ kubectl -n jenkins \
     create secret generic \
     jenkins-secrets \
     --from-file cluster/jenkins/secrets
+```
 
+The `jenkins-credentials` Secret contains the `credentials.xml` file we extracted from the previous Jenkins setup. Similarly, the `jenkins-secrets` Secret contains all the files we stored in `cluster/jenkins/secrets` directory.
+
+This is it. The moment of truth is upon us. We are about to test whether our attempt to (almost) fully automate Jenkins setup indeed produces the desired effect.
+
+```bash
 helm install helm/jenkins \
     --name jenkins \
     --namespace jenkins \
@@ -1464,255 +1632,36 @@ helm install helm/jenkins \
     --set jenkins.Master.DockerAMI=$AMI_ID \
     --set jenkins.Master.GProject=$G_PROJECT \
     --set jenkins.Master.GAuthFile=$G_AUTH_FILE
+```
 
-# TODO: Remove
+Please note that depending on your choices `AMI_ID`, `G_PROJECT`, and `G_AUTH_FILE` might not be set and, as the result, not all the changes we made to the Chart will be available.
+
+Do you remember the patch I explained before? The one that is a temporary fix for the inability to change ClusterRoleBinding to RoleBinding? We still need to apply it.
+
+```bash
 kubectl delete clusterrolebinding \
     jenkins-role-binding
 
-# TODO: Remove
 kubectl apply -n jenkins \
     -f helm/jenkins-patch.yml
-
-kubectl -n jenkins describe cm jenkins
 ```
 
-```
-Name:         jenkins
-Namespace:    jenkins
-Labels:       <none>
-Annotations:  <none>
-
-Data
-====
-docker-build:
-----
-<?xml version='1.1' encoding='UTF-8'?>
-<slave>
-  <name>docker-build</name>
-  <description></description>
-  <remoteFS>/tmp</remoteFS>
-  <numExecutors>2</numExecutors>
-  <mode>NORMAL</mode>
-  <retentionStrategy class="hudson.slaves.RetentionStrategy$Always"/>
-  <launcher class="hudson.plugins.sshslaves.SSHLauncher" plugin="ssh-slaves@1.26">
-    <host>10.100.198.200</host>
-    <port>22</port>
-    <credentialsId>docker-build</credentialsId>
-    <maxNumRetries>0</maxNumRetries>
-    <retryWaitTime>0</retryWaitTime>
-    <sshHostKeyVerificationStrategy class="hudson.plugins.sshslaves.verifiers.NonVerifyingKeyVerificationStrategy"/>
-  </launcher>
-  <label>docker ubuntu</label>
-  <nodeProperties/>
-</slave>
-jenkins.CLI.xml:
-----
-<?xml version='1.1' encoding='UTF-8'?>
-<jenkins.CLI>
-  <enabled>false</enabled>
-</jenkins.CLI>
-plugins.txt:
-----
-blueocean:1.5.0
-credentials:2.1.16
-ec2:1.39
-git:3.9.1
-git-client:2.7.2
-github:1.29.1
-kubernetes:1.7.1
-pipeline-utility-steps:2.1.0
-script-security:1.44
-slack:2.3
-thinBackup:1.9
-workflow-aggregator:2.5
-ssh-slaves:1.26
-ssh-agent:1.15
-jdk-tool:1.1
-command-launcher:1.2
-github-oauth:0.29
-google-compute-engine:1.0.4
-apply_config.sh:
-----
-mkdir -p /usr/share/jenkins/ref/secrets/;
-echo "false" > /usr/share/jenkins/ref/secrets/slave-to-master-security-kill-switch;
-cp -n /var/jenkins_config/config.xml /var/jenkins_home;
-cp -n /var/jenkins_config/jenkins.CLI.xml /var/jenkins_home;
-mkdir -p /var/jenkins_home/nodes/docker-build
-cp /var/jenkins_config/docker-build /var/jenkins_home/nodes/docker-build/config.xml;
-mkdir -p /var/jenkins_home/gauth
-cp -n /var/jenkins_secrets/key7754885476942296969.json /var/jenkins_home/gauth;
-# Install missing plugins
-cp /var/jenkins_config/plugins.txt /var/jenkins_home;
-rm -rf /usr/share/jenkins/ref/plugins/*.lock
-/usr/local/bin/install-plugins.sh `echo $(cat /var/jenkins_home/plugins.txt)`;
-# Copy plugins to shared volume
-cp -n /usr/share/jenkins/ref/plugins/* /var/jenkins_plugins;
-cp -n /var/jenkins_credentials/credentials.xml /var/jenkins_home;
-cp -n /var/jenkins_secrets/* /usr/share/jenkins/ref/secrets;
-config.xml:
-----
-<?xml version='1.0' encoding='UTF-8'?>
-<hudson>
-  <disabledAdministrativeMonitors/>
-  <version>2.121.1-alpine</version>
-  <numExecutors>0</numExecutors>
-  <mode>NORMAL</mode>
-  <useSecurity>true</useSecurity>
-  <authorizationStrategy class="hudson.security.FullControlOnceLoggedInAuthorizationStrategy">
-    <denyAnonymousReadAccess>true</denyAnonymousReadAccess>
-  </authorizationStrategy>
-  <securityRealm class="hudson.security.LegacySecurityRealm"/>
-  <disableRememberMe>false</disableRememberMe>
-  <projectNamingStrategy class="jenkins.model.ProjectNamingStrategy$DefaultProjectNamingStrategy"/>
-  <workspaceDir>${JENKINS_HOME}/workspace/${ITEM_FULLNAME}</workspaceDir>
-  <buildsDir>${ITEM_ROOTDIR}/builds</buildsDir>
-  <markupFormatter class="hudson.markup.EscapedMarkupFormatter"/>
-  <jdks/>
-  <viewsTabBar class="hudson.views.DefaultViewsTabBar"/>
-  <myViewsTabBar class="hudson.views.DefaultMyViewsTabBar"/>
-  <clouds>
-    <org.csanchez.jenkins.plugins.kubernetes.KubernetesCloud plugin="kubernetes@1.7.1">
-      <name>kubernetes</name>
-      <templates>
-        <org.csanchez.jenkins.plugins.kubernetes.PodTemplate>
-          <inheritFrom></inheritFrom>
-          <name>default</name>
-          <instanceCap>2147483647</instanceCap>
-          <idleMinutes>0</idleMinutes>
-          <label>jenkins-jenkins-slave</label>
-          <nodeSelector></nodeSelector>
-            <nodeUsageMode>NORMAL</nodeUsageMode>
-          <volumes>
-          </volumes>
-          <containers>
-            <org.csanchez.jenkins.plugins.kubernetes.ContainerTemplate>
-              <name>jnlp</name>
-              <image>jenkins/jnlp-slave:3.10-1</image>
-              <privileged>false</privileged>
-              <alwaysPullImage>false</alwaysPullImage>
-              <workingDir>/home/jenkins</workingDir>
-              <command></command>
-              <args>${computer.jnlpmac} ${computer.name}</args>
-              <ttyEnabled>false</ttyEnabled>
-              <resourceRequestCpu>200m</resourceRequestCpu>
-              <resourceRequestMemory>256Mi</resourceRequestMemory>
-              <resourceLimitCpu>200m</resourceLimitCpu>
-              <resourceLimitMemory>256Mi</resourceLimitMemory>
-              <envVars>
-                <org.csanchez.jenkins.plugins.kubernetes.ContainerEnvVar>
-                  <key>JENKINS_URL</key>
-                  <value>http://jenkins.jenkins:8080</value>
-                </org.csanchez.jenkins.plugins.kubernetes.ContainerEnvVar>
-              </envVars>
-            </org.csanchez.jenkins.plugins.kubernetes.ContainerTemplate>
-          </containers>
-          <envVars/>
-          <annotations/>
-          <imagePullSecrets/>
-          <nodeProperties/>
-        </org.csanchez.jenkins.plugins.kubernetes.PodTemplate></templates>
-      <serverUrl>https://kubernetes.default</serverUrl>
-      <skipTlsVerify>false</skipTlsVerify>
-      <namespace>jenkins</namespace>
-      <jenkinsUrl>http://jenkins.jenkins:8080</jenkinsUrl>
-      <jenkinsTunnel>jenkins-agent.jenkins:50000</jenkinsTunnel>
-      <containerCap>10</containerCap>
-      <retentionTimeout>5</retentionTimeout>
-      <connectTimeout>0</connectTimeout>
-      <readTimeout>0</readTimeout>
-    </org.csanchez.jenkins.plugins.kubernetes.KubernetesCloud>
-    <com.google.jenkins.plugins.computeengine.ComputeEngineCloud plugin="google-compute-engine@1.0.4">
-      <name>gce-docker</name>
-      <instanceCap>2147483647</instanceCap>
-      <projectId>devops24-book</projectId>
-      <credentialsId>devops24-book</credentialsId>
-      <configurations>
-        <com.google.jenkins.plugins.computeengine.InstanceConfiguration>
-          <description>Docker build instances</description>
-          <namePrefix>docker</namePrefix>
-          <region>https://www.googleapis.com/compute/v1/projects/devops24-book/regions/us-east1</region>
-          <zone>https://www.googleapis.com/compute/v1/projects/devops24-book/zones/us-east1-b</zone>
-          <machineType>https://www.googleapis.com/compute/v1/projects/devops24-book/zones/us-east1-b/machineTypes/n1-standard-2</machineType>
-          <numExecutorsStr>1</numExecutorsStr>
-          <startupScript></startupScript>
-          <preemptible>false</preemptible>
-          <labels>docker ubuntu linux</labels>
-          <runAsUser>jenkins</runAsUser>
-          <bootDiskType>https://www.googleapis.com/compute/v1/projects/devops24-book/zones/us-east1-b/diskTypes/pd-ssd</bootDiskType>
-          <bootDiskAutoDelete>true</bootDiskAutoDelete>
-          <bootDiskSourceImageName>https://www.googleapis.com/compute/v1/projects/devops24-book/global/images/docker</bootDiskSourceImageName>
-          <bootDiskSourceImageProject>devops24-book</bootDiskSourceImageProject>
-          <networkConfiguration class="com.google.jenkins.plugins.computeengine.AutofilledNetworkConfiguration">
-            <network>https://www.googleapis.com/compute/v1/projects/devops24-book/global/networks/default</network>
-            <subnetwork>default</subnetwork>
-          </networkConfiguration>
-          <externalAddress>false</externalAddress>
-          <useInternalAddress>false</useInternalAddress>
-          <networkTags></networkTags>
-          <serviceAccountEmail></serviceAccountEmail>
-          <mode>NORMAL</mode>
-          <retentionTimeMinutesStr>6</retentionTimeMinutesStr>
-          <launchTimeoutSecondsStr>300</launchTimeoutSecondsStr>
-          <bootDiskSizeGbStr>10</bootDiskSizeGbStr>
-          <googleLabels>
-            <entry>
-              <string>jenkins_cloud_id</string>
-              <string>-1723728540</string>
-            </entry>
-            <entry>
-              <string>jenkins_config_name</string>
-              <string>docker</string>
-            </entry>
-          </googleLabels>
-          <numExecutors>1</numExecutors>
-          <retentionTimeMinutes>6</retentionTimeMinutes>
-          <launchTimeoutSeconds>300</launchTimeoutSeconds>
-          <bootDiskSizeGb>10</bootDiskSizeGb>
-        </com.google.jenkins.plugins.computeengine.InstanceConfiguration>
-      </configurations>
-    </com.google.jenkins.plugins.computeengine.ComputeEngineCloud>
-  </clouds>
-  <quietPeriod>5</quietPeriod>
-  <scmCheckoutRetryCount>0</scmCheckoutRetryCount>
-  <views>
-    <hudson.model.AllView>
-      <owner class="hudson" reference="../../.."/>
-      <name>All</name>
-      <filterExecutors>false</filterExecutors>
-      <filterQueue>false</filterQueue>
-      <properties class="hudson.model.View$PropertyList"/>
-    </hudson.model.AllView>
-  </views>
-  <primaryView>All</primaryView>
-  <slaveAgentPort>50000</slaveAgentPort>
-  <disabledAgentProtocols>
-    <string>JNLP-connect</string>
-    <string>JNLP2-connect</string>
-  </disabledAgentProtocols>
-  <label></label>
-  <crumbIssuer class="hudson.security.csrf.DefaultCrumbIssuer">
-    <excludeClientIPFromCrumb>true</excludeClientIPFromCrumb>
-  </crumbIssuer>
-  <nodeProperties/>
-  <globalNodeProperties/>
-  <noUsageStatistics>true</noUsageStatistics>
-</hudson>
-Events:  <none>
-```
+Next, we'll wait until `jenkins` Deployment rolls out, before we open Jenkins and confirm that all the changes we made are indeed applied correctly.
 
 ```bash
 kubectl -n jenkins \
     rollout status deployment jenkins
 ```
 
-```
-Waiting for rollout to finish: 0 of 1 updated replicas are available...
-deployment "jenkins" successfully rolled out
-```
+The output should show that `deployment "jenkins"` was `successfully rolled out`, and we can open Jenkins in our favourite browser.
 
 ```bash
 open "http://$JENKINS_ADDR"
+```
 
+Just as before, you'll need the administrative password stored in the `jenkins` secret.
+
+```bash
 JENKINS_PASS=$(kubectl -n jenkins \
     get secret jenkins \
     -o jsonpath="{.data.jenkins-admin-password}" \
@@ -1721,69 +1670,67 @@ JENKINS_PASS=$(kubectl -n jenkins \
 echo $JENKINS_PASS
 ```
 
-```
-Ucg2tab4FK
-```
+Please copy the output of the latter command, go back to Jenkins' login screen, and use it as the password for the `admin` user.
+
+The first thing we'll confirm is whether *Kubernetes* cloud section of the Jenkins' configuration screen is indeed populated with the correct values.
 
 ```bash
-# Login with user `admin`
-
 open "http://$JENKINS_ADDR/configure"
-
-# Observe that the *Kubernetes* section fields *Jenkins URL* and *Jenkins tunnel* are correctly populated.
-
-# Only if AWS
-cat cluster/devops24.pem
-
-# Only if AWS
-# Copy the output
-
-# Only if AWS
-# Scroll to the *EC2 Key Pair's Private Key* field
-
-# Only if AWS
-# Paste the output
-
-# Only if GKE
-# Observe that the *Google Compute Section* section fields look OK and that there is the message *The credential successfully made an API request to Google Compute Engine* below the *Service Account Credentials* field.
-
-# Only if Vagrant VM
-open "http://$JENKINS_ADDR/credentials/store/system/domain/_/credential/docker-build/update"
-
-# Only if AWS
-open "http://$JENKINS_ADDR/credentials/store/system/domain/_/credential/aws/update"
-
-# Only if GKE
-open "http://$JENKINS_ADDR/credentials/store/system/domain/_/credential/$G_PROJECT/update"
-
-# Observe that the credential is created
-
-open "http://$JENKINS_ADDR/computer"
-
-# Only if Vagrant VM
-# Observe that the *docker-build* agent is created and available
-
-# Only if NOT Vagrant VM
-# Observe that the *docker-build* agent is created and but it is NOT available
-
-# Only if AWS
-# Observe that the *Provision via docker-agents* drop-down list is available
-
-# Only if AWS
-# Observe that the *Provision via docker* drop-down list is available
-
-open "http://$JENKINS_ADDR/newJob"
-
-# Type *my-k8s-job* as the job name
-
-# Select *Pipeline* as the job type
-
-# Click the *OK* button
-
-# Click the *Pipeline* tab
-
-# Copy the script that follows and paste it into the *Script* field.
 ```
+
+Please confirm that the *Kubernetes* section fields *Jenkins URL* and *Jenkins tunnel* are correctly populated. They should have *http://jenkins.jenkins:8080* and *jenkins-agent.jenkins:50000* as values.
+
+W> ## A note to AWS EC2 users
+W>
+W> Unlike on-prem and GKE solutions, AWS requires a single manual step to complete the setup.
+W>
+W> `cat cluster/devops24.pem`
+W>
+W> Copy the output, scroll to the *EC2 Key Pair's Private Key* field, and paste it. Don't forget to click the *Apply* button to persist the change.
+
+Now that we know that *Kubernetes* is configured correctly and will be able to communicate with Pods outside the `jenkins` Namespace, we'll proceed and confirm that other cloud sections are also configured correctly if we choose to use GKE.
+
+If you're using **GKE**, you should observe that the *Google Compute Section* section fields look OK and that there is the message *The credential successfully made an API request to Google Compute Engine* below the *Service Account Credentials* field.
+
+Next, we'll confirm that the credentials were also created correctly and that Jenkins can decrypt them.
+
+If you chose to use **Vagrant** to create a VM that will be used for building Docker images, please execute the command that follows to open the screen with the credentials.
+
+```bash
+open "http://$JENKINS_ADDR/credentials/store/system/domain/_/credential/docker-build/update"
+```
+
+If, on the other hand, you choose **AWS** to dynamically create nodes for building Docker images, the command that will open the screen with the credentials is as follows.
+
+```bash
+open "http://$JENKINS_ADDR/credentials/store/system/domain/_/credential/aws/update"
+```
+
+Finally, if Google makes you tick and you choose GKE to host your cluster, the command that follows will open the screen with GCE credentials.
+
+```bash
+open "http://$JENKINS_ADDR/credentials/store/system/domain/_/credential/$G_PROJECT/update"
+```
+
+No matter which method you choose for hosting agents we'll use to build Docker images, you should confirm that the credentials look OK.
+
+Next, we'll check whether the agents are indeed registered with Jenkins.
+
+```bash
+open "http://$JENKINS_ADDR/computer"
+```
+
+If you choose to create a VM with **Vagrant**, you should see that the *docker-build* agent is created and that it is available. Otherwise, the agent will still be created, but it will NOT be available. Don't panic if that's the case. Jenkins will use AWS or GCE to spin them up when needed.
+
+If you choose to use AWS or GCE for spinning agent nodes, you'll notice the list saying *Provision via...*. That allows us to spin up the VMs in GCE or AWS manually. However, we won't do that. We'll let Jenkins Pipeline use that option instead.
+
+Everything seems to be configured correctly and we can do the last verification. We'll create a new job and confirm that it works as expected.
+
+```bash
+open "http://$JENKINS_ADDR/newJob"
+```
+
+Please type *my-k8s-job* as the job name, select *Pipeline* as the job type, and click the *OK* button. Once inside the job configuration screen, click the *Pipeline* tab to jump to the *Script* field, and type the code that follows.
 
 ```groovy
 podTemplate(
@@ -1843,38 +1790,43 @@ spec:
 }
 ```
 
+I> If you prefer to copy and paste, the job is available in the [my-k8s-job-docker.groovy Gist](https://gist.github.com/fbf9fc6611fe400c7950f43cfc89f406).
+
+Please note that the job is exactly the same as the one we used to validate the manual setup and, therefore, there's probably no need to comment it again. You know what it does, so click the *Save* button to persist it.
+
+Next, we'll open the job in BlueOcean and run it.
+
 ```bash
-# Click the *Save* button
-
 open "http://$JENKINS_ADDR/blue/organizations/jenkins/my-k8s-job/activity"
-
-# Click the *Run* button
-
-# Click the row of the new build
-
-# Wait until all the stages are finished and that it is green
 ```
 
-## Destroying The Cluster
+Press the *Run* button, followed with a click on the row with the new build. Wait until all the stages are finished and the result is green.
+
+## What Now?
+
+If we exclude the case of entering AWS key, our Jenkins setup is fully automated. Kubernetes plugin is pre-configured to support Pods running in other Namespaces, Google and AWS clouds will be set up if we choose to use them, credentials are copied to the correct locations and are using the same encryption keys as those used to encrypt the credentials in the first place. All in all, we're finally ready to work on our continuous deployment pipeline. The next chapter will be the culmination of everything we did thus far.
+
+Please note that even we did not comment on it, the current setup is designed to support "Jenkins master per team" strategy. Even though you could use the experience you gained so far to run a production-ready Jenkins master that will serve everyone in your company, it is often a better strategy to have one master per team. That approach provides quite a few benefits.
+
+If each team gets a Jenkins master, each team will be able to work independently from others. A team can decide to upgrade their plugins without fear that they will afftect others. We can choose to experiment with things that might cause trouble to others. Every team can have fine-tuned permissions on the Namespaces that matter to them, and no ability to do anything inside other Namespaces. Productivity of a team is often directly proportional to the ability to do things without being limited with the actions of other teams and, at the same time freedom not to worry whether our work will negativelly affect others. In Kubernetes, we get that freedom through Namespaces. In Jenkins, we get it by having masters dedicated to teams.
+
+The Helm Chart we created is a step forward towards multi-master strategy. Jenkins we installed can be considered dedicated to the team in charge or *go-demo-3* application. Or it can be dedicated to a bigger team. The exact division will differ from one organization to another. What matters is that no matter how many Jenkins masters you need, all you have to do is execute `helm install` for each. Given enough resources in the cluster, you can have a hundred fully operational Jenkins masters in only a few minutes time. And they will not be Jenkins masters waiting to be configured, but rather masters already loaded with everything a team needs. All they'd need to do is create Pipelines that will execute the steps needed for their application to move from a commit into production. That's the subject of the next chapter.
+
+One more chapter is finished and, like all the others, the next one will start from scratch. Please use the commands that follow to clean up the the resources we created or, if you're using a temporary cluster, just go ahead and destroy it.
 
 ```bash
-# TODO: Explain the need for one master per team strategy
-
-# TODO: Explain the need for tiller for each team
-
-# If AWS or GKE, make sure that Jenkins removed the nodes before proceeding.
-
 helm delete $(helm ls -q) --purge
 
 kubectl delete ns \
     go-demo-3 go-demo-3-build jenkins
+```
 
-# Only if Vagrant
+If you created a VM using **Vagrant**, best if you suspend it instead of destroying it. That way we'll preserve the same credentials and will be able to reuse those we stored in `cluster/jenkins/secrets/`.
+
+```bash
 cd cd/docker-build
 
-# Only if Vagrant
 vagrant suspend
 
-# Only if Vagrant
 cd ../../
 ```
