@@ -479,7 +479,8 @@ vfarcic/go-demo-3 1.0-beta ...      54 seconds ago     25.8MB
 
 The first two images are the result of our build. The final image (`vfarcic/go-demo-3`) is only 25 MB. It's that small because Docker discarded all but the last stage. If you'd like to know how big your image would be if everything was built in a single stage, please combine the size of the `vfarcic/go-demo-3` image with the size of the temporary image used in the first stage (it's just below `vfarcic/go-demo-3 1.0-beta`).
 
-W> If you had to tag my image as yours as a workaround for build problems, you won't see the second image (the one that is ~780 MB), on the other hand, if you succeded to build your own image name will be prefixed with your docker hub username.
+
+W> If you had to tag my image as yours as a workaround for build problems, you won't see the second image (the one that is ~780 MB), on the other hand, if you succeded to build your own image, image name will be prefixed with your docker hub username.
 
 
 The only thing missing is to push the image to the registry (e.g., Docker Hub).
@@ -497,7 +498,7 @@ We are still facing a few problems. Docker running in a Kubernetes cluster might
 
 Another issue is security. If we allow containers to mount Docker socket, we are effectively allowing them to control all the containers running on that node. That by itself makes security departments freak out, and for a very good reason. Also, don't forget that we logged into the registry. Anyone on that node could push images to the same registry without the need for credentials. Even if we do log out, there was still a period when everyone could exploit the fact that Docker server is authenticated and authorized to push images.
 
-Truth be told, we are not preventing anyone from mounting a Docker socket. At the moment, our policy is based on trust. That should change with PodSecurityPolicy. However, security is not the focus of this book, so I'll assume that you'll set up the policies yourself, if you deem them worthy of your time.
+Truth be told, **we are not preventing anyone from mounting a Docker socket**. At the moment, our policy is based on trust. That should change with PodSecurityPolicy. However, security is not the focus of this book, so I'll assume that you'll set up the policies yourself, if you deem them worthy of your time.
 
 I> We should further restrict what a Pod can and cannot do through [PodSecurityPolicy](https://v1-9.docs.kubernetes.io/docs/reference/generated/kubernetes-api/v1.9/#podsecuritypolicy-v1beta1-extensions).
 
@@ -686,7 +687,7 @@ ok      _/go/go-demo-3  0.129s
 
 We can see that the tests passed and we can conclude that the application is a step closer towards production. In a real-world situation, you'd run other types of tests or maybe bundle them all together. The logic is still the same. We deployed the application under test while leaving production intact, and we validated that it behaves as expected. We are ready to move on.
 
-Testing an application through the service associated with it is a good idea if for some reason we are not allowed to expose it to the outside world through Ingress. If there is no such restriction, executing the tests through a DNS which points to an external load balancer, which forwards to the Ingress service on one of the worker nodes, and from there load balances to one of the replicas, is much closer to how our users access the application. Using the "real" externally accessible address is a better option when that is possible, so we'll change our `ADDRESS` variable and execute the tests one more time.
+Testing an application through the service associated with it is a good idea,if for some reason we are not allowed to expose it to the outside world through Ingress. If there is no such restriction, executing the tests through a DNS which points to an external load balancer, which forwards to the Ingress service on one of the worker nodes, and from there load balances to one of the replicas, is much closer to how our users access the application. Using the "real" externally accessible address is a better option when that is possible, so we'll change our `ADDRESS` variable and execute the tests one more time.
 
 ```bash
 export ADDRESS=$(cat addr)
@@ -741,7 +742,7 @@ exit
 
 ## Creating Production Releases
 
-We are ready to create our first production release. We trust our tests, and they proved that it is relatively safe to deploy to production. Since we cannot deploy air, we need to create a production release first.
+We are ready to create our first production release. We trust our tests, and they proved that it is relatively safe to deploy to production. Since we cannot deploy to air, we need to create a production release first.
 
 Please make sure to replace `[...]` with your Docker Hub user in one of the commands that follow.
 
@@ -945,7 +946,7 @@ Another problem is the horrifying usage of `sed` commands to modify the content 
 
 Once we start running multiple builds of the same application, we'll need to figure out how to remove the tools we create as part of our pipeline. Commands like `kubectl delete pods --all` will obviously not work if we plan to run multiple pipelines in parallel. We'll need to restrict the removal only to the Pods spin up by the build we finished, not all those in a Namespace. CI/CD tools we'll use later might be able to help with this problem.
 
-We are missing quite a few steps in our pipeline. That is one of the issues we will not try to fix in this book. Those that we explored so far are common to almost all pipelines. We always run different types of tests, some of which are static (e.g., unit tests), while others need a live application (e.g., functional tests). We always need to build a binary or package our application. We need to build an image and deploy it to one or more locations. The rest of the steps differs from one case to another. You might want to send test results to SonarQube, or you might choose to make a GitHub release. If your images can be deployed to different operating systems (e.g., Linux, Windows, ARM), you might want to create a manifest file. You'll probably run some security scanning as well. The list of the things you might do is almost unlimited, so I chose to stick with the steps that are very common and, in many cases, mandatory. Once you grasp the principles behind a well defined, fully automated, and container-based pipeline executed on top of a scheduler, I'm sure you won't have a problem extending our examples to fit your particular needs.
+We are missing quite a few steps in our pipeline. Those are the issues we will not try to fix in this book. Those that we explored so far are common to almost all pipelines. We always run different types of tests, some of which are static (e.g., unit tests), while others need a live application (e.g., functional tests). We always need to build a binary or package our application. We need to build an image and deploy it to one or more locations. The rest of the steps differs from one case to another. You might want to send test results to SonarQube, or you might choose to make a GitHub release. If your images can be deployed to different operating systems (e.g., Linux, Windows, ARM), you might want to create a manifest file. You'll probably run some security scanning as well. The list of the things you might do is almost unlimited, so I chose to stick with the steps that are very common and, in many cases, mandatory. Once you grasp the principles behind a well defined, fully automated, and container-based pipeline executed on top of a scheduler, I'm sure you won't have a problem extending our examples to fit your particular needs.
 
 How about building Docker images? That is also one of the items on our TODO list. We shouldn't build them inside Kubernetes cluster because mounting Docker socket is a huge security risk and because we should not run anything without going through Kube API. Our best bet, for now, is to build them outside the cluster. We are yet to discover how to do that effectively. I suspect that will be a very easy challenge.
 
