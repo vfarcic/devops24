@@ -36,7 +36,7 @@ Even though CD and CDP are almost the same from the process perspective, the lat
 
 We won't go into all the cultural and development changes one would need to employ before attempting to reach the stage where CDP is desirable, or even possible. That would be a subject for a different book and would require much more space than what we have. I am not even going to try to convince you to embrace continuous deployment. There are many valid cases when CDP is not a good option and even more of those when it is not even possible without substantial cultural and technical changes which are outside Kubernetes domain. Statistically speaking, it is likely that you are not ready to embrace continuous deployment.
 
-At this point, you might be wondering whether it makes sense for you to continue reading. Maybe you are indeed not ready for continuous deployment, and maybe you think that this was a waste of time. If that's the case, my message to you is that it does not matter. The fact that you already have some experience with Kubernetes tells me that you are not a lagger. You chose to embrace a new way of working. You saw the benefits of distributed systems, and you are embracing what surely looked like madness when you made your first steps.
+At this point, you might be wondering whether it makes sense for you to continue reading. Maybe you are indeed not ready for continuous deployment, and maybe thinking this is a waste of time. If that's the case, my message to you is that, it does not matter. The fact that you already have some experience with Kubernetes tells me that you are not a lagger. You chose to embrace a new way of working. You saw the benefits of distributed systems, and you are embracing what surely looked like madness when you made your first steps.
 
 If you reached this far, you are ready to learn and practice the processes that follow. You might not be ready to do continuous deployment. That's OK. You can fall back to continuous delivery. If that is also too big of a scratch, you can start with continuous integration. The reason I'm saying that it does not matter lies in the fact that most of the steps are the same in all those cases. No matter whether you are planning to do CI, CD, or CDP, you have to build something, you have to run some tests, and you have to deploy your applications somewhere.
 
@@ -54,9 +54,9 @@ All in all, the first objective is to define the base set of steps for our conti
 
 The continuous deployment process is relatively easy to explain, even though implementation might get tricky. We'll split our requirements into two groups. We'll start with a discussion about the overall goals that should be applied to the whole process. To be more precise, we'll talk about what I consider non-negotiable requirements.
 
-A Pipeline needs to be secure. Typically, that would not be a problem. Before Kubernetes, we would run the pipeline steps on separate servers. We'd have one dedicated to building and another for testing. We might have one for integration and another for performance tests. Once we adopt container schedulers and move into clusters, we lose control of the servers. Even though it is possible to run something on a specific server, that is highly discouraged in Kubernetes. We should let it schedule Pods with as few restraints as possible. That means that our builds and tests might run in the production cluster and that might prove not to be secure. If we are not careful, a malicious user might exploit shared space. Even more likely, our tests might contain an unwanted side-effect that could put production applications at risk.
+A Pipeline needs to be secure. Typically, that would not be a problem. In past before Kubernetes was born, we would run the pipeline steps on separate servers. We'd have one dedicated to building and another for testing. We might have one for integration and another for performance tests. Once we adopt container schedulers and move into clusters, we lose control of the servers. Even though it is possible to run something on a specific server, that is highly discouraged in Kubernetes. We should let Kubernetes schedule Pods with as few restraints as possible. That means that our builds and tests might run in the production cluster and that might prove not to be secure. If we are not careful, a malicious user might exploit shared space. Even more likely, our tests might contain an unwanted side-effect that could put production applications at risk.
 
-We could create separate clusters. One can be dedicated to the production and the other to everything else. While that is indeed an option we should explore, Kubernetes already provides the tools we need to make a cluster secure. We have RBAC, ServiceAccounts, Namespaces, PodSecurityPolicies, NetworkPolicies, and a few other resources at our disposal. We can share the same cluster and be reasonably secure at the same time.
+We could create separate clusters. One can be dedicated to the production and the other to everything else. While that is indeed an option we should explore, Kubernetes already provides the tools we need to make a cluster secure. We have RBAC, ServiceAccounts, Namespaces, PodSecurityPolicies, NetworkPolicies, and a few other resources at our disposal.So we can share the same cluster and be reasonably secure at the same time.
 
 Security is not the only requirement. Even when everything is secured, we still need to make sure that our pipelines do not affect negatively other applications running inside a cluster. If we are not careful, tests might, for example, request or use too many resources and, as a result, we might be left with insufficient memory for the other applications and processes running inside our cluster. Fortunately, Kubernetes has a solution for those problems as well. We can combine Namespaces with LimitRanges and ResourceQuotas. While they do not provide a complete guarantee that nothing will go wrong (nothing does), they do provide a set of tools that, when used correctly, do provide reasonable guarantees that the processes in a Namespace will not go "wild".
 
@@ -85,7 +85,7 @@ All in all, the stages are as follows.
 * Production testing stage
 * Cleanup stage
 
-Here's the plan. In the build stage, we'll build a Docker image and push it to a registry (in our case Docker Hub). However, since building untested artifacts should be illegal, we are going to run static tests before the actual build. Once our Docker image is pushed, we'll deploy the application and run tests against it. If everything works as expected, we'll make a new release and deploy it to production. To be on the safe side, we'll run another round of tests to validate that the deployment was indeed successful. Finally, we'll clean up the system by removing everything except the production release.
+Here's the plan. In the build stage, we'll build a Docker image and push it to a registry (in our case Docker Hub). However, since building untested artifacts should be stopped, we are going to run static tests before the actual build. Once our Docker image is pushed, we'll deploy the application and run tests against it. If everything works as expected, we'll make a new release and deploy it to production. To be on the safe side, we'll run another round of tests to validate that the deployment was indeed successful in production. Finally, we'll clean up the system by removing everything except the production release.
 
 ![Figure 3-1: The stages of a continuous deployment pipeline](images/ch03/manual-cd-stages.png)
 
@@ -143,6 +143,8 @@ rm -rf go-demo-3
 export GH_USER=[...]
 
 git clone https://github.com/$GH_USER/go-demo-3.git
+
+cd go-demo-3
 ```
 
 The only thing left is to edit a few files. Please open *k8s/build.yml* and *k8s/prod.yml* files in your favorite editor and change all occurrences of `vfarcic` with your Docker Hub user.
@@ -150,8 +152,6 @@ The only thing left is to edit a few files. Please open *k8s/build.yml* and *k8s
 The namespace dedicated for all building and testing activities of the `go-demo-3` project is defined in the `k8s/build-ns.yml` file stored in the project repository.
 
 ```bash
-cd go-demo-3
-
 git pull
 
 cat k8s/build-ns.yml
@@ -479,7 +479,9 @@ vfarcic/go-demo-3 1.0-beta ...      54 seconds ago     25.8MB
 
 The first two images are the result of our build. The final image (`vfarcic/go-demo-3`) is only 25 MB. It's that small because Docker discarded all but the last stage. If you'd like to know how big your image would be if everything was built in a single stage, please combine the size of the `vfarcic/go-demo-3` image with the size of the temporary image used in the first stage (it's just below `vfarcic/go-demo-3 1.0-beta`).
 
-W> If you had to tag my image as yours as a workaround for build problems, you won't see the second image (the one that is ~780 MB).
+
+W> If you had to tag my image as yours as a workaround for build problems, you won't see the second image (the one that is ~780 MB), on the other hand, if you succeded to build your own image, image name will be prefixed with your docker hub username.
+
 
 The only thing missing is to push the image to the registry (e.g., Docker Hub).
 
@@ -496,7 +498,7 @@ We are still facing a few problems. Docker running in a Kubernetes cluster might
 
 Another issue is security. If we allow containers to mount Docker socket, we are effectively allowing them to control all the containers running on that node. That by itself makes security departments freak out, and for a very good reason. Also, don't forget that we logged into the registry. Anyone on that node could push images to the same registry without the need for credentials. Even if we do log out, there was still a period when everyone could exploit the fact that Docker server is authenticated and authorized to push images.
 
-Truth be told, we are not preventing anyone from mounting a Docker socket. At the moment, our policy is based on trust. That should change with PodSecurityPolicy. However, security is not the focus of this book, so I'll assume that you'll set up the policies yourself, if you deem them worthy of your time.
+Truth be told, **we are not preventing anyone from mounting a Docker socket**. At the moment, our policy is based on trust. That should change with PodSecurityPolicy. However, security is not the focus of this book, so I'll assume that you'll set up the policies yourself, if you deem them worthy of your time.
 
 I> We should further restrict what a Pod can and cannot do through [PodSecurityPolicy](https://v1-9.docs.kubernetes.io/docs/reference/generated/kubernetes-api/v1.9/#podsecuritypolicy-v1beta1-extensions).
 
@@ -685,7 +687,7 @@ ok      _/go/go-demo-3  0.129s
 
 We can see that the tests passed and we can conclude that the application is a step closer towards production. In a real-world situation, you'd run other types of tests or maybe bundle them all together. The logic is still the same. We deployed the application under test while leaving production intact, and we validated that it behaves as expected. We are ready to move on.
 
-Testing an application through the service associated with it is a good idea if for some reason we are not allowed to expose it to the outside world through Ingress. If there is no such restriction, executing the tests through a DNS which points to an external load balancer, which forwards to the Ingress service on one of the worker nodes, and from there load balances to one of the replicas, is much closer to how our users access the application. Using the "real" externally accessible address is a better option when that is possible, so we'll change our `ADDRESS` variable and execute the tests one more time.
+Testing an application through the service associated with it is a good idea,if for some reason we are not allowed to expose it to the outside world through Ingress. If there is no such restriction, executing the tests through a DNS which points to an external load balancer, which forwards to the Ingress service on one of the worker nodes, and from there load balances to one of the replicas, is much closer to how our users access the application. Using the "real" externally accessible address is a better option when that is possible, so we'll change our `ADDRESS` variable and execute the tests one more time.
 
 ```bash
 export ADDRESS=$(cat addr)
@@ -740,7 +742,7 @@ exit
 
 ## Creating Production Releases
 
-We are ready to create our first production release. We trust our tests, and they proved that it is relatively safe to deploy to production. Since we cannot deploy air, we need to create a production release first.
+We are ready to create our first production release. We trust our tests, and they proved that it is relatively safe to deploy to production. Since we cannot deploy to air, we need to create a production release first.
 
 Please make sure to replace `[...]` with your Docker Hub user in one of the commands that follow.
 
@@ -944,7 +946,7 @@ Another problem is the horrifying usage of `sed` commands to modify the content 
 
 Once we start running multiple builds of the same application, we'll need to figure out how to remove the tools we create as part of our pipeline. Commands like `kubectl delete pods --all` will obviously not work if we plan to run multiple pipelines in parallel. We'll need to restrict the removal only to the Pods spin up by the build we finished, not all those in a Namespace. CI/CD tools we'll use later might be able to help with this problem.
 
-We are missing quite a few steps in our pipeline. That is one of the issues we will not try to fix in this book. Those that we explored so far are common to almost all pipelines. We always run different types of tests, some of which are static (e.g., unit tests), while others need a live application (e.g., functional tests). We always need to build a binary or package our application. We need to build an image and deploy it to one or more locations. The rest of the steps differs from one case to another. You might want to send test results to SonarQube, or you might choose to make a GitHub release. If your images can be deployed to different operating systems (e.g., Linux, Windows, ARM), you might want to create a manifest file. You'll probably run some security scanning as well. The list of the things you might do is almost unlimited, so I chose to stick with the steps that are very common and, in many cases, mandatory. Once you grasp the principles behind a well defined, fully automated, and container-based pipeline executed on top of a scheduler, I'm sure you won't have a problem extending our examples to fit your particular needs.
+We are missing quite a few steps in our pipeline. Those are the issues we will not try to fix in this book. Those that we explored so far are common to almost all pipelines. We always run different types of tests, some of which are static (e.g., unit tests), while others need a live application (e.g., functional tests). We always need to build a binary or package our application. We need to build an image and deploy it to one or more locations. The rest of the steps differs from one case to another. You might want to send test results to SonarQube, or you might choose to make a GitHub release. If your images can be deployed to different operating systems (e.g., Linux, Windows, ARM), you might want to create a manifest file. You'll probably run some security scanning as well. The list of the things you might do is almost unlimited, so I chose to stick with the steps that are very common and, in many cases, mandatory. Once you grasp the principles behind a well defined, fully automated, and container-based pipeline executed on top of a scheduler, I'm sure you won't have a problem extending our examples to fit your particular needs.
 
 How about building Docker images? That is also one of the items on our TODO list. We shouldn't build them inside Kubernetes cluster because mounting Docker socket is a huge security risk and because we should not run anything without going through Kube API. Our best bet, for now, is to build them outside the cluster. We are yet to discover how to do that effectively. I suspect that will be a very easy challenge.
 
