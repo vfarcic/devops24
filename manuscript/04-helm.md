@@ -138,7 +138,7 @@ We used `helm init` to create the server component called `tiller`. Since our cl
 
 The latter command waits until the Deployment is rolled out.
 
-We could have specified `--tiller-namespace` argument to deploy it to a specific Namespace. That ability will come in handy in one of the next chapters. For now, we omitted that argument, so Tiller was installed in the `kube-system` Namespace. To be on the safe side, we'll list the Pods to confirm that it is indeed running.
+We could have specified `--tiller-namespace` argument to deploy it to a specific Namespace. That ability will come in handy in one of the next chapters. For now, we omitted that argument, so Tiller was installed in the `kube-system` Namespace by default. To be on the safe side, we'll list the Pods to confirm that it is indeed running.
 
 ```bash
 kubectl -n kube-system get pods
