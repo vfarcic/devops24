@@ -574,19 +574,6 @@ kubectl -n kube-ingress \
     deployment ingress-nginx
 ```
 
-To install Tiller (server side Helm), please execute the commands that follow.
-
-```bash
-kubectl create \
-    -f helm/tiller-rbac.yml \
-    --record --save-config
-
-helm init --service-account tiller
-
-kubectl -n kube-system \
-    rollout status deploy tiller-deploy
-```
-
 ## Destroying The Cluster
 
 The appendix is almost finished, and we do not need the cluster anymore. We want to destroy it as soon as possible. There's no good reason to keep it running when we're not using it. But, before we proceed with the destructive actions, we'll create a file that will hold all the environment variables we used in this chapter. That will help us the next time we want to recreate the cluster.
