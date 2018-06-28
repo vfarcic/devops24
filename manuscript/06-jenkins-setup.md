@@ -19,17 +19,19 @@
 
 # Setting Up Jenkins
 
-T> When used by engineers, UIs are evil. They sidetrack us from repeatability and automation. That does not mean that UIs do not have their purpose. They do. They are supposed to provide enough colors and random graphs for CIO, CTO, and other C-level executives and mid-level managers to get off our backs. In other words, management works in color, while engineers should be limited to dual-color terminals, mixed with slightly increased color pallet of IDEs and editors we use to code. We produce commits, while managers fake interest by looking at UIs.
+T> When used by engineers, UIs are evil. They sidetrack us from repeatability and automation.
 
-The above phrase is a bit exaggerated. It's not true that UIs are useful only to managers nor that they fake interest. At least, that not true for all of them. UIs do provide a lot of value but, unfortunately, they are often abused to the level of even preventing automation. We'll try to make an additional effort to remove Jenkins UI for any setup related tasks. We'll try to automate everything.
+UIs do have their purpose. They are supposed to provide enough colors and random graphs for CIO, CTO, and other C-level executives and mid-level managers. Management works in multi-color, while engineers should be limited to dual-color terminals, mixed with slightly increased color pallet of IDEs and editors we use to code. We produce commits, while managers fake interest by looking at UIs.
 
-We already improved a lot our ability to install Jenkins. A mere switch from custom-made YAML files to Helm Charts is a huge improvement from the operational perspective. The addition of ServiceAccounts bound to Roles improved security. But, there's still one big things left only partly explored. We did not yet reach the point where we can install Jenkins fully from command line. So far, there were always a few things we had to do manually from its UI. We'll try to get rid of those steps in hopes that the only command we'll need to execute is `helm install`.
+The above phrase is a bit exaggerated. It's not true that UIs are useful only to managers nor that they fake interest. At least, that's not true for all of them. UIs do provide a lot of value but, unfortunately, they are often abused to the level of even postponing or even preventing automation. We'll try to make an additional effort to remove Jenkins UI for any setup related tasks. We'll try to automate everything.
 
-Still, we cannot hope to fully automate the setup without going thorough manual steps first. So, we'll start by trying to explore different use-cases. If we hit a road-block, we'll try to figure out how to overcome it. The chances are that another one will be waiting for us after the first, and another one after that. We're yet to see which steps we're missing until we make Jenkins fully operational and, at the same time, secure. Only once we're confident in the way we set up Jenkins manually, will be proceed and try to automate the process.
+We already improved a lot our ability to install Jenkins. A mere switch from custom-made YAML files to Helm Charts is a huge step forward from the operational perspective. The addition of ServiceAccounts bound to Roles improved security. But, there's still one big thing left only partly explored. We did not yet reach the point where we can install and fully setup Jenkins from command line. So far, there were always a few things we had to do manually from its UI. We'll try to get rid of those steps in hope that the only command we'll need to execute is `helm install`.
+
+As it often goes, we cannot hope to fully automate the setup without going thorough manual steps first. So, we'll start by exploring different use-cases. If we hit a road-block, we'll try to figure out how to overcome it. The chances are that another one will be waiting for us after the first, and another one after that. We're yet to see which obstacles we'll encounter and which steps we're missing until we make Jenkins fully operational and, at the same time, reasonably secure. We'll try to automate the process only once we're confident in the way we set up Jenkins manually.
 
 ## Creating A Cluster And Retrieving Its IP
 
-You already know what are the first steps. Create a new cluster or reuse the one you dedicated to the exercises.
+You already know what the first steps are. Create a new cluster or reuse the one you dedicated to the exercises.
 
 We'll start by going to the local copy of the *vfarcic/k8s-specs* repository and making sure that we have the latest revision.
 
@@ -43,7 +45,7 @@ git pull
 
 The requirements are the same as those from the previous chapter. The only difference is that I will assume that you'll store the IP of the cluster or the external load balancer as the environment variable `LB_IP`.
 
-For your convenience, the Gists and the specs are available below. Please note that the are the same as those we used in the previous chapter with the addition of `export LB_IP` command.
+For your convenience, the Gists and the specs are available below. Please note that they are the same as those we used in the previous chapter with the addition of the `export LB_IP` command.
 
 * [docker4mac-ip.sh](https://gist.github.com/66842a54ef167219dc18b03991c26edb): **Docker for Mac** with 3 CPUs, 3 GB RAM, with **nginx Ingress**, with **tiller**, and with `LB_IP` variable set to `127.0.0.1`.
 * [minikube-ip.sh](https://gist.github.com/df5518b24bc39a8b8cca95cc37617221): **minikube** with 3 CPUs, 3 GB RAM, with `ingress`, `storage-provisioner`, and `default-storageclass` addons enabled, with **tiller**, and with `LB_IP` variable set to the VM created by minikube.
@@ -51,11 +53,13 @@ For your convenience, the Gists and the specs are available below. Please note t
 * [minishift-ip.sh](https://gist.github.com/fa902cc2e2f43dcbe88a60138dd20932): **minishift** with 3 CPUs, 3 GB RAM, with version 1.16+, with **tiller**, and with `LB_IP` variable set to the VM created by minishift.
 * [gke-ip.sh](https://gist.github.com/3e53def041591f3c0f61569d49ffd879): **Google Kubernetes Engine (GKE)** with 3 n1-highcpu-2 (2 CPUs, 1.8 GB RAM) nodes (one in each zone), and with **nginx Ingress** controller running on top of the "standard" one that comes with GKE, with **tiller**, and with `LB_IP` variable set to the IP of the external load balancer created when installing nginx Ingress. We'll use nginx Ingress for compatibility with other platforms. Feel free to modify the YAML files and Helm Charts if you prefer NOT to install nginx Ingress.
 
+We'll need a few files from the *go-demo-3* repository you cloned in one of the previous chapter. To be on the safe side, please merge it the upstream. If you forgot the commands, they are available in the [TODO gist](TODO).
+
 Now we're ready to install Jenkins.
 
 ## Running Jenkins
 
-We'll need a domain which we'll use to set Ingress' hostname and through which we'll be able to open Jenkins UI. We'll continue using *nip.io* service to generate domains. Just as before, remember that this is only a temporary solution and that you should configure "real" domains with the IP of your external load balancer.
+We'll need a domain which we'll use to set Ingress' hostname and through which we'll be able to open Jenkins UI. We'll continue using *nip.io* service to generate domains. Just as before, remember that this is only a temporary solution and that you should use "real" domains with the IP of your external load balancer instead.
 
 ```bash
 JENKINS_ADDR="jenkins.$LB_IP.nip.io"
@@ -67,11 +71,11 @@ The output of the latter command should provide a visual confirmation that the a
 
 W> ## A note to minishift users
 W>
-W> Helm will try to install Jenkins Chart with the process in a container running as user 0. By default, that is not allowed in OpenShift. We'll skip discussing the best approach to correct the permissions in OpenShift. I'll assume you already know how to set the permissions on the per-Pod basis. Instead, we'll do the simplest fix. Please execute the command that follows to allow the creation of restricted Pods to run as any user.
+W> Helm will try to install Jenkins Chart with the process in a container running as user 0. By default, that is not allowed in OpenShift. We'll skip discussing the best approach to correct the issue and I'll assume you already know how to set the permissions on the per-Pod basis. Instead, we'll do the simplest fix. Please execute the command that follows to allow the creation of restricted Pods to run as any user.
 W>
 W> `oc patch scc restricted -p '{"runAsUser":{"type": "RunAsAny"}}'`
 
-We'll start exploring the steps we'll need to run Jenkins in a Kubernetes cluster by executing the same `helm install` command we used in the previous chapters. It won't provide everything we need, but it will be a good start. We'll improve the process throughout the rest of the chapter with the goal of having a fully automated Jenkins installation process. We might not be able to accomplish our goal 100%. Or, we might reach the conclusion that full automation is not worth the trouble. Nevertheless, we'll use the installation from the [Packaging Kubernetes Applications](#chartmuseum) as the base and see how far we can go in our quest for full automation.
+We'll start exploring the steps we'll need to run Jenkins in a Kubernetes cluster by executing the same `helm install` command we used in the previous chapters. It won't provide everything we need, but it will be a good start. We'll improve the process throughout the rest of the chapter with the objective of having a fully automated Jenkins installation process. We might not be able to accomplish our goal 100%. Or, we might reach the conclusion that full automation is not worth the trouble. Nevertheless, we'll use the installation from the [Packaging Kubernetes Applications](#chartmuseum) as the base and see how far we can go in our quest for full automation.
 
 ```bash
 helm install stable/jenkins \
@@ -81,7 +85,7 @@ helm install stable/jenkins \
     --set Master.HostName=$JENKINS_ADDR
 ```
 
-Jenkins Helm Chart comes with one big drawback. It uses ClusterRoleBinding to binding with the ServiceAccount `jenkins`. As a result, we cannot fine-tune permissions. We cannot define that, for example, Jenkins can operate only in the `jenkins` Namespace. Instead, the permissions we bind will apply to all Namespaces. That, as you can imagine, is a huge security risk. Jenkins could, for example, remove all the Pods from `kube-system`. Even if we have full trust in all the people working in our company, and we're sure that no one will try to define any malicious Pipeline, having cluster-wide permissions introduces a possible risk of doing something wrong by accident.
+Jenkins Helm Chart comes with one big drawback. It uses ClusterRoleBinding for binding with the ServiceAccount `jenkins`. As a result, we cannot fine-tune permissions. We cannot define that, for example, Jenkins can operate only in the `jenkins` Namespace. Instead, the permissions we bind will apply to all Namespaces. That, as you can imagine, is a huge security risk. Jenkins could, for example, remove all the Pods from `kube-system`. Even if we have full trust in all the people working in our company and if we're sure that no one will try to define any malicious Pipeline, having cluster-wide permissions introduces a possible risk of doing something wrong by accident. We wouldn't like that to happen.
 
 I> I made a [pull request](https://github.com/kubernetes/charts/pull/6190) that should allow us to switch from ClusterRoleBinding to RoleBinding. I'll update the book once the PR is merged. Until than, we'll remedy the issue with a workaround.
 
@@ -101,7 +105,7 @@ kubectl apply -n jenkins \
     -f helm/jenkins-patch.yml
 ```
 
-I am intentionally not providing more details since this is only a workaround until the PR is merged. Also, I assume that you already know how Roles, RoleBindings, and ServiceAccounts work and that you'll be able to deduce the logic just by exploring the definitions.
+I am intentionally not providing more details since this is only a workaround until the PR is merged. Also, I'll assume that you already know how Roles, RoleBindings, and ServiceAccounts work and that you'll be able to deduce the logic just by exploring the definitions.
 
 Finally, we'll confirm that Jenkins is rolled out.
 
@@ -110,7 +114,7 @@ kubectl -n jenkins \
     rollout status deployment jenkins
 ```
 
-The latter command will wit until `jenkins` Deployment rolls out. Its output is as follows.
+The latter command will wait until `jenkins` Deployment rolls out. Its output is as follows.
 
 ```
 Waiting for rollout to finish: 0 of 1 updated replicas are available...
@@ -125,7 +129,7 @@ W> `oc -n jenkins create route edge --service jenkins --insecure-policy Allow --
 W> 
 W> That command created an `edge` Router tied to the `jenkins` Service. Since we do not have SSL certificates for HTTPS communication, we also specified that it is OK to use insecure policy which will allow us to access Jenkins through plain HTTP. Finally, the last argument defined the address through which we'd like to access Jenkins UI.
 
-Now that Jenkins is up-and-running, we can open it in your favourite browser.
+Now that Jenkins is up-and-running, we can open it in your favorite browser.
 
 ```bash
 open "http://$JENKINS_ADDR"
@@ -133,9 +137,9 @@ open "http://$JENKINS_ADDR"
 
 T> ## A note to Windows users
 T> 
-T> Git Bash might not be able to use the `open` command. If that's the case, replace the `open` command with `echo`. As a result, you'll get the full address that should be opened directly in your browser of choice.
+T> Git Bash might not be able to use the `open` command. If that's the case, please replace the `open` command with `echo`. As a result, you'll get the full address that should be opened directly in your browser of choice.
 
-Since this is the first time we're accessing this Jenkins instance, we need to login first. Just as before, the password is stored in the Secret `jenkins`, under `jenkins-admin-password`. So, we'll query the secret to find out the password.
+Since this is the first time we're accessing this Jenkins instance, we'll need to login first. Just as before, the password is stored in the Secret `jenkins`, under `jenkins-admin-password`. So, we'll query the secret to find out the password.
 
 ```bash
 JENKINS_PASS=$(kubectl -n jenkins \
@@ -148,19 +152,19 @@ echo $JENKINS_PASS
 
 The output of the latter command should be a random string. As an example, I got `Ucg2tab4FK`. Please copy it, return to the Jenkins login screen opened in your browser, and use it to authenticate. We did not retrieve the username since it is hard-coded to *admin*.
 
-We'll leave this admin user as-is, since we won't explore authentication methods. When running Jenkins "for real", you should install a plugin that provides a "real" authentication mechanism and configure Jenkins to use it instead. That could be LDAP, Google or GitHub authentication, and many other providers. For now, we'll continue using *admin* as the only god-like user.
+We'll leave this admin user as-is, since we won't explore authentication methods. When running Jenkins "for real", you should install a plugin that provides the desired authentication mechanism and configure Jenkins to use it instead. That could be LDAP, Google or GitHub authentication, and many other providers. For now, we'll continue using *admin* as the only god-like user.
 
-Now that we got Jenkins up-and-running, we'll create a Pipeline which we can use to test our setup.
+Now that we got Jenkins up-and-running, we'll create a Pipeline which can be used to test our setup.
 
 ## Using Pods to Run Tools
 
-We won't explore how to write a continuous deployment pipeline in this chapter. That is reserved for the one that follows. Right now, we are only concerned whether our Jenkins setup is working as expected. We need to know whether Jenkins can interact with Kubernetes, whether we can run the tools we need as Pods, and whether they can be spun across different Namespaces. On top of those, we still need to solve the issue with building container images. Since we already established that it is not a good idea to mount a Docker socket, nor to run containers in privileged more, we need to find a valid alternative. In parallel to solving those and other challenges we'll encounter, we cannot loose focus from automation. Everything we do has to be converted into automated setup, unless we make a conscious decision that it is not worth the trouble.
+We won't explore how to write a continuous deployment pipeline in this chapter. That is reserved for the next one. Right now, we are only concerned whether our Jenkins setup is working as expected. We need to know if Jenkins can interact with Kubernetes, whether we can run the tools we need as Pods, and whether they can be spun across different Namespaces. On top of those, we still need to solve the issue with building container images. Since we already established that it is not a good idea to mount a Docker socket, nor to run containers in privileged mode, we need to find a valid alternative. In parallel to solving those and a few other challenges we'll encounter, we cannot loose focus from automation. Everything we do has to be converted into automated setup, unless we make a conscious decision that it is not worth the trouble.
 
-I'm jumping ahead of myself by bombing you with too many things. So, we'll start with a simple requirement, and build on top of it. That requirement is to run different tools packaged as containers inside a Pod.
+I'm jumping ahead of myself by bombing you with too many things. We'll backtrack a bit and start with a simple requirement. Later on, we'll build on top of it. So, our first requirement is to run different tools packaged as containers inside a Pod.
 
-Please go back to Jenkins UI an dclick the *New Item* link in the left-hand menu. Type *my-k8s-job* in the *item name* field, select *Pipeline* as the job type, and click the *OK* button.
+Please go back to Jenkins UI and click the *New Item* link in the left-hand menu. Type *my-k8s-job* in the *item name* field, select *Pipeline* as the job type, and click the *OK* button.
 
-We created a new Pipeline job which does not yet do anything. Our next step is to write a very simple Pipeline that will validate that we can indeed use Jenkins to spin up a Pod with the containers we need.
+We created a new job which does not yet do anything. Our next step is to write a very simple Pipeline that will validate that we can indeed use Jenkins to spin up a Pod with the containers we need.
 
 Please click the *Pipeline* tab and you'll be presented with the *Pipeline Script* field. Write the script that follows.
 
@@ -192,7 +196,7 @@ podTemplate(
 
 I> If you prefer to copy and paste, the job is available in the [my-k8s-job.groovy Gist](https://gist.github.com/2cf872c3a9acac51409fbd5a2789cb02).
 
-As a reminder, the script defines a Pod template with two container. One is based on the `maven` and the other on the `golang` image. Further down, we defined that Jenkins should use that template as the `node`. Inside it, we are using the `maven` container to execute two stages. One will return Maven version and the other will output Java version. Further down, we switch to the `golang` container only to output Go version.
+The script defines a Pod template with two containers. One is based on the `maven` image and the other on the `golang` image. Further down, we defined that Jenkins should use that template as the `node`. Inside it, we are using the `maven` container to execute two stages. One will return Maven version and the other will output Java version. Further down, we switch to the `golang` container only to output Go version.
 
 This job is very simple and does not do anything related to our continuous deployment processes. Nevertheless, it should be enough to provide a rudimentary validation that we can use Jenkins to create a Pod, that we can switch from one container to another, and that we can execute commands inside them.
 
@@ -226,7 +230,7 @@ Please go back to Jenkins UI and wait until the build is finished.
 
 We proved that we can run a very simple job. We're yet to discover whether we can do more complicated operations.
 
-On the first look, the script we wrote looks OK. However, I'm not happy with the way we defined `podTemplate`. Wouldn't it be better if we could use the same YAML format for defining the template as if we'd define a Pod in Kubernetes? Fortunatelly, [jenkins-kubernetes-plugin](https://github.com/jenkinsci/kubernetes-plugin) recently added that feature. So, we'll try to rewrite the script to better match Pod definitions.
+On the first look, the script we wrote looks OK. However, I'm not happy with the way we defined `podTemplate`. Wouldn't it be better if we could use the same YAML format for defining the template as if we'd define a Pod in Kubernetes? Fortunately, [jenkins-kubernetes-plugin](https://github.com/jenkinsci/kubernetes-plugin) recently added that feature. So, we'll try to rewrite the script to better match Pod definitions.
 
 We'll use the rewriting opportunity to replace `maven` with the tools we are more likely to use with a CD pipeline for the *go-demo-3* application. We still need `golang`. On top of it, we should be able to run `kubectl`, `helm`, and, `openshift-client`. The latter is required only if you're using OpenShift, and you are free to remove it if that's not your case.
 
@@ -291,7 +295,7 @@ I> If you prefer to copy and paste, the job is available in the [my-k8s-job-yaml
 
 This time, the format of the script is different. Instead of the `containers` argument inside `podTemplate`, now we have `yaml`. Inside it is Kubernetes Pod definition just as if we'd define a standard Kubernetes resource.
 
-The rest of the script follow the same logic as before. The only difference is that, this time, we are using the tools were are more likely to need in our yet-to-be-define *go-demo-3* Pipeline. We'll output `kubectl`, `oc`, `go`, and `helm` versions.
+The rest of the script follows the same logic as before. The only difference is that, this time, we are using the tools were are more likely to need in our yet-to-be-defined *go-demo-3* Pipeline. All we're doing is churning output of `kubectl`, `oc`, `go`, and `helm` versions.
 
 Don't forget to click the *Save* button.
 
@@ -319,7 +323,7 @@ jenkins-c7f7c77b4-cgxx8   1/1   Running           0        16m
 jenkins-slave-qnkwc-s6jfx 0/5   ContainerCreating 0        19s
 ```
 
-So far, everything looks OK. Containers are being created. The `jenkins-slave-...` Pod will soon change its state to `Running`, and Jenkins will try to execute all the steps defined in the script.
+So far, everything looks OK. Containers are being created. The `jenkins-slave-...` Pod will soon change its status to `Running`, and Jenkins will try to execute all the steps defined in the script.
 
 Let's take a look at the build from Jenkins' UI.
 
@@ -351,9 +355,9 @@ W> ## A note to Docker For Mac/Windows users
 W>
 W> Even though Docker for Mac/Windows supports RBAC, it allows any internal process inside containers to communicate with Kube API. Unlike with other Kubernetes flavors, you will not see the same error. The build will complete successfully.
 
-Our build could not connect to `Tiller`. Helm kept trying for five minutes. It reached it's pre-defined timeout and gave up.
+Our build could not connect to `Tiller`. Helm kept trying for five minutes. It reached it's pre-defined timeout and it gave up.
 
-If what we learned in the [Enabling Process Communication With Kube API Through Service Accounts](#sa) chapter is still fresh in your mind, that outcome should not be a surprise. We did not set ServiceAccount that would allow Helm running inside a container to communicate with Tiller. To make the situation more complicated, it is questionable whether we should allow Helm running in a container to communicate with Tiller running in `kube-system`. That would be a huge security risk that would allow anyone with access to Jenkins to gain access to any part of the cluster. It would defy one of the big reasoner why we're using Namespaces. We'll explore this, and a few other problems next. For now, we'll confirm that Jenkins removed the Pod created by the failed build.
+If what we learned in the [Enabling Process Communication With Kube API Through Service Accounts](#sa) chapter is still fresh in your mind, that outcome should not be a surprise. We did not set ServiceAccount that would allow Helm running inside a container to communicate with Tiller. To make the situation more complicated, it is questionable whether we should allow Helm running in a container to communicate with Tiller running in `kube-system`. That would be a huge security risk that would allow anyone with access to Jenkins to gain access to any part of the cluster. It would defy one of the big reasons why we're using Namespaces. We'll explore this, and a few other problems next. For now, we'll confirm that Jenkins removed the Pod created by the failed build.
 
 ```bash
 kubectl -n jenkins get pods
@@ -370,9 +374,9 @@ The `jenkins-slave-...` Pod is gone and our system is restored to the state befo
 
 ## Running Builds In Different Namespaces
 
-One of the big disadvantages of the script we used inside the `my-k8s-job` is that it runs in the same Namespace as Jenkins. We should separate builds from Jenkins and thus ensure that they do not affect its stability.
+One of the big disadvantages of the script we used inside `my-k8s-job` is that it runs in the same Namespace as Jenkins. We should separate builds from Jenkins and thus ensure that they do not affect its stability.
 
-We can create a system where each application has two namespaces; one for testing and the other for production. We can define quotas, limitations, and other things we are used to defining on the Namespace level. As a result, we can guarantee that testing an application will not affect the production release as well as to separate one application from another. At the same time, we'll reduce the chance that one team will accidentally mess up with the applications of the other. Our end-goal is to be secure without limiting the ability of our teams. By giving them freedom in their own Namespace, we can be secure without impacting team's performance and its ability to move forward without depending on other teams.
+We can create a system where each application has two namespaces; one for testing and the other for production. We can define quotas, limitations, and other things we are used to defining on the Namespace level. As a result, we can guarantee that testing an application will not affect the production release. With Namespaces we can to separate one set of applications from another. At the same time, we'll reduce the chance that one team will accidentally mess up with the applications of the other. Our end-goal is to be secure without limiting our teams. By giving them freedom in their own Namespace, we can be secure without impacting team's performance and its ability to move forward without depending on other teams.
 
 Let's go back to the job configuration screen.
 
@@ -437,7 +441,7 @@ spec:
 
 I> Getting spoiled with Gist and still do not want to type? The job is available in the [my-k8s-job-ns.groovy Gist](https://gist.github.com/ced1806af8e092d202942a79e81d5ba9).
 
-The only difference between that job and the one we used before is in `podTemplate` arguments `namespace` and `serviceAccount`. This time we specified that the Pod should be created in the `go-demo-3-build` Namespace and that it should use the ServiceAccount `build`. If everything works as expected, the instruction to run Pods in a different Namespace should provide the separation we crave and the ServiceAccount will provide the permissions the Pod might need when interacting with Kube API or other Pods.
+The only difference between that job and the one we used before is in `podTemplate` arguments `namespace` and `serviceAccount`. This time we specified that the Pod should be created in the `go-demo-3-build` Namespace and that it should use the ServiceAccount `build`. If everything works as expected, the instruction to run Pods in a different Namespace should provide the separation we crave, and the ServiceAccount will provide the permissions the Pod might need when interacting with Kube API or other Pods.
 
 Please click the *Save* button to persist the change of the Job definition.
 
@@ -451,9 +455,9 @@ Please click the *Run* button, and select the row with the new build. You'll see
 
 The fact that we defined that the Job should operate in a different Namespace will do us no good if such a Namespace does not exist. Even if we create the Namespace, we specified that it should use the ServiceAccount `build`. So, we need to create both. However, that's not where our troubles stop. There are a few other problems we'll need to solve but, for now, we'll concentrate on the missing Namespace.
 
-Please click the *Stop* button in the top-right corner or the build. That will abort the futile attempts and we can proceed and make the necessary changes that will allow us to run a build of that Job in the `go-demo-3-build` Namespace.
+Please click the *Stop* button in the top-right corner or the build. That will abort the futile attempt to create a Pod and we can proceed and make the necessary changes that will allow us to run a build of that Job in the `go-demo-3-build` Namespace.
 
-As a minimum, we'll have to make sure that the `go-demo-3-build` Namespace exists, and that it has the ServiceAccount `build` which is bound to a Role with sufficient permissions. While we're defining the Namespace, we should probably define a LimitRange and a ResourceQuota. Fortunately, we already did all that in the previous chapters and we already have a YAML file that does just that.
+As a minimum, we'll have to make sure that the `go-demo-3-build` Namespace exists and that it has the ServiceAccount `build` which is bound to a Role with sufficient permissions. While we're defining the Namespace, we should probably define a LimitRange and a ResourceQuota. Fortunately, we already did all that in the previous chapters and we already have a YAML file that does just that.
 
 Let's take a quick look at the `build-ns.yml` file available in the *go-demo-3* repository.
 
@@ -469,7 +473,7 @@ kubectl apply \
     --record
 ```
 
-The output shows the resources defined in that YAML were created.
+The output shows that the resources defined in that YAML were created.
 
 Even though we won't build a continuous deployment pipeline just yet, we should be prepared for running our application in production. Since it should be separated from the testing Pods and releases under test, we'll create another Namespace that will be used exclusively for *go-demo-3* production releases. Just as before, we'll simply `apply` the definition stored in *go-demo-3* repository.
 
@@ -483,13 +487,15 @@ kubectl apply \
 
 We're missing one more thing before the part of the setup related to Kubernetes resources is finished.
 
-So far, we have a RoleBinding inside the `jenkins` Namespace that provide Jenkins with enough permissions to create Pods in the same Namespace. However, our latest Pipeline wants to create Pods in the `go-demo-3-build` Namespace. Since we are not using ClusterRoleBinding that would provide cluster-wide permissions, we'll need to create a RoleBinding in `go-demo-3-build` as well. Since that is specific to the application, the definition is in its repository and it should be executed by the administrator of the cluster, just as the previous two.
+So far, we have a RoleBinding inside the `jenkins` Namespace that provides Jenkins with enough permissions to create Pods in the same Namespace. However, our latest Pipeline wants to create Pods in the `go-demo-3-build` Namespace. Given that we are not using ClusterRoleBinding that would provide cluster-wide permissions, we'll need to create a RoleBinding in `go-demo-3-build` as well. Since that is specific to the application, the definition is in its repository and it should be executed by the administrator of the cluster, just as the previous two.
 
 Let's take a quick look at the definition.
 
 ```bash
 cat ../go-demo-3/k8s/jenkins.yml
 ```
+
+The output is as follows.
 
 ```yaml
 apiVersion: rbac.authorization.k8s.io/v1
@@ -509,7 +515,7 @@ subjects:
   namespace: jenkins
 ```
 
-The binding is relatively straight forward. It will bind the ServiceAccount in the `jenkins` Namespace with the ClusterRole `cluster-admin`. We will reduce those permissions in the next chapter. For now, just remember that we're creating a RoleBinding in the `go-demo-3-build` Namespace and that it'll give ServiceAccount `jenkins` in the `jenkins` Namespace full permissions in the `go-demo-3-build` Namespace.
+The binding is relatively straight forward. It will bind the ServiceAccount in the `jenkins` Namespace with the ClusterRole `cluster-admin`. We will reduce those permissions in the next chapter. For now, just remember that we're creating a RoleBinding in the `go-demo-3-build` Namespace and that it'll give ServiceAccount `jenkins` in the `jenkins` Namespace full permissions to do whatever it wants in the `go-demo-3-build` Namespace.
 
 Let's `apply` this last Kubernetes definition before we proceed with changes in Jenkins itself.
 
@@ -525,7 +531,7 @@ The next issue we'll have to solve is communication between Jenkins and the Pods
 open "http://$JENKINS_ADDR/configure"
 ```
 
-If you scroll down to the *Jenkins URL* field of the *Kubernetes* section, you'll notice that it is set to *http://jenkins:8080*. Similarly, *Jenkins tunnel* is *jenkins-agent:50000*. The two values correspond to the names of the Services through which agent Pods will establish communication with the master and vice versa. As you hopefully already know, using only the name of a Service allows communication between Pods in the same Namespace. If we'd like to extend that communication across different Namespaces, we need to use the *[SERVICE_NAME].[NAMESPACE]* format. That way, agent Pods will know where to find the Jenkins Pod, no matter where they're running. That way, the communication will be successful even if Jenkins is in the `jenkins` Namespace and the agent Pods are in `go-demo-3-build`.
+If you scroll down to the *Jenkins URL* field of the *Kubernetes* section, you'll notice that it is set to *http://jenkins:8080*. Similarly, *Jenkins tunnel* is *jenkins-agent:50000*. The two values correspond to the names of the Services through which agent Pods will establish communication with the master and vice versa. As you hopefully already know, using only the name of a Service allows communication between Pods in the same Namespace. If we'd like to extend that communication across different Namespaces, we need to use the *[SERVICE_NAME].[NAMESPACE]* format. That way, agent Pods will know where to find the Jenkins Pod, no matter where they're running. Communication will be established successfully even if Jenkins is in the `jenkins` Namespace and the agent Pods are in `go-demo-3-build`, or anywhere else.
 
 Let's change the config.
 
@@ -535,7 +541,7 @@ Please scroll to the *Kubernetes* section, and change the value of the *Jenkins 
 
 Our troubles are not yet over. We need to rethink our Helm strategy.
 
-We have Tiller running in the `kube-system` Namespace. However, our agent Pods running in `go-demo-3-build` do not have permissions to access it. We could extend the permissions but that would allow the Pods in that Namespace to gain almost complete control over the whole cluster. Unless your organization is very small, that is often not acceptable. Instead, we'll deploy another Tiller instance in the `go-demo-3-build` Namespace and tie it to the ServiceAccount `build`. That will give the new tiller the same permissions in the `go-demo-3` and `go-demo-3-build` Namespaces. It'll be able to do anything in those, but nothing else.
+We have Tiller running in the `kube-system` Namespace. However, our agent Pods running in `go-demo-3-build` do not have permissions to access it. We could extend the permissions but that would allow the Pods in that Namespace to gain almost complete control over the whole cluster. Unless your organization is very small, that is often not acceptable. Instead, we'll deploy another Tiller instance in the `go-demo-3-build` Namespace and tie it to the ServiceAccount `build`. That will give the new tiller the same permissions in the `go-demo-3` and `go-demo-3-build` Namespaces. It'll be able to do anything in those, but nothing anywhere else.
 
 That strategy has a downside. It is more expensive to run multiple Tillers than to run one. However, if we organize them per teams in our organization by giving each a separate Tiller instance, we can allow them full freedom within their Namespaces without affecting others. On top of that, remember that Tiller will be removed in Helm v3, so this it only a temporary fix.
 
@@ -567,7 +573,7 @@ kubectl -n go-demo-3-build \
     get pods
 ```
 
-The output should be as follows.
+The output is as follows.
 
 ```
 NAME              READY STATUS  RESTARTS AGE
@@ -575,9 +581,9 @@ jenkins-slave-... 5/5   Running 0        36s
 tiller-deploy-... 1/1   Running 0        3m
 ```
 
-If you do not see the `jenkins-slave` and `tiller-deploy` Pod, you might need to wait for a few moments, and retrieve the Pods again.
+If you do not see the `jenkins-slave` Pod, you might need to wait for a few moments, and retrieve the Pods again.
 
-Once the state of the `jenkins-slave` Pod is `Running`, we can go back to Jenkins UI and observe that it progresses until the end and it turns to green.
+Once the state of the `jenkins-slave` Pod is `Running`, we can go back to Jenkins UI and observe that it progresses until the end and that it turns to green.
 
 ![Figure 6-TODO: Jenkins job for testing tools](images/ch06/jenkins-tools-build.png)
 
@@ -585,23 +591,25 @@ We managed to run the tools in the separate Namespace. However, we still need to
 
 ## Creating Docker Nodes
 
-We already discussed that mounting a Docker socket is a bad idea, due to security risks. Running Docker in Docker would require privileged access and is almost as unsafe and Docker socket. On top of that, both options have other downsides. Using Docker socket would introduce processes unknown to Kubernetes and could interfere with it's scheduling capabilities. Running Docker in Docker could mess up with networking. There are other reasons why both options are not good, so we need to look for an alternative.
+We already discussed that mounting a Docker socket is a bad idea due to security risks. Running Docker in Docker would require privileged access and that is almost as unsafe and Docker socket. On top of that, both options have other downsides. Using Docker socket would introduce processes unknown to Kubernetes and could interfere with it's scheduling capabilities. Running Docker in Docker could mess up with networking. There are other reasons why both options are not good, so we need to look for an alternative.
 
 Recently, new projects spun up attempting to help building container images. Good examples are [img](https://github.com/genuinetools/img), [orca-build](https://github.com/cyphar/orca-build), [umoci](https://github.com/openSUSE/umoci), [buildah](https://github.com/projectatomic/buildah), [FTL](https://github.com/GoogleCloudPlatform/runtimes-common/tree/master/ftl), and [Bazel rules_docker](https://github.com/bazelbuild/rules_docker). They all have serious downsides. While they might help, none of them is a truly good solution which I'd recommend as a replacement for building container images with Docker.
 
-[kaniko](https://github.com/GoogleContainerTools/kaniko) has a potential to become a preferable way for building container images. It does not require Docker nor any other node dependency. It can run as a container and is likely to become a valid alternative one day. However, that day is not today (June 2018). It is still green, unstable, and unproven.
+[kaniko](https://github.com/GoogleContainerTools/kaniko) is a shiny star that has a potential to become a preferable way for building container images. It does not require Docker nor any other node dependency. It can run as a container and it is likely to become a valid alternative one day. However, that day is not today (June 2018). It is still green, unstable, and unproven.
 
 All in all, Docker is still our best option for building container images, but not inside a Kubernetes cluster. That means that we need to build our images in a VM outside Kubernetes.
 
-How are we going to create a VM for building container images? Are we going to have a static VM potentially wasting our resources?
+How are we going to create a VM for building container images? Are we going to have a static VM that will be wasting our resources when at rest?
 
 The answer to those questions depends on the hosting provider you're using. If it allows dynamic creation of VMs, we can create them when we need them, and destroy them when we don't. If that's not an option, we need to fall back to a dedicated machine for building images.
 
-I could not explore all the methods for creating VMs, so I limited the scope to three combinations. We'll explore how to create a static VM in cases when dynamic provisioning is not an option. If you're using Docker For Mac or Windows, minikube, and minishift, that is your best bet. We'll use Vagrant but the same principles can be applied to any other, often on-prem, virtualization technology.
+I could not describe all the methods for creating VMs, so I limited the scope to three combinations. We'll explore how to create a static VM in cases when dynamic provisioning is not an option. If you're using Docker For Mac or Windows, minikube, or minishift, that is your best bet. We'll use Vagrant but the same principles can be applied to any other, often on-premise, virtualization technology.
 
-On the other hand, if you're using a hosting provider that does support dynamic provisioning of VMs, you should leverage that to your benefit to create them when needed, and destroy them when not. I'll show you the examples with AWS EC2 and Google Cloud Engine (GCE). If you use something else (e.g., Azure, DigitalOcean), the principle will be the same, even though the implementation might vary greatly. The major question is whether Jenkins supports your provider. If it does, you can use a plugin that will take care of creating and destroying nodes. Otherwise, you might need to extend your Pipeline script to use provider's API to spin up new nodes. In that case, you might want to evaluate whether such an option is worth the trouble. Remember, if everything else fails, having a static VM dedicated to building container images will always work.
+On the other hand, if you're using a hosting provider that does support dynamic provisioning of VMs, you should leverage that to your benefit to create them when needed, and destroy them when not. I'll show you the examples with Amazon's Elastic Compute Cloud (EC2) and Google Cloud Engine (GCE). If you use something else (e.g., Azure, DigitalOcean), the principle will be the same, even though the implementation might vary greatly. 
 
-Even if you choose to build your container images in a different way, it is still a good idea to master connecting external VMs to Jenkins. There's often a use-case that cannot (or shouldn't) be accomplished inside a Kubernetes cluster. You might need execute some of the steps in Windows nodes. Maybe there are processes that shouldn't run inside containers. Or, maybe you need to connect Android devices to your Pipelines. No matter the use-case, knowing how to connect external agents to Jenkins is important. So, building container images is not necessarily the only reason for having external agents (nodes), and I strongly suggest exploring the sections that follow, even if you don't think it's useful at this moment.
+The major question is whether Jenkins supports your provider. If it does, you can use a plugin that will take care of creating and destroying nodes. Otherwise, you might need to extend your Pipeline scripts to use provider's API to spin up new nodes. In that case, you might want to evaluate whether such an option is worth the trouble. Remember, if everything else fails, having a static VM dedicated to building container images will always work.
+
+Even if you chose to build your container images in a different way, it is still a good idea to know how to connect external VMs to Jenkins. There's often a use-case that cannot (or shouldn't) be accomplished inside a Kubernetes cluster. You might need execute some of the steps in Windows nodes. Maybe there are processes that shouldn't run inside containers. Or, maybe you need to connect Android devices to your Pipelines. No matter the use-case, knowing how to connect external agents to Jenkins is important. So, building container images is not necessarily the only reason for having external agents (nodes), and I strongly suggest exploring the sections that follow, even if you don't think it's useful at this moment.
 
 Choose the section that best fits your use case. Or, even better, try all three of them.
 
@@ -637,9 +645,9 @@ end
 
 That Vagrantfile is very simple. Even if you never used Vagrant, you should have no trouble understanding what it does.
 
-We're defiing a VM called `docker-build` and we're assigning it a static IP `10.100.198.200`. The `node.vm.provision` will install Docker and JRE. The latter is required for establishing the connection between Jenkins and this soon-to-be VM.
+We're defining a VM called `docker-build` and we're assigning it a static IP `10.100.198.200`. The `node.vm.provision` will install Docker and JRE. The latter is required for establishing the connection between Jenkins and this soon-to-be VM.
 
-Next, we'll create the VM based on that Vagrantfile definition.
+Next, we'll create a VM based on that Vagrantfile definition.
 
 ```bash
 vagrant up
@@ -657,19 +665,19 @@ Please type *docker-build* as the *Node name*, select *Permanent Agent*, and cli
 
 You are presented with a node configuration screen.
 
-Please type *2* as *# of executors*. That will allow us to run up to two processes inside this agent. To put it differently, up to two builds will be able to use it in parallel. If there are more than two, the additional builds will wait in a queue until one of the executors is released. Depending on the size of your organization, you might want to increase the number of executors or add more nodes. As a rule of thumb, you should have one executor per CPU. In our case, we should be better of with one executor, but we'll roll with two mostly as a demonstration.
+Please type *2* as the *# of executors*. That will allow us to run up to two processes inside this agent. To put it differently, up to two builds will be able to use it in parallel. If there are more than two, the additional builds will wait in a queue until one of the executors is released. Depending on the size of your organization, you might want to increase the number of executors or add more nodes. As a rule of thumb, you should have one executor per CPU. In our case, we should be better of with one executor, but we'll roll with two mostly as a demonstration.
 
-Next, we should set the *Remote root directory*. That's the place on the node's file system where Jenkins will store the state of the builds. Please set it to */tmp* or choose any other directory. Just remember that Jenkins will not create it so the folder must already exist on the system.
+Next, we should set the *Remote root directory*. That's the place on the node's file system where Jenkins will store the state of the builds. Please set it to */tmp* or choose any other directory. Just remember that Jenkins will not create it, so the folder must already exist on the system.
 
 We should set labels that define the machine we're going to use as a Jenkins agent. It is always a good idea to be descriptive, even if we're sure that we will use only one of the labels. Since that node is based on Ubuntu Linux distribution and it has Docker, our labels will be *docker ubuntu linux*. Please type the three into the *Labels* field.
 
 There are a couple of methods we can use to establish the communication between Jenkins and the newly created node. Since it's Linux, the easiest, and probably the best method is SSH. Please select *Launch slave agents via SSH* as the *Launch Method*.
 
-The last piece of information we'll define, before jumping into credentials is the *Host*. Please type *10.100.198.200*.
+The last piece of information we'll define, before jumping into credentials, is the *Host*. Please type *10.100.198.200*.
 
 We're almost finished. The only thing left is to create a set of credentials and assign them to this agent.
 
-Please click *Add* dropdown next to *Credentials* and select *Jenkins*.
+Please click the *Add* dropdown next to *Credentials* and select *Jenkins*.
 
 Once in the credentials popup screen, select *SSH Username with private key* as the *Kind*, type *vagrant* as the *Username*, and select *Enter directly* as the *Private Key*.
 
@@ -679,9 +687,9 @@ We'll have to go back to the terminal to retrieve the private key created by Vag
 cat .vagrant/machines/docker-build/virtualbox/private_key
 ```
 
-Please copy the output, go back to Jenkins UI, and paste it to the *Key* field. Type *docker-build* as the *ID*, and click the *Add* button.
+Please copy the output, go back to Jenkins UI, and paste it into the *Key* field. Type *docker-build* as the *ID*, and click the *Add* button.
 
-The credentials are generated and we are back in the agent configuration screen. However, Jenkins did not pick the newly credentials automatically, we we'll need to select *vagrant* in the *Credentials* drop-down list. Finally, since we used a private key, we'll skip verification by selecting *Not verifying Verification Strategy* as the *Host Key Verification Strategy*.
+The credentials are generated and we are back in the agent configuration screen. However, Jenkins did not pick the newly credentials automatically, so we'll need to select *vagrant* in the *Credentials* drop-down list. Finally, since we used the private key, we'll skip verification by selecting *Not verifying Verification Strategy* as the *Host Key Verification Strategy*.
 
 ![Figure 6-TODO: Jenkins node/agent configuration screen](images/ch06/jenkins-node-config.png)
 
@@ -691,13 +699,13 @@ You'll be redirected back to the Nodes screen. Please refresh the screen if the 
 
 ![Figure 6-TODO: Jenkins nodes/agents screen](images/ch06/jenkins-nodes.png)
 
-All that's left is to go back to the k8s-specs root directory.
+All that's left is to go back to the *k8s-specs* root directory.
 
 ```bash
 cd ../../
 ```
 
-We'll use the newly created agent soon. Feel free to skip the next two sections if this was the way you're planning to create agents.
+We'll use the newly created agent soon. Feel free to skip the next two sections if this was the way you're planning to create agents for building container images.
 
 ### AWS
 
@@ -718,7 +726,7 @@ aws ec2 create-security-group \
     | tee cluster/sg.json
 ```
 
-For convenience, we'll parse the output to retrieve `GroupId` and store it in an environment variable. Please install [jq](https://stedolan.github.io/jq/) if you don't have it already.
+For convenience, we'll parse the output stored in `cluster/sg.json` to retrieve `GroupId` and assign it in an environment variable. Please install [jq](https://stedolan.github.io/jq/) if you don't have it already.
 
 ```bash
 SG_ID=$(cat cluster/sg.json \
@@ -740,7 +748,7 @@ echo "export SG_ID=$SG_ID" \
     | tee -a cluster/docker-ec2
 ```
 
-The security group we created is useless in its current form. We'll need to authorize it to allow communicaation on port `22` so that Packer can access it and execute provisioning.
+The security group we created is useless in its current form. We'll need to authorize it to allow communication on port `22` so that Packer can access it and execute provisioning.
 
 ```bash
 aws ec2 \
@@ -798,7 +806,7 @@ The output is as follows.
 }
 ```
 
-Most of the definition should be self-explanatory. We'll create an EBS image based on Ubuntu in the `us-east-2` region and use the `shell` provisioner to install Docker and JDK.
+Most of the definition should be self-explanatory. We'll create an EBS image based on Ubuntu in the `us-east-2` region and we'll use the `shell` `provisioner` to install Docker and JDK.
 
 Let's create the AMI.
 
@@ -819,7 +827,7 @@ The last lines of the output are as follows.
 1528917568,,ui,say,--> amazon-ebs: AMIs were created:\nus-east-2: ami-ea053b8f\n
 ```
 
-The important line is the one that contains `artifact,0,id`. The last column in that row container the ID we'll need to use to tell Jenkins about the new AMI. We'll store it in an environment variable for convenience.
+The important line is the one that contains `artifact,0,id`. The last column in that row contains the ID we'll need to tell Jenkins about the new AMI. We'll store it in an environment variable for convenience.
 
 ```bash
 AMI_ID=$(grep 'artifact,0,id' \
@@ -835,7 +843,7 @@ The output of the latter command should be similar to the one that follows.
 ami-ea053b8f
 ```
 
-Just as with the security group, we'll store the `AMI_ID` export in the `docker-ec2` file so that we can retrieve it easily in the next chapters.
+Just as with the security group, we'll store the `AMI_ID` `export` in the `docker-ec2` file so that we can retrieve it easily in the next chapters.
 
 ```bash
 echo "export AMI_ID=$AMI_ID" \
@@ -848,9 +856,9 @@ Now that we have the AMI, we need to move to Jenkins and configure the *Amazon E
 open "http://$JENKINS_ADDR/configure"
 ```
 
-Please scroll to the *Cloud* section and click the *Add a new cloud* drop-down list. Choose *Amazon EC2*.
+Please scroll to the *Cloud* section and click the *Add a new cloud* drop-down list. Choose *Amazon EC2*. A new form will appear.
 
-In the new form, type *docker-agents* as the *Name*, and expand the *Add* drop-down list next to *Amazon EC2 Credentials*. Choose *Jenkins*.
+Type *docker-agents* as the *Name*, and expand the *Add* drop-down list next to *Amazon EC2 Credentials*. Choose *Jenkins*.
 
 From the credentials screen, please choose *AWS Credentials* as the *Kind*, and type *aws* as both the *ID* and the *Description*.
 
@@ -870,7 +878,7 @@ echo $AWS_SECRET_ACCESS_KEY
 
 Copy the output, return to Jenkins UI, and paste it into the *Secret Access Key* field.
 
-Now with all the credentials information filled in, we need to press the *Add* button to store it and return to the EC2 configuration screen.
+With the credentials information filled in, we need to press the *Add* button to store it, and return to the EC2 configuration screen.
 
 Please choose the newly created credentials and select *us-east-2* as the *Region*.
 
@@ -921,13 +929,13 @@ Select *T2Micro* as the *Instance Type*, type *docker* as the *Security group na
 
 Finally, click the *Save* button so preserve the changes.
 
-We'll use the newly created EC2 template soon. Feel free to skip the next section if this was the way you're planning to create agents.
+We'll use the newly created EC2 template soon. Feel free to skip the next section if this was the way you're planning to create agents for building container images.
 
 ### GCE
 
 I> This section is appropriate for those using **GKE**.
 
-If you reached this far, it means that you prefer running your cluster in GKE, or that you are so curious that you prefer triing all three ways to create VMs that will be used to build container images. No matter the reason, we're about to create an GCE image and configure Jenkins to spin up VMs when needed, and destroy them when they're not in use.
+If you reached this far, it means that you prefer running your cluster in GKE, or that you are so curious that you prefer trying all three ways to create VMs that will be used to build container images. No matter the reason, we're about to create an GCE image and configure Jenkins to spin up VMs when needed, and destroy them when they're not in use.
 
 Before we do anything related to GCE, we need to authenticate.
 
@@ -948,7 +956,7 @@ The output is as follows.
 Created service account [jenkins].
 ```
 
-We'll also need to know the project you're planning to use. We'll assume that they one currently active and retrieve it with the `gcloud info` command.
+We'll also need to know the project you're planning to use. We'll assume that it's the one that is currently active and retrieve it with the `gcloud info` command.
 
 ```bash
 export G_PROJECT=$(gcloud info \
@@ -957,7 +965,7 @@ export G_PROJECT=$(gcloud info \
 echo $G_PROJECT
 ```
 
-Please note that the output will differ from what I've got. In my case, the output is as follows.
+Please note that the output might differ from what I've got. In my case, the output is as follows.
 
 ```
 devops24-book
@@ -1015,7 +1023,7 @@ created key [...] of type [json] as [cluster/gce-jenkins.json] for [jenkins@devo
 
 We're finally ready to create an image. We'll build it with [Packer](https://www.packer.io/), so please make sure that it is installed in your laptop.
 
-The definition of the image we're create is stored in the `docker-gce.json` file. Let's take a quick look.
+The definition of the image we'll create is stored in the `docker-gce.json` file. Let's take a quick look.
 
 ```bash
 cat jenkins/docker-gce.json
@@ -1122,17 +1130,17 @@ Click the *Add* button and the new credential will be persisted.
 
 ![Figure 6-TODO: Jenkins Google credentials screen](images/ch06/jenkins-google-credentials.png)
 
-We're back in the *Google Compute Engine* screen and we'll need to select the newly created credential.
+We're back in the *Google Compute Engine* screen and we need to select the newly created credential before we proceed.
 
 Next, we'll add a definition of VMs we'd like to create through Jenkins.
 
-Please click the *Add* button next to *Instance Configurations*, type *docker* as the *Name Prefix*, and type *Docker build instances* as the *Description*. Write *1* as the *Node Retention Time* and type *docker ubuntu linux* as the *Labels*.
+Please click the *Add* button next to *Instance Configurations*, type *docker* as the *Name Prefix*, and type *Docker build instances* as the *Description*. Write *1* as the *Node Retention Time* and type *docker ubuntu linux* as the *Labels*. The retention time defines the period Jenkins will wait until destroying the VM. If, in our case, no other build needs that VM, it'll be destroyed after one minute. In "real" Jenkins, we'd need to think carefully what to use as retention. If the value is too low, we'll save on costs but builds execution will be longer since they'll need to wait until a new VM is created. On the other hand, if the value is too high, the same VM will be reused more often but we'll be paying for compute time we don't use if there are no pending builds. For the purpose of our experiments, one minute should do.
 
-If you're running your cluster in *us-east-1*, please select it as the *Region*. Otherwise, switch to whichever region your cluster is running in. Similarly, select one of the zones that match your region. If you're following the exact steps, it should be *us-east1-b*. The important part is that the zone must be the same as the one where we build the image.
+If you're running your cluster in *us-east-1*, please select it as the *Region*. Otherwise, switch to whichever region your cluster is running in and, more importantly, the region where the image was created. Similarly, select the appropriate zone. If you're following the exact steps, it should be *us-east1-b*. The important part is that the zone must be the same as the one where we built the image.
 
 We're almost done with *Google Compute Engine* Jenkins' configuration.
 
-Select *n1-standard-2* as the *Machine Type*, and *default* as both the *Network* and the *Subnetwork*.
+Select *n1-standard-2* as the *Machine Type*, and select *default* as both the *Network* and the *Subnetwork*.
 
 The *Image project* should be set to the same value as the one we stored in the environment variable `G_PROJECT`.
 
@@ -1140,7 +1148,7 @@ Finally, select *docker* as the *Image name* and click the *Save* button.
 
 ## Test Docker Builds
 
-No matter whether you choose to use static VMs or to create them dynamically in AWS or GCE, the steps to test them out are the same. From Jenkins' perspective, all that matter is that there are agent nodes with the labels *docker*.
+No matter whether you choose to use static VMs or you decided to create them dynamically in AWS or GCE, the steps to test them are the same. From Jenkins' perspective, all that matters is that there are agent nodes with the labels *docker*.
 
 We'll modify our Pipeline to use the `node` labeled `docker`.
 
