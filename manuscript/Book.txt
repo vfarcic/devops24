@@ -4,5 +4,6 @@
 03-manual-cd.md
 04-helm.md
 05-chart-museum.md
+06-jenkins-setup.md
 99-appendix-a.md
 99-appendix-b.md
