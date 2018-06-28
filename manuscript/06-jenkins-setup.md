@@ -1,22 +1,3 @@
-## TODO
-
-- [X] Code
-- [X] Code review Docker for Mac/Windows
-- [X] Code review minikube
-- [X] Code review kops
-- [X] Code review minishift
-- [X] Code review GKE
-- [X] Write
-- [X] Text review
-- [X] Diagrams
-- [X] Gist
-- [X] Review the title
-- [X] Proofread
-- [X] Add to slides
-- [ ] Publish on TechnologyConversations.com
-- [ ] Add to Book.txt
-- [ ] Publish on LeanPub.com
-
 # Installing and Setting Up Jenkins
 
 T> When used by engineers, UIs are evil. They sidetrack us from repeatability and automation.
