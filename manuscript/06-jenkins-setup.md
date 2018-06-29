@@ -24,6 +24,8 @@ cd k8s-specs
 git pull
 ```
 
+We'll need a few files from the *go-demo-3* repository you cloned in one of the previous chapters. To be on the safe side, please merge it the upstream. If you forgot the commands, they are available in the [go-demo-3-merge.sh gist](https://gist.github.com/171172b69bb75903016f0676a8fe9388).
+
 The requirements are the same as those from the previous chapters. The only difference is that I will assume that you'll store the IP of the cluster or the external load balancer as the environment variable `LB_IP`.
 
 For your convenience, the Gists and the specs are available below. Please note that they are the same as those we used in the previous chapter with the addition of the `export LB_IP` command.
@@ -33,8 +35,6 @@ For your convenience, the Gists and the specs are available below. Please note t
 * [kops-ip.sh](https://gist.github.com/7ee11f4dd8a130b51407582505c817cb): **kops in AWS** with 3 t2.small masters and 2 t2.medium nodes spread in three availability zones, with **nginx Ingress**, with **tiller**, and with `LB_IP` variable set to the IP retrieved by pinging ELB's hostname. The Gist assumes that the prerequisites are set through [Appendix B](#appendix-b).
 * [minishift-ip.sh](https://gist.github.com/fa902cc2e2f43dcbe88a60138dd20932): **minishift** with 3 CPUs, 3 GB RAM, with version 1.16+, with **tiller**, and with `LB_IP` variable set to the VM created by minishift.
 * [gke-ip.sh](https://gist.github.com/3e53def041591f3c0f61569d49ffd879): **Google Kubernetes Engine (GKE)** with 3 n1-highcpu-2 (2 CPUs, 1.8 GB RAM) nodes (one in each zone), and with **nginx Ingress** controller running on top of the "standard" one that comes with GKE, with **tiller**, and with `LB_IP` variable set to the IP of the external load balancer created when installing nginx Ingress. We'll use nginx Ingress for compatibility with other platforms. Feel free to modify the YAML files and Helm Charts if you prefer NOT to install nginx Ingress.
-
-We'll need a few files from the *go-demo-3* repository you cloned in one of the previous chapter. To be on the safe side, please merge it the upstream. If you forgot the commands, they are available in the [go-demo-3-merge.sh gist](https://gist.github.com/171172b69bb75903016f0676a8fe9388).
 
 Now we're ready to install Jenkins.
 
@@ -1585,7 +1585,7 @@ Hang tight while we grab the latest from your chart repositories...
 ...Unable to get an update from the "chartmuseum" chart repository (http://cm.127.0.0.1.nip.io):
         Get http://cm.127.0.0.1.nip.io/index.yaml: dial tcp 127.0.0.1:80: connect: connection refused
 ...Successfully got an update from the "stable" chart repository
-Update Complete. ⎈Happy Helming!⎈
+Update Complete. Happy Helming!
 Saving 1 charts
 Downloading jenkins from repo https://kubernetes-charts.storage.googleapis.com
 Deleting outdated charts
