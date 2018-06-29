@@ -123,10 +123,9 @@ kubectl -n mon \
 
 open "http://$GRAFANA_ADDR"
 
-kubectl get secret \
+echo $(kubectl get secret \
     -n mon grafana \
-    -o jsonpath="{.data.admin-password}" \
-    | base64 --decode ; echo
+    -o go-template --template="{.data.admin-password | base64decode}")
 
 echo "http://$MON_ADDR"
 

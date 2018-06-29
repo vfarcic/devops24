@@ -110,10 +110,9 @@ kubectl -n jenkins \
 
 open "http://$JENKINS_ADDR"
 
-alias get-jsecret='kubectl -n jenkins \
+alias get-jsecret='echo $(kubectl -n jenkins \
     get secret jenkins \
-    -o jsonpath="{.data.jenkins-admin-password}" \
-    | base64 --decode; echo'
+    -o go-template --template="{.data.jenkins-admin-password | base64decode}")'
 
 get-jsecret
 

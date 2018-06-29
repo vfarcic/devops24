@@ -98,10 +98,9 @@ type: kubernetes.io/dockerconfigjson
 ```
 
 ```bash
-kubectl -n jenkins \
+echo $(kubectl -n jenkins \
     get secret regcred \
-    -o jsonpath="{.data.\.dockerconfigjson}" \
-    | base64 --decode
+    -o go-template --template="{.data.\.dockerconfigjson | base64decode}")
 ```
 
 ```json
@@ -119,7 +118,7 @@ kubectl -n jenkins \
 
 ```groovy
 def label = "kaniko-${UUID.randomUUID().toString()}"
- 
+
 podTemplate(name: 'kaniko', label: label, yaml: """
 kind: Pod
 metadata:
@@ -146,7 +145,7 @@ spec:
               path: .docker/config.json
 """
   ) {
- 
+
    node(label) {
      stage('Build with Kaniko') {
        //git 'https://github.com/jenkinsci/docker-jnlp-slave.git'

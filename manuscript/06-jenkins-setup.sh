@@ -36,8 +36,7 @@ open "http://$JENKINS_ADDR"
 
 JENKINS_PASS=$(kubectl -n jenkins \
     get secret jenkins \
-    -o jsonpath="{.data.jenkins-admin-password}" \
-    | base64 --decode; echo)
+    -o go-template --template="{.data.jenkins-admin-password | base64decode}")
 
 echo $JENKINS_PASS
 
@@ -325,8 +324,7 @@ open "http://$JENKINS_ADDR"
 
 JENKINS_PASS=$(kubectl -n jenkins \
     get secret jenkins \
-    -o jsonpath="{.data.jenkins-admin-password}" \
-    | base64 --decode; echo)
+    -o go-template --template="{.data.jenkins-admin-password | base64decode}")
 
 echo $JENKINS_PASS
 
