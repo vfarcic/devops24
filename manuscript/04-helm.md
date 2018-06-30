@@ -1,4 +1,4 @@
-# Packaging Kubernetes Applications
+# Packaging Kubernetes Applications {#chartmuseum}
 
 T> Using YAML files to install or upgrade applications in a Kubernetes cluster works well only for static definitions. The moment we need to change an aspect of an application we are bound to discover the need for templating and packaging mechanisms.
 
@@ -251,7 +251,7 @@ jenkins Bound  pvc-... 8Gi      RWO          gp2          1s
 
 NOTES:
 1. Get your 'admin' user password by running:
-  printf $(kubectl get secret --namespace jenkins jenkins -o jsonpath="{.data.jenkins-admin-password}" | base64 --decode);echo
+  echo $(kubectl get secret --namespace jenkins jenkins -o go-template --template="{.data.jenkins-admin-password | base64decode}")
 2. Get the Jenkins URL to visit by running these commands in the same shell:
   NOTE: It may take a few minutes for the LoadBalancer IP to be available.
         You can watch the status of by running 'kubectl get svc --namespace jenkins -w jenkins'
@@ -293,9 +293,9 @@ W> We haven't explained the `upgrade` process just yet. For now, just note that 
 W> ## A note to minishift users
 W>
 W> OpenShift requires Routes to make services accessible outside the cluster. To make things more complicated, they are not part of "standard Kubernetes" so we'll need to create one using `oc`. Please execute the command that follows.
-W> 
+W>
 W> `oc -n jenkins create route edge --service jenkins --insecure-policy Allow`
-W> 
+W>
 W> That command created an `edge` Router tied to the `jenkins` Service. Since we do not have SSL certificates for HTTPS communication, we also specified that it is OK to use insecure policy which will allow us to access Jenkins through plain HTTP.
 
 Next, we'll wait until `jenkins` Deployment is rolled out.
@@ -316,19 +316,19 @@ ADDR=$(kubectl -n jenkins \
 W> ## A note to minikube users
 W>
 W> Unlike some other Kubernetes flavors (e.g., AWS with kops), minikube does not have a hostname automatically assigned to us through an external load balancer. We'll have to retrieve the IP of our minikube cluster and the port published when we changed the `jenkins` service to `NodePort`. Please execute the command that follows.
-W> 
+W>
 W> `ADDR=$(minikube ip):$(kubectl -n jenkins get svc jenkins -o jsonpath="{.spec.ports[0].nodePort}")`
 
 W> ## A note to GKE users
 W>
 W> Unlike some other Kubernetes flavors (e.g., AWS with kops), GKE does not have a hostname automatically assigned to us through an external load balancer. Instead, we got the IP of Google's LB. We'll have to get that IP. Please execute the command that follows.
-W> 
+W>
 W> `ADDR=$(kubectl -n jenkins get svc jenkins -o jsonpath="{.status.loadBalancer.ingress[0].ip}"):8080`
 
 W> ## A note to minishift users
 W>
 W> Unlike all other Kubernetes flavors, OpenShift does not use Ingress. We'll have to retrieve the address from the `jenkins` Route we created previously. Please execute the command that follows.
-W> 
+W>
 W> `ADDR=$(oc -n jenkins get route jenkins -o jsonpath="{.status.ingress[0].host}")`
 
 To be on the safe side, we'll `echo` the address we retrieved and confirm that it looks valid.
@@ -356,10 +356,9 @@ You should be presented with the login screen. There is no setup wizard indicati
 Fortunately, we already saw from the `helm install` output that we should retrieve the password by retrieving the `jenkins-admin-password` entry from the `jenkins` secret. If you need to refresh your memory, please scroll back to the output, or ignore it all together and execute the command that follows.
 
 ```bash
-kubectl -n jenkins \
+echo $(kubectl -n jenkins \
     get secret jenkins \
-    -o jsonpath="{.data.jenkins-admin-password}" \
-    | base64 --decode; echo
+    -o go-template --template="{.data.jenkins-admin-password | base64decode}")
 ```
 
 The output should be a random set of characters similar to the one that follows.
@@ -582,7 +581,7 @@ W>
 W> `helm upgrade jenkins stable/jenkins --set Master.ServiceType=NodePort --reuse-values`
 W>
 W> We still did not go through the `upgrade` process. For now, just note that we changed the Service type to `NodePort`.
-W> 
+W>
 W> Alternatively, you can `delete` the chart and install it again but, this time, with the `--set Master.ServiceType=NodePort` argument added to `helm install`.
 
 W> ## A note to minishift users
@@ -607,19 +606,19 @@ ADDR=$(kubectl -n jenkins \
 W> ## A note to minikube users
 W>
 W> As a reminder, the command to retrieve the address from minikube is as follows.
-W> 
+W>
 W> `ADDR=$(minikube ip):$(kubectl -n jenkins get svc jenkins -o jsonpath="{.spec.ports[0].nodePort}")`
 
 W> ## A note to GKE users
 W>
 W> As a reminder, the command to retrieve the address from GKE is as follows.
-W> 
+W>
 W> `ADDR=$(kubectl -n jenkins get svc jenkins -o jsonpath="{.status.loadBalancer.ingress[0].ip}"):8080`
 
 W> ## A note to minishift users
 W>
 W> As a reminder, the command to retrieve the address from the OpenShift route is as follows.
-W> 
+W>
 W> `ADDR=$(oc -n jenkins get route jenkins -o jsonpath="{.status.ingress[0].host}")`
 
 As a precaution, please output the `ADDR` variable and check whether the address looks correct.
@@ -835,9 +834,9 @@ jenkins.192.168.99.100.nip.io
 W> ## A note to minishift users
 W>
 W> I did not forget about you. You already have a valid domain in the `ADDR` variable. All we have to do is assign it to the `HOST` variable. Please execute the command that follows.
-W> 
+W>
 W> `HOST=$ADDR && echo $HOST`
-W> 
+W>
 W> The output should be similar to `jenkins.192.168.99.100.nip.io`.
 
 Now that we have a valid `jenkins.*` domain, we can try to figure out how to apply all the changes we discussed.
@@ -1375,7 +1374,7 @@ Template snippets are always inside double curly braces (e.g., `{{` and `}}`). I
 
 Variables always start with a dot (`.`). Those coming from the `values.yaml` file are always prefixed with `.Values`. An example is `.Values.ingress.host` that defines the `host` that will be configured in our Ingress resource.
 
-Helm also provides a set of pre-defined variables prefixed with `.Release`, `.Chart`, `.Files`, and `.Capabilities`. As an example, near the top of the NOTES.txt file is `{{ .Release.Namespace }}` snippet that will get converted to the Namespace into which we decided to install our Chart. 
+Helm also provides a set of pre-defined variables prefixed with `.Release`, `.Chart`, `.Files`, and `.Capabilities`. As an example, near the top of the NOTES.txt file is `{{ .Release.Namespace }}` snippet that will get converted to the Namespace into which we decided to install our Chart.
 
 The full list of the pre-defined values is as follows (a copy of the official documentation).
 

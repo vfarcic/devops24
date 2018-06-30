@@ -69,10 +69,9 @@ echo $ADDR
 
 open "http://$ADDR"
 
-kubectl -n jenkins \
+echo $(kubectl -n jenkins \
     get secret jenkins \
-    -o jsonpath="{.data.jenkins-admin-password}" \
-    | base64 --decode; echo
+    -o go-template --template="{.data.jenkins-admin-password | base64decode}")
 
 helm inspect stable/jenkins
 
@@ -285,7 +284,7 @@ oc -n go-demo-3 create route edge --service go-demo-3 --insecure-policy Allow
 
 kubectl -n go-demo-3 \
     rollout status deployment go-demo-3
-   
+
 curl http://$HOST/demo/hello
 
 helm upgrade -i \

@@ -561,6 +561,19 @@ Further down the output, we can see that there are four servers, three with mast
 
 Finally, we got the confirmation that our `cluster devops23.k8s.local is ready`.
 
+## Installing Ingress And Tiller (Server Side Helm)
+
+To install Ingres, please execute the commands that follow.
+
+```bash
+kubectl create \
+    -f https://raw.githubusercontent.com/kubernetes/kops/master/addons/ingress-nginx/v1.6.0.yaml
+
+kubectl -n kube-ingress \
+    rollout status \
+    deployment ingress-nginx
+```
+
 ## Destroying The Cluster
 
 The appendix is almost finished, and we do not need the cluster anymore. We want to destroy it as soon as possible. There's no good reason to keep it running when we're not using it. But, before we proceed with the destructive actions, we'll create a file that will hold all the environment variables we used in this chapter. That will help us the next time we want to recreate the cluster.

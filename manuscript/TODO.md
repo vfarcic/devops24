@@ -16,6 +16,7 @@
 - [ ] 09-codeship.md
 - [ ] 10-jenkins-openshift.md
 - [ ] 11-jenkinsx.md
+- [ ] 12-gitlab.md
 - [ ] Write CD with CJE
 - [ ] Write CD with Argo (https://applatix.com/open-source/argo/)
 - [ ] Spinnaker

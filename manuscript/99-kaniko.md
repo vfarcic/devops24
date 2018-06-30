@@ -78,7 +78,8 @@ secret "regcred" created
 ```
 
 ```bash
-kubectl get secret regcred -o yaml
+kubectl -n jenkins \
+    get secret regcred -o yaml
 ```
 
 ```yaml
@@ -97,7 +98,64 @@ type: kubernetes.io/dockerconfigjson
 ```
 
 ```bash
-kubectl get secret regcred \
-    -o jsonpath="{.data.\.dockerconfigjson}" \
-    | base64 --decode
+echo $(kubectl -n jenkins \
+    get secret regcred \
+    -o go-template --template="{.data.\.dockerconfigjson | base64decode}")
+```
+
+```json
+{
+  "auths": {
+    "https://index.docker.io/v1/": {
+      "username": "vfarcic",
+      "password": "...",
+      "email": "viktor@farcic.com",
+      "auth": "..."
+    }
+  }
+}
+```
+
+```groovy
+def label = "kaniko-${UUID.randomUUID().toString()}"
+
+podTemplate(name: 'kaniko', label: label, yaml: """
+kind: Pod
+metadata:
+  name: kaniko
+spec:
+  containers:
+  - name: kaniko
+    image: gcr.io/kaniko-project/executor:debug
+    imagePullPolicy: Always
+    command:
+    - /busybox/cat
+    tty: true
+    volumeMounts:
+      - name: jenkins-docker-cfg
+        mountPath: /root
+  volumes:
+  - name: jenkins-docker-cfg
+    projected:
+      sources:
+      - secret:
+          name: regcred
+          items:
+            - key: .dockerconfigjson
+              path: .docker/config.json
+"""
+  ) {
+
+   node(label) {
+     stage('Build with Kaniko') {
+       //git 'https://github.com/jenkinsci/docker-jnlp-slave.git'
+       git 'https://github.com/vfarcic/go-demo-3.git'
+       container(name: 'kaniko', shell: '/busybox/sh') {
+           sh '''#!/busybox/sh
+           /kaniko/executor -f `pwd`/Dockerfile -c `pwd` --insecure-skip-tls-verify --destination=index.docker.io/vfarcic/xxx
+           '''
+       }
+     }
+   }
+ }
 ```

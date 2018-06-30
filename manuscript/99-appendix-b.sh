@@ -149,6 +149,13 @@ kubectl cluster-info
 
 kops validate cluster
 
+kubectl create \
+    -f https://raw.githubusercontent.com/kubernetes/kops/master/addons/ingress-nginx/v1.6.0.yaml
+
+kubectl -n kube-ingress \
+    rollout status \
+    deployment ingress-nginx
+
 echo "export AWS_ACCESS_KEY_ID=$AWS_ACCESS_KEY_ID
 export AWS_SECRET_ACCESS_KEY=$AWS_SECRET_ACCESS_KEY
 export AWS_DEFAULT_REGION=$AWS_DEFAULT_REGION
