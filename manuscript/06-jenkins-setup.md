@@ -105,9 +105,9 @@ deployment "jenkins" successfully rolled out
 W> ## A note to minishift users
 W>
 W> OpenShift requires Routes to make services accessible outside the cluster. To make things more complicated, they are not part of "standard Kubernetes" so we'll need to create one using `oc`. Please execute the command that follows.
-W> 
+W>
 W> `oc -n jenkins create route edge --service jenkins --insecure-policy Allow --hostname $JENKINS_ADDR`
-W> 
+W>
 W> That command created an `edge` Router tied to the `jenkins` Service. Since we do not have SSL certificates for HTTPS communication, we also specified that it is OK to use insecure policy which will allow us to access Jenkins through plain HTTP. Finally, the last argument defined the address through which we'd like to access Jenkins UI.
 
 ![Figure 6-1: Jenkins setup operating in a single Namespace](images/ch06/jenkins-setup-single-ns.png)
@@ -119,7 +119,7 @@ open "http://$JENKINS_ADDR"
 ```
 
 T> ## A note to Windows users
-T> 
+T>
 T> Git Bash might not be able to use the `open` command. If that's the case, please replace the `open` command with `echo`. As a result, you'll get the full address that should be opened directly in your browser of choice.
 
 Since this is the first time we're accessing this Jenkins instance, we'll need to login first. Just as before, the password is stored in the Secret `jenkins`, under `jenkins-admin-password`. So, we'll query the secret to find out the password.
@@ -127,8 +127,8 @@ Since this is the first time we're accessing this Jenkins instance, we'll need t
 ```bash
 JENKINS_PASS=$(kubectl -n jenkins \
     get secret jenkins \
-    -o jsonpath="{.data.jenkins-admin-password}" \
-    | base64 --decode; echo)
+    -o go-template \
+    --template="{.data.jenkins-admin-password | base64decode}")
 
 echo $JENKINS_PASS
 ```
@@ -634,7 +634,7 @@ TODO: Changed
 
 ```ruby
 # vi: set ft=ruby :
- 
+
 Vagrant.configure("2") do |config|
     config.vm.box = "ubuntu/xenial64"
 
@@ -1453,7 +1453,7 @@ jenkins:
     CustomConfigMap: true
     CredentialsXmlSecret: jenkins-credentials
     SecretsFilesSecret: jenkins-secrets
-    # DockerAMI: 
+    # DockerAMI:
     # GProject:
     # GAuthFile:
   rbac:
@@ -1686,8 +1686,8 @@ Just as before, you'll need the administrative password stored in the `jenkins` 
 ```bash
 JENKINS_PASS=$(kubectl -n jenkins \
     get secret jenkins \
-    -o jsonpath="{.data.jenkins-admin-password}" \
-    | base64 --decode; echo)
+    -o go-template \
+    --template="{.data.jenkins-admin-password | base64decode}"; echo)
 
 echo $JENKINS_PASS
 ```
@@ -1830,7 +1830,7 @@ If we exclude the case of entering AWS key, our Jenkins setup is fully automated
 
 Please note that the current setup is designed to support "one Jenkins master per team" strategy. Even though you could use the experience you gained so far to run a production-ready Jenkins master that will serve everyone in your company, it is often a better strategy to have one master per team. That approach provides quite a few benefits.
 
-If each team gets a Jenkins master, each team will be able to work independently of others. A team can decide to upgrade their plugins without fear that they will affect others. We can choose to experiment with things that might cause trouble to others by creating a temporary master. Every team can have fine-tuned permissions on the Namespaces that matter to them, and no ability to do anything inside other Namespaces. 
+If each team gets a Jenkins master, each team will be able to work independently of others. A team can decide to upgrade their plugins without fear that they will affect others. We can choose to experiment with things that might cause trouble to others by creating a temporary master. Every team can have fine-tuned permissions on the Namespaces that matter to them, and no ability to do anything inside other Namespaces.
 
 The productivity of a team is often directly proportional to the ability to do things without being limited with the actions of other teams and, at the same time freedom not to worry whether their work will negatively affect others. In Kubernetes, we get that freedom through Namespaces. In Jenkins, we get it by having masters dedicated to teams.
 
