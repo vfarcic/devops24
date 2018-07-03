@@ -100,7 +100,8 @@ type: kubernetes.io/dockerconfigjson
 ```bash
 echo $(kubectl -n jenkins \
     get secret regcred \
-    -o go-template --template="{.data.\.dockerconfigjson | base64decode}")
+    -o go-template \
+    --template="{.data.\.dockerconfigjson | base64decode}")
 ```
 
 ```json

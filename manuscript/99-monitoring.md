@@ -125,7 +125,8 @@ open "http://$GRAFANA_ADDR"
 
 echo $(kubectl get secret \
     -n mon grafana \
-    -o go-template --template="{.data.admin-password | base64decode}")
+    -o go-template \
+    --template="{.data.admin-password | base64decode}")
 
 echo "http://$MON_ADDR"
 

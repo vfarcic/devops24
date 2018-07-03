@@ -71,7 +71,8 @@ open "http://$ADDR"
 
 echo $(kubectl -n jenkins \
     get secret jenkins \
-    -o go-template --template="{.data.jenkins-admin-password | base64decode}")
+    -o go-template \
+    --template="{.data.jenkins-admin-password | base64decode}")
 
 helm inspect stable/jenkins
 

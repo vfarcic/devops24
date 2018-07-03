@@ -20,250 +20,212 @@
 
 # CD With Jenkins
 
-## Creating A Cluster
+TODO: Need to re-run the previous chapter
+
+TODO: Write
+
+## Cluster
+
+TODO: Increase Docker For Mac/Windows to 4GB and 4CPU
+
+## Jenkins
+
+TODO: Write
 
 ```bash
-cd k8s-specs
+# If Docker For Mac/Windows
+cd cd/docker-build
 
-git pull
+# If Docker For Mac/Windows
+vagrant up
 
-cd cluster
+# If Docker For Mac/Windows
+cd ../../
 
-source kops
+kubectl apply \
+    -f ../go-demo-3/k8s/ns.yml \
+    --record
 
-export BUCKET_NAME=devops23-$(date +%s)
+kubectl -n go-demo-3-jenkins \
+    create secret generic \
+    jenkins-credentials \
+    --from-file cluster/jenkins/credentials.xml
 
-export KOPS_STATE_STORE=s3://$BUCKET_NAME
-
-aws s3api create-bucket \
-    --bucket $BUCKET_NAME \
-    --create-bucket-configuration \
-    LocationConstraint=$AWS_DEFAULT_REGION
-
-kops create cluster \
-    --name $NAME \
-    --master-count 3 \
-    --master-size t2.small \
-    --node-count 3 \
-    --node-size t2.large \
-    --zones $ZONES \
-    --master-zones $ZONES \
-    --ssh-public-key devops23.pub \
-    --networking kubenet \
-    --authorization RBAC \
-    --yes
-
-kops validate cluster
-
-kubectl create \
-    -f https://raw.githubusercontent.com/kubernetes/kops/master/addons/ingress-nginx/v1.6.0.yaml
-
-kubectl -n kube-ingress \
-    rollout status \
-    deployment ingress-nginx
-
-cd ..
-
-kubectl create \
-    -f helm/tiller-rbac.yml \
-    --record --save-config
-
-helm init --service-account tiller
+kubectl -n go-demo-3-jenkins \
+    create secret generic \
+    jenkins-secrets \
+    --from-file cluster/jenkins/secrets
 
 helm init --service-account build \
     --tiller-namespace go-demo-3-build
 
-kubectl -n kube-system \
-    rollout status \
-    deployment tiller-deploy
+JENKINS_ADDR="go-demo-3-jenkins.$LB_IP.nip.io"
 
-kubectl create \
-    -f ../go-demo-3/k8s/build-ns.yml \
-    --save-config --record
-
-kubectl create \
-    -f ../go-demo-3/k8s/prod-ns.yml \
-    --save-config --record
-
-export LB_ADDR=$(kubectl \
-    -n kube-ingress \
-    get svc ingress-nginx \
-    -o jsonpath="{.status.loadBalancer.ingress[0].hostname}")
-
-dig +short $LB_ADDR
-
-# If empty, LB is still not fully set up. Wait and repeat.
-
-LB_IP=$(dig +short $LB_ADDR \
-    | tail -n 1)
-
-JENKINS_ADDR="jenkins.$LB_IP.xip.io"
+helm dependency update helm/jenkins
 
 helm install helm/jenkins \
-    --name jenkins \
-    --namespace jenkins \
+    --name go-demo-3-jenkins \
+    --namespace go-demo-3-jenkins \
     --set jenkins.Master.HostName=$JENKINS_ADDR \
-    --set jenkins.Master.AMI=$AMI_ID
+    --set jenkins.Master.DockerAMI=$AMI_ID \
+    --set jenkins.Master.GProject=$G_PROJECT \
+    --set jenkins.Master.GAuthFile=$G_AUTH_FILE
 
-kubectl -n jenkins \
-    rollout status deployment jenkins
+kubectl -n go-demo-3-jenkins \
+    rollout status deployment \
+    go-demo-3-jenkins
 
 open "http://$JENKINS_ADDR"
 
-alias get-jsecret='echo $(kubectl -n jenkins \
-    get secret jenkins \
-    -o go-template --template="{.data.jenkins-admin-password | base64decode}")'
+JENKINS_PASS=$(kubectl -n go-demo-3-jenkins \
+    get secret go-demo-3-jenkins \
+    -o jsonpath="{.data.jenkins-admin-password}" \
+    | base64 --decode; echo)
 
-get-jsecret
+echo $JENKINS_PASS
 
-# Login with user `admin`
-
-open "http://$JENKINS_ADDR/credentials/store/system/domain/_/newCredentials"
-
-# Choose *AWS Credentials* as the *Kind*
-# Type *aws* as the *ID*
-# Type *aws* as the *Description*
-
-echo $AWS_ACCESS_KEY_ID
-
-# Copy the output and paste it into the *Access Key ID* field
-
-echo $AWS_SECRET_ACCESS_KEY
-
-# Copy the output and paste it into the *Secret Access Key* field
-# Click the *OK* button
-
-open "http://$JENKINS_ADDR/credentials/store/system/domain/_/newCredentials"
-
-# Type DH user to the *Username* field
-# Type DH password to the *Password* field
-# Type *docker* to the *ID* field
-# Type *docker* to the *Description* field
-# Click the *OK* button
-
-open "http://$JENKINS_ADDR/configure"
-
-cat cluster/devops23.pem
-
-# Copy the output and paste it into the *EC2 Key Pair's Private Key* field
-# Click the *Test Connection* button
-# Click the *Save* button
+# Login with user *admin*
 ```
 
+## Scripted vs Declarative Pipeline
+
+TODO: Write
+
+## Defining The Continuous Deployment Stages
+
+TODO: Write
+
 ## Build Stage
+
+TODO: Write
+
+TODO: Discard old builds
 
 ```groovy
 import java.text.SimpleDateFormat
 
-env.GH_USER = "vfarcic" // Replace me
-env.DH_USER = "vfarcic" // Replace me
-env.PROJECT = "go-demo-3"
+currentBuild.displayName = new SimpleDateFormat("yy.MM.dd").format(new Date()) + "-" + env.BUILD_NUMBER
+env.REPO = "https://github.com/vfarcic/go-demo-3.git" // Replace me
+env.IMAGE = "vfarcic/go-demo-3" // Replace me
+env.TAG_BETA = "${currentBuild.displayName}-${env.BRANCH_NAME}"
 
-podTemplate(
-  label: "kubernetes",
-  containers: [
-    containerTemplate(name: "helm", image: "vfarcic/helm:2.8.2", ttyEnabled: true, command: "cat"),
-    containerTemplate(name: "golang", image: "golang:1.10", ttyEnabled: true, command: "cat")
-  ],
-  namespace: "go-demo-3-build"
-) {
-  currentBuild.displayName = new SimpleDateFormat("yy.MM.dd").format(new Date()) + "-" + env.BUILD_NUMBER
-  node("docker") {
-    stage("build") {
-      git "https://github.com/${env.GH_USER}/${env.PROJECT}.git"
-      sh """docker image build \
-        -t ${env.DH_USER}/${env.PROJECT}:${currentBuild.displayName}-beta ."""
-      withCredentials([usernamePassword(
-        credentialsId: "docker",
-        usernameVariable: "USER",
-        passwordVariable: "PASS"
-      )]) {
-        sh "docker login -u $USER -p $PASS"
-      }
-      sh """docker image push \
-        ${env.DH_USER}/${env.PROJECT}:${currentBuild.displayName}-beta"""
-      sh "docker logout"
-    }  
+node("docker") {
+  stage("build") {
+    git "${env.REPO}"
+    sh """sudo docker image build \
+      -t ${env.IMAGE}:${env.TAG_BETA} ."""
+    withCredentials([usernamePassword(
+      credentialsId: "docker",
+      usernameVariable: "USER",
+      passwordVariable: "PASS"
+    )]) {
+      sh """sudo docker login \
+        -u $USER -p $PASS"""
+    }
+    sh """sudo docker image push \
+      ${env.IMAGE}:${env.TAG_BETA}"""
   }
 }
 ```
 
 ```bash
-GH_USER=[...]
+DH_USER=[...]
 
-open "https://hub.docker.com/r/$GH_USER/go-demo-3/tags/"
+open "https://hub.docker.com/r/$DH_USER/go-demo-3/tags/"
 ```
 
 ## Functional Stage
 
----
+TODO: Write
+
+```bash
+export ADDR=$LB_IP.nip.io
+
+# If Docker For Mac/Windows get the IP from ifconfig. It's probably en0. 
+export ADDR=[...].nip.io
+
+echo $ADDR
+```
 
 ```groovy
 import java.text.SimpleDateFormat
 
-env.GH_USER = "vfarcic" // Replace me
-env.DH_USER = "vfarcic" // Replace me
-env.PROJECT = "go-demo-3"
+currentBuild.displayName = new SimpleDateFormat("yy.MM.dd").format(new Date()) + "-" + env.BUILD_NUMBER // NEW!!!
+env.REPO = "https://github.com/vfarcic/go-demo-3.git" // Replace me
+env.IMAGE = "vfarcic/go-demo-3" // Replace me
+env.ADDRESS = "go-demo-3-${env.BUILD_NUMBER}-${env.BRANCH_NAME}.acme.com" // Replace `acme.com` with the $ADDR retrieved earlier
+env.TAG_BETA = "${currentBuild.displayName}-${env.BRANCH_NAME}"
+env.CHART_NAME = "go-demo-3-${env.BUILD_NUMBER}-${env.BRANCH_NAME}"
 
 podTemplate(
   label: "kubernetes",
-  containers: [
-    containerTemplate(name: "helm", image: "vfarcic/helm:2.8.2", ttyEnabled: true, command: "cat"),
-    containerTemplate(name: "golang", image: "golang:1.10", ttyEnabled: true, command: "cat")
-  ],
-  namespace: "${env.PROJECT}-build",
-  serviceAccount: "build"
+  namespace: "go-demo-3-build",
+  serviceAccount: "build",
+  yaml: """
+apiVersion: v1
+kind: Pod
+spec:
+  containers:
+  - name: helm
+    image: vfarcic/helm:2.8.2
+    command: ["sleep"]
+    args: ["100000"]
+  - name: kubectl
+    image: vfarcic/kubectl
+    command: ["sleep"]
+    args: ["100000"]
+  - name: golang
+    image: golang:1.9
+    command: ["sleep"]
+    args: ["100000"]
+"""
 ) {
-  currentBuild.displayName = new SimpleDateFormat("yy.MM.dd").format(new Date()) + "-" + env.BUILD_NUMBER
   node("docker") {
     stage("build") {
-      git "https://github.com/${env.GH_USER}/${env.PROJECT}.git"
-      sh """docker image build  \
-        -t ${env.DH_USER}/${env.PROJECT}:${currentBuild.displayName}-beta ."""
+      git "${env.REPO}"
+      sh """sudo docker image build \
+        -t ${env.IMAGE}:${env.TAG_BETA} ."""
       withCredentials([usernamePassword(
         credentialsId: "docker",
         usernameVariable: "USER",
         passwordVariable: "PASS"
       )]) {
-        sh "docker login -u $USER -p $PASS"
+        sh """sudo docker login \
+          -u $USER -p $PASS"""
       }
-      sh """docker image push \
-        ${env.DH_USER}/${env.PROJECT}:${currentBuild.displayName}-beta"""
-      sh "docker logout"
-    }  
+      sh """sudo docker image push \
+        ${env.IMAGE}:${env.TAG_BETA}"""
+    }
   }
   node("kubernetes") {
     stage("func-test") {
       try {
         container("helm") {
-          sh "git clone https://github.com/${env.GH_USER}/${env.PROJECT}.git ."
+          git "${env.REPO}"
           sh """helm upgrade \
-            ${env.PROJECT}-${env.BUILD_NUMBER}-beta \
-            helm/${env.PROJECT} -i \
-            --tiller-namespace ${env.PROJECT}-build \
-            --set image.tag=${currentBuild.displayName}-beta \
-            --set ingress.path=/${env.PROJECT}-${env.BUILD_NUMBER}-beta/demo"""
-          sh """kubectl rollout status \
-            deployment ${env.PROJECT}-${env.BUILD_NUMBER}-beta"""
-          env.HOST = sh script: """kubectl get \
-            ing ${env.PROJECT}-${env.BUILD_NUMBER}-beta \
-            -o jsonpath='{.status.loadBalancer.ingress[0].hostname}'""",
-            returnStdout: true
+            ${env.CHART_NAME} \
+            helm/go-demo-3 -i \
+            --tiller-namespace go-demo-3-build \
+            --set image.tag=${env.TAG_BETA} \
+            --set ingress.host=${env.ADDRESS}"""
         }
-        container("golang") {
+        container("kubectl") {
+          sh """kubectl -n go-demo-3-build \
+            rollout status deployment \
+            ${env.CHART_NAME}"""
+        }
+        container("golang") { // Uses env ADDRESS
           sh "go get -d -v -t"
-          withEnv(["ADDRESS=${env.HOST}/${env.PROJECT}-${env.BUILD_NUMBER}-beta"]) {
-            sh """go test ./... -v \
-              --run FunctionalTest"""
-          }
+          sh """go test ./... -v \
+            --run FunctionalTest"""
         }
       } catch(e) {
           error "Failed functional tests"
       } finally {
         container("helm") {
           sh """helm delete \
-            ${env.PROJECT}-${env.BUILD_NUMBER}-beta \
-            --tiller-namespace ${env.PROJECT}-build \
+            ${env.CHART_NAME} \
+            --tiller-namespace go-demo-3-build \
             --purge"""
         }
       }
@@ -272,8 +234,21 @@ podTemplate(
 }
 ```
 
+TODO: Explain shared workspace
+
 ```bash
 # While in `func-test` stage
+
+helm ls \
+    --tiller-namespace go-demo-3-build
+
+kubectl -n go-demo-3-build \
+    get all
+
+# After the build is finished
+
+helm ls \
+    --tiller-namespace go-demo-3-build
 
 kubectl -n go-demo-3-build \
     get all
@@ -284,69 +259,83 @@ kubectl -n go-demo-3-build \
 ```groovy
 import java.text.SimpleDateFormat
 
-env.GH_USER = "vfarcic" // Replace me
-env.DH_USER = "vfarcic" // Replace me
-env.PROJECT = "go-demo-3"
+currentBuild.displayName = new SimpleDateFormat("yy.MM.dd").format(new Date()) + "-" + env.BUILD_NUMBER // NEW!!!
+env.REPO = "https://github.com/vfarcic/go-demo-3.git" // Replace me
+env.IMAGE = "vfarcic/go-demo-3" // Replace me
+env.ADDRESS = "go-demo-3-${env.BUILD_NUMBER}-${env.BRANCH_NAME}.acme.com" // Replace `acme.com` with the $ADDR retrieved earlier
+env.TAG = "${currentBuild.displayName}"
+env.TAG_BETA = "${env.TAG}-${env.BRANCH_NAME}"
+env.CHART_NAME = "go-demo-3-${env.BUILD_NUMBER}-${env.BRANCH_NAME}"
 
 podTemplate(
   label: "kubernetes",
-  containers: [
-    containerTemplate(name: "helm", image: "vfarcic/helm:2.8.2", ttyEnabled: true, command: "cat"),
-    containerTemplate(name: "golang", image: "golang:1.10", ttyEnabled: true, command: "cat")
-  ],
-  namespace: "${env.PROJECT}-build",
-  serviceAccount: "build"
+  namespace: "go-demo-3-build",
+  serviceAccount: "build",
+  yaml: """
+apiVersion: v1
+kind: Pod
+spec:
+  containers:
+  - name: helm
+    image: vfarcic/helm:2.8.2
+    command: ["sleep"]
+    args: ["100000"]
+  - name: kubectl
+    image: vfarcic/kubectl
+    command: ["sleep"]
+    args: ["100000"]
+  - name: golang
+    image: golang:1.9
+    command: ["sleep"]
+    args: ["100000"]
+"""
 ) {
-  currentBuild.displayName = new SimpleDateFormat("yy.MM.dd").format(new Date()) + "-" + env.BUILD_NUMBER
   node("docker") {
     stage("build") {
-      git "https://github.com/${env.GH_USER}/${env.PROJECT}.git"
-      sh """docker image build  \
-        -t ${env.DH_USER}/${env.PROJECT}:${currentBuild.displayName}-beta ."""
+      git "${env.REPO}"
+      sh """sudo docker image build \
+        -t ${env.IMAGE}:${env.TAG_BETA} ."""
       withCredentials([usernamePassword(
         credentialsId: "docker",
         usernameVariable: "USER",
         passwordVariable: "PASS"
       )]) {
-        sh "docker login -u $USER -p $PASS"
+        sh """sudo docker login \
+          -u $USER -p $PASS"""
       }
-      sh """docker image push \
-        ${env.DH_USER}/${env.PROJECT}:${currentBuild.displayName}-beta"""
-      sh "docker logout"
-    }  
+      sh """sudo docker image push \
+        ${env.IMAGE}:${env.TAG_BETA}"""
+    }
   }
   node("kubernetes") {
     stage("func-test") {
       try {
         container("helm") {
-          sh "git clone https://github.com/${env.GH_USER}/${env.PROJECT}.git ."
+          git "${env.REPO}"
           sh """helm upgrade \
-            ${env.PROJECT}-${env.BUILD_NUMBER}-beta \
-            helm/${env.PROJECT} -i \
-            --tiller-namespace ${env.PROJECT}-build \
-            --set image.tag=${currentBuild.displayName}-beta \
-            --set ingress.path=/${env.PROJECT}-${env.BUILD_NUMBER}-beta/demo"""
-          sh """kubectl rollout status \
-            deployment ${env.PROJECT}-${env.BUILD_NUMBER}-beta"""
-          env.HOST = sh script: """kubectl get \
-            ing ${env.PROJECT}-${env.BUILD_NUMBER}-beta \
-            -o jsonpath='{.status.loadBalancer.ingress[0].hostname}'""",
-            returnStdout: true
+            ${env.CHART_NAME} \
+            helm/go-demo-3 -i \
+            --tiller-namespace go-demo-3-build \
+            --set image.tag=${env.TAG_BETA} \
+            --set ingress.host=${env.ADDRESS}"""
         }
-        container("golang") {
+        container("kubectl") {
+          sh """kubectl -n go-demo-3-build \
+            rollout status deployment \
+            ${env.CHART_NAME}"""
+        }
+        container("golang") { // Uses env ADDRESS
           sh "go get -d -v -t"
-          withEnv(["ADDRESS=${env.HOST}/${env.PROJECT}-${env.BUILD_NUMBER}-beta"]) {
-            sh """go test ./... -v \
-              --run FunctionalTest"""
-          }
+          sh """go test ./... -v \
+            --run FunctionalTest"""
         }
       } catch(e) {
           error "Failed functional tests"
       } finally {
         container("helm") {
           sh """helm delete \
-            ${env.PROJECT}-${env.BUILD_NUMBER}-beta \
-            --tiller-namespace ${env.PROJECT}-build \
+            ${env.CHART_NAME} \
+            --tiller-namespace go-demo-3-build \
             --purge"""
         }
       }
@@ -354,26 +343,26 @@ podTemplate(
   }
   node("docker") {
     stage("release") {
-      sh """docker pull \
-        ${env.DH_USER}/${env.PROJECT}:${currentBuild.displayName}-beta"""
-      sh """docker image tag \
-        ${env.DH_USER}/${env.PROJECT}:${currentBuild.displayName}-beta \
-        ${env.DH_USER}/${env.PROJECT}:${currentBuild.displayName}"""
-      sh """docker image tag \
-        ${env.DH_USER}/${env.PROJECT}:${currentBuild.displayName}-beta \
-        ${env.DH_USER}/${env.PROJECT}:latest"""
+      sh """sudo docker pull \
+        ${env.IMAGE}:${env.TAG_BETA}"""
+      sh """sudo docker image tag \
+        ${env.IMAGE}:${env.TAG_BETA} \
+        ${env.IMAGE}:${env.TAG}"""
+      sh """sudo docker image tag \
+        ${env.IMAGE}:${env.TAG_BETA} \
+        ${env.IMAGE}:latest"""
       withCredentials([usernamePassword(
         credentialsId: "docker",
         usernameVariable: "USER",
         passwordVariable: "PASS"
       )]) {
-        sh "docker login -u $USER -p $PASS"
+        sh """sudo docker login \
+          -u $USER -p $PASS"""
       }
-      sh """docker image push \
-        ${env.DH_USER}/${env.PROJECT}:${currentBuild.displayName}"""
-      sh """docker image push \
-        ${env.DH_USER}/${env.PROJECT}:latest"""
-      sh "docker logout"
+      sh """sudo docker image push \
+        ${env.IMAGE}:${env.TAG}"""
+      sh """sudo docker image push \
+        ${env.IMAGE}:latest"""
     }  
   }
 }
@@ -384,7 +373,7 @@ podTemplate(
 
 # TODO: Manifest
 
-open "https://hub.docker.com/r/$GH_USER/go-demo-3/tags/"
+open "https://hub.docker.com/r/$DH_USER/go-demo-3/tags/"
 ```
 
 ## Deploy Stage
@@ -392,127 +381,139 @@ open "https://hub.docker.com/r/$GH_USER/go-demo-3/tags/"
 ```groovy
 import java.text.SimpleDateFormat
 
-env.GH_USER = "vfarcic" // Replace me
-env.DH_USER = "vfarcic" // Replace me
-env.PROJECT = "go-demo-3"
+currentBuild.displayName = new SimpleDateFormat("yy.MM.dd").format(new Date()) + "-" + env.BUILD_NUMBER // NEW!!!
+env.REPO = "https://github.com/vfarcic/go-demo-3.git" // Replace me
+env.IMAGE = "vfarcic/go-demo-3" // Replace me
+env.ADDRESS = "go-demo-3-${env.BUILD_NUMBER}-${env.BRANCH_NAME}.acme.com" // Replace `acme.com` with the $ADDR retrieved earlier
+env.PROD_ADDRESS = "go-demo-3.acme.com" // Replace `acme.com` with the $ADDR retrieved earlier
+env.TAG = "${currentBuild.displayName}"
+env.TAG_BETA = "${env.TAG}-${env.BRANCH_NAME}"
+env.CHART_NAME = "go-demo-3-${env.BUILD_NUMBER}-${env.BRANCH_NAME}"
 
 podTemplate(
   label: "kubernetes",
-  containers: [
-    containerTemplate(name: "helm", image: "vfarcic/helm:2.8.2", ttyEnabled: true, command: "cat"),
-    containerTemplate(name: "golang", image: "golang:1.10", ttyEnabled: true, command: "cat")
-  ],
-  namespace: "${env.PROJECT}-build",
-  serviceAccount: "build"
+  namespace: "go-demo-3-build",
+  serviceAccount: "build",
+  yaml: """
+apiVersion: v1
+kind: Pod
+spec:
+  containers:
+  - name: helm
+    image: vfarcic/helm:2.8.2
+    command: ["sleep"]
+    args: ["100000"]
+  - name: kubectl
+    image: vfarcic/kubectl
+    command: ["sleep"]
+    args: ["100000"]
+  - name: golang
+    image: golang:1.9
+    command: ["sleep"]
+    args: ["100000"]
+"""
 ) {
-  currentBuild.displayName = new SimpleDateFormat("yy.MM.dd").format(new Date()) + "-" + env.BUILD_NUMBER
   node("docker") {
     stage("build") {
-      git "https://github.com/${env.GH_USER}/${env.PROJECT}.git"
-      sh """docker image build  \
-        -t ${env.DH_USER}/${env.PROJECT}:${currentBuild.displayName}-beta ."""
+      git "${env.REPO}"
+      sh """sudo docker image build \
+        -t ${env.IMAGE}:${env.TAG_BETA} ."""
       withCredentials([usernamePassword(
         credentialsId: "docker",
         usernameVariable: "USER",
         passwordVariable: "PASS"
       )]) {
-        sh "docker login -u $USER -p $PASS"
+        sh """sudo docker login \
+          -u $USER -p $PASS"""
       }
-      sh """docker image push \
-        ${env.DH_USER}/${env.PROJECT}:${currentBuild.displayName}-beta"""
-      sh "docker logout"
-    }  
+      sh """sudo docker image push \
+        ${env.IMAGE}:${env.TAG_BETA}"""
+    }
   }
   node("kubernetes") {
     stage("func-test") {
       try {
         container("helm") {
-          git "https://github.com/${env.GH_USER}/${env.PROJECT}.git ."
+          git "${env.REPO}"
           sh """helm upgrade \
-            ${env.PROJECT}-${env.BUILD_NUMBER}-beta \
-            helm/${env.PROJECT} -i \
-            --tiller-namespace ${env.PROJECT}-build \
-            --set image.tag=${currentBuild.displayName}-beta \
-            --set ingress.path=/${env.PROJECT}-${env.BUILD_NUMBER}-beta/demo"""
-          sh """kubectl rollout status \
-            deployment ${env.PROJECT}-${env.BUILD_NUMBER}-beta"""
-          env.HOST = sh script: """kubectl get \
-            ing ${env.PROJECT}-${env.BUILD_NUMBER}-beta \
-            -o jsonpath='{.status.loadBalancer.ingress[0].hostname}'""",
-            returnStdout: true
+            ${env.CHART_NAME} \
+            helm/go-demo-3 -i \
+            --tiller-namespace go-demo-3-build \
+            --set image.tag=${env.TAG_BETA} \
+            --set ingress.host=${env.ADDRESS}"""
         }
-        container("golang") {
+        container("kubectl") {
+          sh """kubectl -n go-demo-3-build \
+            rollout status deployment \
+            ${env.CHART_NAME}"""
+        }
+        container("golang") { // Uses env ADDRESS
           sh "go get -d -v -t"
-          withEnv(["ADDRESS=${env.HOST}/${env.PROJECT}-${env.BUILD_NUMBER}-beta"]) {
-            sh """go test ./... -v \
-              --run FunctionalTest"""
-          }
+          sh """go test ./... -v \
+            --run FunctionalTest"""
         }
       } catch(e) {
-        error "Failed functional tests"
+          error "Failed functional tests"
       } finally {
         container("helm") {
           sh """helm delete \
-            ${env.PROJECT}-${env.BUILD_NUMBER}-beta \
-            --tiller-namespace ${env.PROJECT}-build \
+            ${env.CHART_NAME} \
+            --tiller-namespace go-demo-3-build \
             --purge"""
         }
       }
     }
     node("docker") {
       stage("release") {
-        sh """docker pull \
-          ${env.DH_USER}/${env.PROJECT}:${currentBuild.displayName}-beta"""
-        sh """docker image tag \
-          ${env.DH_USER}/${env.PROJECT}:${currentBuild.displayName}-beta \
-          ${env.DH_USER}/${env.PROJECT}:${currentBuild.displayName}"""
-        sh """docker image tag \
-          ${env.DH_USER}/${env.PROJECT}:${currentBuild.displayName}-beta \
-          ${env.DH_USER}/${env.PROJECT}:latest"""
+        sh """sudo docker pull \
+          ${env.IMAGE}:${env.TAG_BETA}"""
+        sh """sudo docker image tag \
+          ${env.IMAGE}:${env.TAG_BETA} \
+          ${env.IMAGE}:${env.TAG}"""
+        sh """sudo docker image tag \
+          ${env.IMAGE}:${env.TAG_BETA} \
+          ${env.IMAGE}:latest"""
         withCredentials([usernamePassword(
           credentialsId: "docker",
           usernameVariable: "USER",
           passwordVariable: "PASS"
         )]) {
-          sh "docker login -u $USER -p $PASS"
+          sh """sudo docker login \
+            -u $USER -p $PASS"""
         }
-        sh """docker image push \
-          ${env.DH_USER}/${env.PROJECT}:${currentBuild.displayName}"""
-        sh """docker image push \
-          ${env.DH_USER}/${env.PROJECT}:latest"""
-        sh "docker logout"
+        sh """sudo docker image push \
+          ${env.IMAGE}:${env.TAG}"""
+        sh """sudo docker image push \
+          ${env.IMAGE}:latest"""
       }  
     }
     stage("deploy") {
       try {
         container("helm") {
           sh """helm upgrade \
-            ${env.PROJECT} \
-            helm/${env.PROJECT} -i \
-            --namespace ${env.PROJECT} \
-            --tiller-namespace ${env.PROJECT}-build \
-            --set image.tag=${currentBuild.displayName}"""
-          sh """kubectl rollout status \
-            -n ${env.PROJECT} \
-            deployment ${env.PROJECT}"""
-          env.HOST = sh script: """kubectl get \
-            -n ${env.PROJECT} \
-            ing ${env.PROJECT} \
-            -o jsonpath='{.status.loadBalancer.ingress[0].hostname}'""",
-            returnStdout: true
+            go-demo-3 \
+            helm/go-demo-3 -i \
+            --tiller-namespace go-demo-3-build \
+            --namespace go-demo-3 \
+            --set image.tag=${env.TAG} \
+            --set ingress.host=${env.PROD_ADDRESS}"""
+        }
+        container("kubectl") {
+          sh """kubectl -n go-demo-3 \
+            rollout status deployment \
+            go-demo-3"""
         }
         container("golang") {
           sh "go get -d -v -t"
-          withEnv(["ADDRESS=${env.HOST}", "DURATION=1"]) {
-            sh """go test ./... -v \
-              --run ProductionTest"""
-          }
+          sh """DURATION=1 ADDRESS=${env.PROD_ADDRESS} \
+            go test ./... -v \
+            --run ProductionTest"""
         }
       } catch(e) {
         container("helm") {
           sh """helm rollback \
-            ${env.PROJECT} 0 \
-            --tiller-namespace ${env.PROJECT}-build"""
+            go-demo-3 0 \
+            --tiller-namespace go-demo-3-build"""
           error "Failed production tests"
         }
       }
@@ -522,28 +523,47 @@ podTemplate(
 ```
 
 ```bash
-# TODO: Release files to GH
+open "https://hub.docker.com/r/$DH_USER/go-demo-3/tags/"
 
-# TODO: Manifest
+helm ls \
+    --tiller-namespace go-demo-3-build
 
-open "https://hub.docker.com/r/$GH_USER/go-demo-3/tags/"
+helm history go-demo-3 \
+    --tiller-namespace go-demo-3-build
+
+kubectl -n go-demo-3 get pods
 ```
+
+TODO: Release files to GH
+
+TODO: Manifest
+
+TODO: Failure notifications
 
 ## Shared Libraries
 
 TODO: Code
 
-## Jenkinsfile
+## Jenkinsfile & Multistage Builds
 
 TODO: Code
+
+## Webhooks
+
+TODO: Code
+
+## Manual Testing & The Attempt To Use The Same Artifacts
+
+TODO: Write
+
+TODO: Reference to the CI chapter
 
 ## Destroying The Cluster
 
 ```bash
-kops delete cluster \
-    --name $NAME \
-    --yes
+cd cd/docker-build
 
-aws s3api delete-bucket \
-    --bucket $BUCKET_NAME
+vagrant suspend
+
+cd ../../
 ```

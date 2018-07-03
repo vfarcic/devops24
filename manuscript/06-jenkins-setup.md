@@ -127,7 +127,8 @@ Since this is the first time we're accessing this Jenkins instance, we'll need t
 ```bash
 JENKINS_PASS=$(kubectl -n jenkins \
     get secret jenkins \
-    -o go-template --template="{.data.jenkins-admin-password | base64decode}")
+    -o go-template \
+    --template="{.data.jenkins-admin-password | base64decode}")
 
 echo $JENKINS_PASS
 ```
@@ -362,7 +363,7 @@ The `jenkins-slave-...` Pod is gone, and our system is restored to the state bef
 
 One of the significant disadvantages of the script we used inside `my-k8s-job` is that it runs in the same Namespace as Jenkins. We should separate builds from Jenkins and thus ensure that they do not affect its stability.
 
-We can create a system where each application has two namespaces; one for testing and the other for production. We can define quotas, limitations, and other things we are used to defining on the Namespace level. As a result, we can guarantee that testing an application will not affect the production release. With Namespaces we can to separate one set of applications from another. At the same time, we'll reduce the chance that one team will accidentally mess up with the applications of the other. Our end-goal is to be secure without limiting our teams. By giving them freedom in their own Namespace, we can be secure without impacting team's performance and its ability to move forward without depending on other teams.
+We can create a system where each application has two namespaces; one for testing and the other for production. We can define quotas, limitations, and other things we are used to defining on the Namespace level. As a result, we can guarantee that testing an application will not affect the production release. With Namespaces we can separate one set of applications from another. At the same time, we'll reduce the chance that one team will accidentally mess up with the applications of the other. Our end-goal is to be secure without limiting our teams. By giving them freedom in their own Namespace, we can be secure without impacting team's performance and its ability to move forward without depending on other teams.
 
 Let's go back to the job configuration screen.
 
@@ -599,7 +600,19 @@ The primary question is whether Jenkins supports your provider. If it does, you 
 
 Even if you chose to build your container images differently, it is still a good idea to know how to connect external VMs to Jenkins. There's often a use-case that cannot (or shouldn't) be accomplished inside a Kubernetes cluster. You might need to execute some of the steps in Windows nodes. There might be processes that shouldn't run inside containers. Or, maybe you need to connect Android devices to your Pipelines. No matter the use-case, knowing how to connect external agents to Jenkins is essential. So, building container images is not necessarily the only reason for having external agents (nodes), and I strongly suggest exploring the sections that follow, even if you don't think it's useful at this moment.
 
-Choose the section that best fits your use case. Or, even better, try all three of them.
+TODO: Start review
+
+Before we jump into different ways to create VMs for building and pushing container images, we need to create one thing common to all. We'll need to create a set of credentials that will allow us to login to Docker Hub.
+
+```bash
+open "http://$JENKINS_ADDR/credentials/store/system/domain/_/newCredentials"
+```
+
+Please type your Docker Hub *Username* and *Password*. Both the *ID* and the *Description* should be set to *docker*, since that is the reference we'll use later. Don't forget to click the *OK* button.
+
+TODO: End review
+
+Now we are ready to create some VMs. Please choose the section that best fits your use case. Or, even better, try all three of them.
 
 ### Creating a VM with Vagrant and VirtualBox
 
@@ -617,6 +630,8 @@ cat Vagrantfile
 
 The output of the latter command is as follows.
 
+TODO: Changed
+
 ```ruby
 # vi: set ft=ruby :
 
@@ -626,7 +641,14 @@ Vagrant.configure("2") do |config|
     config.vm.define "docker-build" do |node|
       node.vm.hostname = "docker-build"
       node.vm.network :private_network, ip: "10.100.198.200"
-      node.vm.provision :shell, inline: "apt update && apt install -y docker.io && apt install -y default-jre"
+      node.vm.provision :shell, inline: "apt remove -y docker docker-engine docker.io"
+      node.vm.provision :shell, inline: "apt update"
+      node.vm.provision :shell, inline: "apt install apt-transport-https ca-certificates curl software-properties-common"
+      node.vm.provision :shell, inline: "curl -fsSL https://download.docker.com/linux/ubuntu/gpg | apt-key add -"
+      node.vm.provision :shell, inline: "add-apt-repository \"deb [arch=amd64] https://download.docker.com/linux/ubuntu $(lsb_release -cs) stable\""
+      node.vm.provision :shell, inline: "apt update"
+      node.vm.provision :shell, inline: "apt install -y docker-ce"
+      node.vm.provision :shell, inline: "sudo apt install -y default-jre"
     end
 end
 ```
@@ -1664,7 +1686,8 @@ Just as before, you'll need the administrative password stored in the `jenkins` 
 ```bash
 JENKINS_PASS=$(kubectl -n jenkins \
     get secret jenkins \
-    -o go-template --template="{.data.jenkins-admin-password | base64decode}"; echo)
+    -o go-template \
+    --template="{.data.jenkins-admin-password | base64decode}"; echo)
 
 echo $JENKINS_PASS
 ```

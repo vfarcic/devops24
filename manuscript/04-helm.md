@@ -251,7 +251,7 @@ jenkins Bound  pvc-... 8Gi      RWO          gp2          1s
 
 NOTES:
 1. Get your 'admin' user password by running:
-  echo $(kubectl get secret --namespace jenkins jenkins -o go-template --template="{.data.jenkins-admin-password | base64decode}")
+  printf $(kubectl get secret --namespace jenkins jenkins -o jsonpath="{.data.jenkins-admin-password}" | base64 --decode);echo
 2. Get the Jenkins URL to visit by running these commands in the same shell:
   NOTE: It may take a few minutes for the LoadBalancer IP to be available.
         You can watch the status of by running 'kubectl get svc --namespace jenkins -w jenkins'
@@ -358,7 +358,8 @@ Fortunately, we already saw from the `helm install` output that we should retrie
 ```bash
 echo $(kubectl -n jenkins \
     get secret jenkins \
-    -o go-template --template="{.data.jenkins-admin-password | base64decode}")
+    -o go-template \
+    --template="{.data.jenkins-admin-password | base64decode}")
 ```
 
 The output should be a random set of characters similar to the one that follows.
