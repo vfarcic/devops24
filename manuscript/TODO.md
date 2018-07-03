@@ -109,6 +109,7 @@
 - [ ] Code review kops
 - [ ] Code review minishift
 - [ ] Code review GKE
+- [ ] Code review EKS
 - [ ] Write
 - [ ] Text review
 - [ ] Diagrams
