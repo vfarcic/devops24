@@ -37,6 +37,7 @@ For your convenience, the new Gists and the specs are available.
 * [kops-helm.sh](https://gist.github.com/6c1ebd59305fba9eb0102a5a8cea863b): **kops in AWS** with 3 t2.small masters and 2 t2.medium nodes spread in three availability zones, with **nginx Ingress**, and with **tiller**. The Gist assumes that the prerequisites are set through [Appendix B](#appendix-b).
 * [minishift-helm.sh](https://gist.github.com/945ab1e68afa9e49f85cec3bc6df4959): **minishift** with 3 CPUs, 3 GB RAM, with version 1.16+, and with **tiller**.
 * [gke-helm.sh](https://gist.github.com/1593ed36c4b768a462b1a32d5400649b): **Google Kubernetes Engine (GKE)** with 3 n1-highcpu-2 (2 CPUs, 1.8 GB RAM) nodes (one in each zone), and with **nginx Ingress** controller running on top of the "standard" one that comes with GKE, and with **tiller**. We'll use nginx Ingress for compatibility with other platforms. Feel free to modify the YAML files and Helm Charts if you prefer NOT to install nginx Ingress.
+* [eks-helm.sh](https://gist.github.com/6de44c440c0d0facb20b743c079bd12f): **Elastic Kubernetes Service (EKS)** with 2 t2.medium nodes, with **nginx Ingress** controller, with a **default StorageClass**, and with **tiller**.
 
 Besides creating a cluster, we'll need an IP through which we can access it. The instructions that follow differ from one Kubernetes flavor to another. Please make sure you execute those matching your cluster.
 
@@ -44,6 +45,17 @@ If your cluster is running in **AWS** and if it was created with **kops**, we'll
 
 ```bash
 LB_HOST=$(kubectl -n kube-ingress \
+    get svc ingress-nginx \
+    -o jsonpath="{.status.loadBalancer.ingress[0].hostname}")
+
+LB_IP="$(dig +short $LB_HOST \
+    | tail -n 1)"
+```
+
+If your cluster is running in **AWS** and if it was created as **EKS**, we'll retrieve the IP by digging the hostname of the Elastic Load Balancer (ELB). Please execute the commands that follow.
+
+```bash
+LB_HOST=$(kubectl -n ingress-nginx \
     get svc ingress-nginx \
     -o jsonpath="{.status.loadBalancer.ingress[0].hostname}")
 

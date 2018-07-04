@@ -42,7 +42,7 @@ The Gists with the commands I used to create different variations of Kubernetes 
 * [kops.sh](https://gist.github.com/2a3e4ee9cb86d4a5a65cd3e4397f48fd): **kops in AWS** with 3 t2.small masters and 2 t2.medium nodes spread in three availability zones, and with **nginx Ingress** controller (assumes that the prerequisites are set through [Appendix B](#appendix-b)).
 * [minishift.sh](https://gist.github.com/c9968f23ecb1f7b2ec40c6bcc0e03e4f): **minishift** with 2 CPUs, 2GB RAM, and version 1.16+.
 * [gke.sh](https://gist.github.com/5c52c165bf9c5002fedb61f8a5d6a6d1): **Google Kubernetes Engine (GKE)** with 3 n1-standard-1 (1 CPU, 3.75GB RAM) nodes (one in each zone), and with **nginx Ingress** controller running on top of the "standard" one that comes with GKE. We'll use nginx Ingress for compatibility with other platforms. Feel free to modify the YAML files if you prefer NOT to install nginx Ingress.
-* [eks.sh](https://gist.github.com/5496f79a3886be794cc317c6f8dd7083): **Elastic Kubernetes Service (EKS)** with 3 t2.medium nodes, with **nginx Ingress** controller, and with a **default StorageClass**.
+* [eks.sh](https://gist.github.com/5496f79a3886be794cc317c6f8dd7083): **Elastic Kubernetes Service (EKS)** with 2 t2.medium nodes, with **nginx Ingress** controller, and with a **default StorageClass**.
 
 W> The purpose of those Gists is to serve as guidance, not necessarily as a set of steps you should execute blindly. I assume that you already know how to create a cluster with the specified requirements.
 
