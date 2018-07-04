@@ -6,6 +6,7 @@
 - [ ] Code review kops
 - [ ] Code review minishift
 - [ ] Code review GKE
+- [ ] Code review EKS
 - [ ] Write
 - [ ] The story
 - [ ] Text review
@@ -56,7 +57,9 @@ TODO: Need to re-run the previous chapter
 
 ## Cluster
 
-TODO: Increase Docker For Mac/Windows to 4GB and 4CPU
+TODO: Increase Docker For Mac/Windows to 4GB
+
+* [docker4mac-4gb.sh](https://gist.github.com/66842a54ef167219dc18b03991c26edb): **Docker for Mac** with 3 CPUs, 4 GB RAM, with **nginx Ingress**, with **tiller**, and with `LB_IP` variable set to `127.0.0.1`.
 
 ## Continuous delivery process
 

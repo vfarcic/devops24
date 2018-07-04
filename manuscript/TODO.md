@@ -7,10 +7,9 @@
 - [X] 03-manual-cd.md
 - [X] 04-helm.md
 - [X] 05-chart-museum.md
-- [ ] 06-jenkins-setup.md
-- [ ] terraform/kubeadm
-- [ ] eks
+- [X] 06-jenkins-setup.md
 - [ ] 07-jenkins-cd.md
+- [ ] terraform/kubeadm
 - [ ] aks
 - [ ] 08-big-picture-jenkins.md
 - [ ] 09-codeship.md

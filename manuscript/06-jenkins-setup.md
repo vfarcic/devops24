@@ -35,6 +35,7 @@ For your convenience, the Gists and the specs are available below. Please note t
 * [kops-ip.sh](https://gist.github.com/7ee11f4dd8a130b51407582505c817cb): **kops in AWS** with 3 t2.small masters and 2 t2.medium nodes spread in three availability zones, with **nginx Ingress**, with **tiller**, and with `LB_IP` variable set to the IP retrieved by pinging ELB's hostname. The Gist assumes that the prerequisites are set through [Appendix B](#appendix-b).
 * [minishift-ip.sh](https://gist.github.com/fa902cc2e2f43dcbe88a60138dd20932): **minishift** with 3 CPUs, 3 GB RAM, with version 1.16+, with **tiller**, and with `LB_IP` variable set to the VM created by minishift.
 * [gke-ip.sh](https://gist.github.com/3e53def041591f3c0f61569d49ffd879): **Google Kubernetes Engine (GKE)** with 3 n1-highcpu-2 (2 CPUs, 1.8 GB RAM) nodes (one in each zone), and with **nginx Ingress** controller running on top of the "standard" one that comes with GKE, with **tiller**, and with `LB_IP` variable set to the IP of the external load balancer created when installing nginx Ingress. We'll use nginx Ingress for compatibility with other platforms. Feel free to modify the YAML files and Helm Charts if you prefer NOT to install nginx Ingress.
+* [eks-ip.sh](https://gist.github.com/f7f3956cd39c3bc55638529cfeb2ff12): **Elastic Kubernetes Service (EKS)** with 2 t2.medium nodes, with **nginx Ingress** controller, with a **default StorageClass**, with **tiller**, and with `LB_IP` variable set tot he IP retrieved by pinging ELB's hostname.
 
 Now we're ready to install Jenkins.
 
@@ -724,6 +725,8 @@ We'll build the image with [Packer](https://www.packer.io/), so please make sure
 Packer definition we'll explore soon will require a security group. Please execute the command that follows to create one.
 
 ```bash
+export AWS_DEFAULT_REGION=us-east-2
+
 aws ec2 create-security-group \
     --description "For building Docker images" \
     --group-name docker \

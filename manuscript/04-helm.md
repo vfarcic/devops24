@@ -584,7 +584,7 @@ W> `helm upgrade jenkins stable/jenkins --set Master.ServiceType=NodePort --reus
 W>
 W> We still did not go through the `upgrade` process. For now, just note that we changed the Service type to `NodePort`.
 W>
-W> Alternatively, you can `delete` the chart and install it again but, this time, with the `--set Master.ServiceType=NodePort` argument needs to be added to `helm install`.
+W> Alternatively, you can `delete` the chart and install it again but, this time, the `--set Master.ServiceType=NodePort` argument needs to be added to `helm install`.
 
 W> ## A note to minishift users
 W>
