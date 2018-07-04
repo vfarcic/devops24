@@ -139,7 +139,7 @@ We used `helm init` to create the server component called `tiller`. Since our cl
 
 The latter command waits until the Deployment is rolled out.
 
-We could have specified `--tiller-namespace` argument to deploy it to a specific Namespace. That ability will come in handy in one of the next chapters. For now, we omitted that argument, so Tiller was installed in the `kube-system` Namespace. To be on the safe side, we'll list the Pods to confirm that it is indeed running.
+We could have specified `--tiller-namespace` argument to deploy it to a specific Namespace. That ability will come in handy in one of the next chapters. For now, we omitted that argument, so Tiller was installed in the `kube-system` Namespace by default. To be on the safe side, we'll list the Pods to confirm that it is indeed running.
 
 ```bash
 kubectl -n kube-system get pods
@@ -275,7 +275,7 @@ One thing worthwhile commenting right away is the type of the `jenkins` Service.
 
 On cloud providers which support external load balancers, setting the type field to `LoadBalancer` will provision an external load balancer for the Service. The actual creation of the load balancer happens asynchronously, and information about the provisioned balancer is published in the Service’s `status.loadBalancer` field.
 
-When a Service is of the `LoadBalancer` type, it publishes a random port just as if it is the `NodePort` type. The additional feature is that it also communicates that change to the external load balancer (LB) which, in turn, should open a port as well. In most cases, the port opened in the external LB will be the same as the Service's `TargetPort`. For example, if the `TargetPort` of a Service is `8080` and the published port is `32456`, the external LB will be configured to accept traffic on the port `8080`, and it will forward it to one of the healthy nodes on the port `32456`. From there on, requests will be picked up by the Service and the standard process of forwarding it further towards the replicas will be initiated. From user's perspective, it seems as if the published port is the same as the `TargetPort`.
+When a Service is of the `LoadBalancer` type, it publishes a random port just as if it is the `NodePort` type. The additional feature is that it also communicates that change to the external load balancer (LB) which, in turn, should open a port as well. In most cases, the port opened in the external LB will be the same as the Service's `TargetPort`. For example, if the `TargetPort` of a Service is `8080` and the published port is `32456`, the external LB will be configured to accept traffic on the port `8080`, and it will forward traffic to one of the healthy nodes on the port `32456`. From there on, requests will be picked up by the Service and the standard process of forwarding it further towards the replicas will be initiated. From user's perspective, it seems as if the published port is the same as the `TargetPort`.
 
 The problem is that not all load balancers and hosting vendors support the `LoadBalancer` type, so we'll have to change it to `NodePort` in some of the cases. Those changes will be outlined as notes specific to the Kubernetes flavor.
 
@@ -523,7 +523,7 @@ This time, everything was removed, and `helm` cannot find the `jenkins` Chart an
 
 ## Customizing Helm Installations
 
-We'll almost never install a Chart as we did. Even though the default values do often make a lot of sense, there is always something we need to tweak to make an application behave as we desire.
+We'll almost never install a Chart as we did. Even though the default values do often make a lot of sense, there is always something we need to tweak to make an application behave as we expect.
 
 What if we do not want the Jenkins tag predefined in the Chart? What if for some reason we want to deploy Jenkins `2.112-alpine`? There must be a sensible way to change the tag of the `stable/jenkins` Chart.
 
@@ -584,7 +584,7 @@ W> `helm upgrade jenkins stable/jenkins --set Master.ServiceType=NodePort --reus
 W>
 W> We still did not go through the `upgrade` process. For now, just note that we changed the Service type to `NodePort`.
 W>
-W> Alternatively, you can `delete` the chart and install it again but, this time, with the `--set Master.ServiceType=NodePort` argument added to `helm install`.
+W> Alternatively, you can `delete` the chart and install it again but, this time, with the `--set Master.ServiceType=NodePort` argument needs to be added to `helm install`.
 
 W> ## A note to minishift users
 W>
