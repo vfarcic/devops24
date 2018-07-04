@@ -28,7 +28,7 @@ gcloud container clusters \
     --num-nodes 1 \
     --max-nodes 1 \
     --min-nodes 1 \
-    --cluster-version "1.9.7-gke.1"
+    --cluster-version "1.9.7-gke.3"
 
 kubectl create clusterrolebinding \
     cluster-admin-binding \
