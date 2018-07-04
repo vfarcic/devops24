@@ -523,7 +523,7 @@ This time, everything was removed, and `helm` cannot find the `jenkins` Chart an
 
 ## Customizing Helm Installations
 
-We'll almost never install a Chart as we did. Even though the default values do often make a lot of sense, there is always something we need to tweak to make an application behave as we desire.
+We'll almost never install a Chart as we did. Even though the default values do often make a lot of sense, there is always something we need to tweak to make an application behave as we expect.
 
 What if we do not want the Jenkins tag predefined in the Chart? What if for some reason we want to deploy Jenkins `2.112-alpine`? There must be a sensible way to change the tag of the `stable/jenkins` Chart.
 
@@ -584,7 +584,7 @@ W> `helm upgrade jenkins stable/jenkins --set Master.ServiceType=NodePort --reus
 W>
 W> We still did not go through the `upgrade` process. For now, just note that we changed the Service type to `NodePort`.
 W>
-W> Alternatively, you can `delete` the chart and install it again but, this time, with the `--set Master.ServiceType=NodePort` argument added to `helm install`.
+W> Alternatively, you can `delete` the chart and install it again but, this time, with the `--set Master.ServiceType=NodePort` argument needs to be added to `helm install`.
 
 W> ## A note to minishift users
 W>
