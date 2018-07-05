@@ -525,7 +525,7 @@ Which steps do we need to execute in the functional testing phase? We need to de
 
 Deploying the application is not enough, we'll have to validate that at least it rolled out successfully. Otherwise, we'll have to abort the process.
 
-We'll have to be careful how we deploy the new release. Since we'll run it in the same cluster as production, we need to be careful that one does not affect the other. We already have a Namespace that provides some level of isolation. However, we'll have to be careful not to use the same path or domain in Ingress as the one used for production. The two need to be accessible separately from each other until we are confident that the new release meets all the quality standards.
+We'll have to be cautious how we deploy the new release. Since we'll run it in the same cluster as production, we need to be careful that one does not affect the other. We already have a Namespace that provides some level of isolation. However, we'll have to be attentive not to use the same path or domain in Ingress as the one used for production. The two need to be accessible separately from each other until we are confident that the new release meets all the quality standards.
 
 Finally, once the new release is running, we'll execute a set of tests that will validate it. Please note that we will run functional tests only. You should translate that into "in this stage, I run all kinds of tests that require a live application." You might want to add performance and integration tests as well. From the process point of view, it does not matter which tests you run. What matters is that in this stage you run all those that could not be executed statically when we built the image.
 
