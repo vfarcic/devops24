@@ -230,7 +230,7 @@ echo $CM_ADDR
 
 In my case, the output is `cm.18.221.122.90.nip.io`.
 
-If you go back to the values output, you'll notice that the Chart requires host to be defined as a key, with paths as values. The problem with that lies in the fact that "special" characters cannot be used as keys. In the case of our address, we need to escape all the dots. We'll use a bit of `sed` magic for that.
+If you go back to the values output, you'll notice that the Chart requires host to be defined as a key,value pairs. The problem with that is "special" characters cannot be used as part of keys. In the case of our address, we need to escape all the dots. We'll use a bit of `sed` magic for that.
 
 ```bash
 CM_ADDR_ESC=$(echo $CM_ADDR \
@@ -305,7 +305,7 @@ We defined the username and the password through `--set` arguments. They shouldn
 
 Personally, I believe that there's no reason to hide the Charts. They do not (should not) contain anything confidential. The applications are stored in a container registry. Even if someone decides to use out Charts, that person would not be able to deploy our images, if our registry is configured to require authentication.
 
-If that is not enough, and we do want to protect our Charts besides protecting images, we should ask yourself who should not be allowed to access them. If we want to prevent only outsiders from accessing our Charts, the fix is easy. Put can put our cluster inside a VPN and make the domain accessible only to internal users. On the other hand, if we want to prevent even internal users from accessing our Charts, we can add basic HTTP authentication. We already saw the `secret` section when we inspected the values. You could set `env.secret.BASIC_AUTH_USER` and `env.secret.BASIC_AUTH_PASS` to enable basic authentication. That's what we did in our example.
+If that is not enough, and we do want to protect our Charts besides protecting images, we should ask yourself who should not be allowed to access them. If we want to prevent only outsiders from accessing our Charts, the fix is easy. We can put our cluster inside a VPN and make the domain accessible only to internal users. On the other hand, if we want to prevent even internal users from accessing our Charts, we can add basic HTTP authentication. We already saw the `secret` section when we inspected the values. You could set `env.secret.BASIC_AUTH_USER` and `env.secret.BASIC_AUTH_PASS` to enable basic authentication. That's what we did in our example.
 
 If none of those methods is secure enough, we can implement the best security measure of all. We can disable access to all humans by removing Ingress and changing the Service type to `ClusterIP`. That would result in only processes running in Pods being able to access the Charts. A good example would be to allow Jenkins to push and pull the Charts, and no one else. Even though that approach is more secure, it does not provide access to the Charts to people who might need it. Humans are true users of ChartMuseum. For scripts, it is easy to know which repository contains the definitions they need and to clone the code, even if that is only for the purpose of retrieving Charts. Humans need a way to search for Charts, to inspect them, and to run them on their laptops or servers.
 
