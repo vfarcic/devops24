@@ -85,6 +85,12 @@ All in all, the stages are as follows.
 * Production testing stage
 * Cleanup stage
 
+------
+This is a very very brief introduction to Docker Hub.
+I cannot find any previous reference to it, I would recommend a small notification block:
+ "For those not familliar with Docker Hub, please go to https://docs.docker.com/docker-hub/ and create your own Docker ID. Which you will use as your Docker Hub user id."
+------
+
 Here's the plan. In the build stage, we'll build a Docker image and push it to a registry (in our case Docker Hub). However, since building untested artifacts should be stopped, we are going to run static tests before the actual build. Once our Docker image is pushed, we'll deploy the application and run tests against it. If everything works as expected, we'll make a new release and deploy it to production. To be on the safe side, we'll run another round of tests to validate that the deployment was indeed successful in production. Finally, we'll clean up the system by removing everything except the production release.
 
 ![Figure 3-1: The stages of a continuous deployment pipeline](images/ch03/manual-cd-stages.png)
@@ -742,6 +748,13 @@ exit
 ```
 
 ## Creating Production Releases
+
+------
+I think we're glossing over the fact that we're not rebuilding the artifact (docker image) but only re-tagging it. It might be obvious for most, but I do think explaining that you should not rebuild your application after/between stages is vital.
+
+Something like: 
+"We will not rebuild the image, as the artifact produced (our docker image) in the build and confirmed by our tests, is the one we care about. Rebuilding would not only be a waste, it could potentially be a different artifact than what we tested, that must never happen!"
+------
 
 We are ready to create our first production release. We trust our tests, and they proved that it is relatively safe to deploy to production. Since we cannot deploy to air, we need to create a production release first.
 
