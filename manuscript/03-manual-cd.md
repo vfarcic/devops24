@@ -85,13 +85,9 @@ All in all, the stages are as follows.
 * Production testing stage
 * Cleanup stage
 
-------
-This is a very very brief introduction to Docker Hub.
-I cannot find any previous reference to it, I would recommend a small notification block:
- "For those not familliar with Docker Hub, please go to https://docs.docker.com/docker-hub/ and create your own Docker ID. Which you will use as your Docker Hub user id."
-------
-
 Here's the plan. In the build stage, we'll build a Docker image and push it to a registry (in our case Docker Hub). However, since building untested artifacts should be stopped, we are going to run static tests before the actual build. Once our Docker image is pushed, we'll deploy the application and run tests against it. If everything works as expected, we'll make a new release and deploy it to production. To be on the safe side, we'll run another round of tests to validate that the deployment was indeed successful in production. Finally, we'll clean up the system by removing everything except the production release.
+
+I> For those not familliar with Docker Hub, please go to [Docker Hub introduction](https://docs.docker.com/docker-hub/) page, read about and create your own Docker ID. Which you will use as your Docker Hub user id.
 
 ![Figure 3-1: The stages of a continuous deployment pipeline](images/ch03/manual-cd-stages.png)
 
