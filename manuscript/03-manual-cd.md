@@ -745,14 +745,9 @@ exit
 
 ## Creating Production Releases
 
-------
-I think we're glossing over the fact that we're not rebuilding the artifact (docker image) but only re-tagging it. It might be obvious for most, but I do think explaining that you should not rebuild your application after/between stages is vital.
-
-Something like: 
-"We will not rebuild the image, as the artifact produced (our docker image) in the build and confirmed by our tests, is the one we care about. Rebuilding would not only be a waste, it could potentially be a different artifact than what we tested, that must never happen!"
-------
-
 We are ready to create our first production release. We trust our tests, and they proved that it is relatively safe to deploy to production. Since we cannot deploy to air, we need to create a production release first.
+
+i> We will not rebuild the image, as the artifact produced (our docker image) in the build and confirmed by our tests, is the one we care about. Rebuilding would not only be a waste, it could potentially be a different artifact than what we tested, that must never happen!
 
 Please make sure to replace `[...]` with your Docker Hub user in one of the commands that follow.
 
