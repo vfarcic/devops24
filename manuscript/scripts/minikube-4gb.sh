@@ -1,22 +1,28 @@
-####################
-# Create A Cluster #
-####################
+######################
+# Create The Cluster #
+######################
 
-# Open Docker Preferences, select the Kubernetes tab, and select the "Enable Kubernetes" checkbox
+# Make sure that your minikube version is v0.25 or higher
 
-# Open Docker Preferences, select the Advanced tab, set CPUs to 4, and Memory to 4.0
+# WARNING!!!
+# Some users experienced problems starting the cluster with minikuber v0.26 and v0.27.
+# A few of the reported issues are https://github.com/kubernetes/minikube/issues/2707 and https://github.com/kubernetes/minikube/issues/2703
+# If you are experiencing problems creating a cluster, please consider downgrading to minikube v0.25.
 
-# Make sure that your current kubectl context is pointing to your Docker for Mac/Windows cluster
+minikube start \
+    --vm-driver virtualbox \
+    --cpus 4 \
+    --memory 4096
 
-###################
-# Install Ingress #
-###################
+###############################
+# Install Ingress and Storage #
+###############################
 
-kubectl apply -f \
-    https://raw.githubusercontent.com/kubernetes/ingress-nginx/master/deploy/mandatory.yaml
+minikube addons enable ingress
 
-kubectl apply -f \
-    https://raw.githubusercontent.com/kubernetes/ingress-nginx/master/deploy/provider/cloud-generic.yaml
+minikube addons enable storage-provisioner
+
+minikube addons enable default-storageclass
 
 ##################
 # Install Tiller #
@@ -35,7 +41,7 @@ kubectl -n kube-system \
 # Get Cluster IP #
 ##################
 
-LB_IP=[...] # Replace with the IP of the cluster obtainer with `ifconfig`
+export LB_IP=$(minikube ip)
 
 #######################
 # Install ChartMuseum #
@@ -63,9 +69,9 @@ kubectl -n charts \
     cm-chartmuseum
 
 curl "http://$CM_ADDR/health" # It should return `{"healthy":true}`
-
+    
 #######################
 # Destroy the cluster #
 #######################
 
-# Reset Kubernetes cluster
+minikube delete

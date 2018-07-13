@@ -708,6 +708,8 @@ All that's left is to go back to the *k8s-specs* root directory.
 
 ```bash
 cd ../../
+
+export DOCKER_VM=true
 ```
 
 We'll use the newly created agent soon. Feel free to skip the next two sections if this was the way you're planning to create agents for building container images.
@@ -932,7 +934,7 @@ To be on the safe side, please click the *Check AMI* button, and confirm that th
 
 We're almost done.
 
-Select *T2Micro* as the *Instance Type*, type *docker* as the *Security group names*, and type *ubuntu* as the *Remote user*. The *Remote ssh port* should be set to *22*. Please write *docker ubuntu linux* as the labels, and change the *Idle termination time* to *1*.
+Select *T2Micro* as the *Instance Type*, type *docker* as the *Security group names*, and type *ubuntu* as the *Remote user*. The *Remote ssh port* should be set to *22*. Please write *docker ubuntu linux* as the labels, and change the *Idle termination time* to *10*.
 
 Finally, click the *Save* button to preserve the changes.
 
@@ -1141,7 +1143,7 @@ We're back in the *Google Compute Engine* screen, and we need to select the newl
 
 Next, we'll add a definition of VMs we'd like to create through Jenkins.
 
-Please click the *Add* button next to *Instance Configurations*, type *docker* as the *Name Prefix*, and type *Docker build instances* as the *Description*. Write *1* as the *Node Retention Time* and type *docker ubuntu linux* as the *Labels*. The retention time defines the period Jenkins will wait until destroying the VM. If in our case no other build needs that VM, it'll be destroyed after one minute. In "real" Jenkins, we'd need to think carefully what to use as retention. If the value is too low, we'll save on costs but builds execution will be longer since they'll need to wait until a new VM is created. On the other hand, if the value is too high, the same VM will be reused more often, but we'll be paying for compute time we don't use if there are no pending builds. For our experiments, one minute should do.
+Please click the *Add* button next to *Instance Configurations*, type *docker* as the *Name Prefix*, and type *Docker build instances* as the *Description*. Write *10* as the *Node Retention Time* and type *docker ubuntu linux* as the *Labels*. The retention time defines the period Jenkins will wait until destroying the VM. If in our case no other build needs that VM, it'll be destroyed after one minute. In "real" Jenkins, we'd need to think carefully what to use as retention. If the value is too low, we'll save on costs but builds execution will be longer since they'll need to wait until a new VM is created. On the other hand, if the value is too high, the same VM will be reused more often, but we'll be paying for compute time we don't use if there are no pending builds. For our experiments, one minute should do.
 
 If you're running your cluster in *us-east-1*, please select it as the *Region*. Otherwise, switch to whichever region your cluster is running in and, more importantly, the region where the image was created. Similarly, select the appropriate zone. If you're following the exact steps, it should be *us-east1-b*. The important part is that the zone must be the same as the one where we built the image.
 
@@ -1648,6 +1650,7 @@ helm install helm/jenkins \
     --name jenkins \
     --namespace jenkins \
     --set jenkins.Master.HostName=$JENKINS_ADDR \
+    --set jenkins.Master.DockerVM=$DOCKER_VM \
     --set jenkins.Master.DockerAMI=$AMI_ID \
     --set jenkins.Master.GProject=$G_PROJECT \
     --set jenkins.Master.GAuthFile=$G_AUTH_FILE

@@ -14,7 +14,7 @@ The first guideline is that *all the examples will be tested on all major Kubern
 
 AWS is the biggest hosting provider so **Kubernetes Operations (kops)** must be included as well.
 
-Since it would be silly to cover only un-managed cloud, I had to include managed Kubernetes clusters as well. **Google Kubernetes Engine (GKE)** is the obvious choice. It is the most stable and features rich managed Kubernetes solution. Adding GKE to the mix means that Azure Container Service (AKS) and Amazon's Elastic Container Service (EKS) should be included as well so that we can have the "big trio" of the hosting vendors that offer managed Kubernetes. Unfortunately, even though AKS is available, it is, at this moment (June 2018), still too unstable. So, I'm forced to scale down from the trio to the GKE and EKS duo as representatives of managed Kubernetes we'll explore.
+Since it would be silly to cover only un-managed cloud, I had to include managed Kubernetes clusters as well. **Google Kubernetes Engine (GKE)** is the obvious choice. It is the most stable and features rich managed Kubernetes solution. Adding GKE to the mix means that Azure Container Service (AKS) and **Amazon's Elastic Container Service (EKS)** should be included as well so that we can have the "big trio" of the hosting vendors that offer managed Kubernetes. Unfortunately, even though AKS is available, it is, at this moment (June 2018), still too unstable. So, I'm forced to scale down from the trio to the GKE and EKS duo as representatives of managed Kubernetes we'll explore.
 
 Finally, a possible on-prem solution should be included as well. Since **OpenShift** shines in that area, the choice was relatively easy.
 
@@ -24,7 +24,7 @@ Some of you already chose the Kubernetes flavor you'll use. Others might still w
 
 Once I decided that many different platforms should be used in the book, I had to make a similar decision for CD tools as well. Just as exploring different Kubernetes platforms gives us knowledge that'll allow us to make better choices, the same is true for continuous deployment processes as well. Should we use a self-hosted solution like [Jenkins](https://jenkins.io/) or a service like [CodeShip](https://codeship.com/)? If we're hosting the solution ourselves, should it be open source Jenkins or the [enterprise edition](https://www.cloudbees.com/products/cloudbees-jenkins-enterprise)? How about [Jenkins X](https://jenkins-x.io/)? It was made public for the first time when I just started thinking about this book. It's a solution built on top of Kubernetes, and only for Kubernetes. How can I not include a CD tool specifically designed to work with Kubernetes? So, the potential set of tools could be Jenkins open source, Jenkins enterprise, Jenkins X, and CodeShip.
 
-To summarize the guidelines, it should be a smaller book that **explores continuous delivery and deployment using Jenkins OSS, Jenkins EE, Jenkins X, and CodeShip**. All the examples will the tested in **minikube, Docker for Mac (or Windows), AWS with kops, GKE, and OpenShift with minishift**.
+To summarize the guidelines, it should be a smaller book that **explores continuous delivery and deployment using Jenkins OSS, Jenkins EE, Jenkins X, and CodeShip**. All the examples will the tested in **minikube, Docker for Mac (or Windows), AWS with kops, GKE, OpenShift with minishift, and EKS**.
 
 The moment I finished writing the previous paragraph I realized that I am repeating the same mistakes from the past. I start with something that looks like a reasonable scope, and I end up with something much bigger and longer. Will I be able to follow all of those guidelines? I honestly don't know. I'll do my best.
 
@@ -66,7 +66,7 @@ We won't go into details how to create a Kubernetes cluster. I'm sure that you a
 
 Even though *[Appendix A](#appendix-a)* and [Appendix B](#appendix-b) explain how to create a Kubernetes cluster locally and in AWS, you do not need to limit yourself to minikube locally and kops in AWS. I did my best to provide instructions on some of the most commonly used flavors of Kubernetes clusters.
 
-I> All the examples in the book are tested against Kubernetes clusters created with **minikube and Docker For Mac (or Windows) locally, kops in AWS, OpenShift with minishift, and Google Container Engine (GKE)**. 
+I> All the examples in the book are tested against Kubernetes clusters created with **minikube and Docker For Mac (or Windows) locally, kops in AWS, OpenShift with minishift, Google Container Engine (GKE), and Amazon Kubernetes Service (EKS)**. 
 
 In most cases, the same examples and commands will work in all of the tested combinations. When that is not the case, you'll see a note explaining what should be done to accomplish the same result in your favorite Kubernetes and hosting flavor. Even if you use something else, you should have no problems adapting the commands and specifications to comply with your platform.
 

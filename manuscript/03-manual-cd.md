@@ -87,11 +87,11 @@ All in all, the stages are as follows.
 
 Here's the plan. In the build stage, we'll build a Docker image and push it to a registry (in our case Docker Hub). However, since building untested artifacts should be stopped, we are going to run static tests before the actual build. Once our Docker image is pushed, we'll deploy the application and run tests against it. If everything works as expected, we'll make a new release and deploy it to production. To be on the safe side, we'll run another round of tests to validate that the deployment was indeed successful in production. Finally, we'll clean up the system by removing everything except the production release.
 
-I> For those not familliar with Docker Hub, please go to [Docker Hub introduction](https://docs.docker.com/docker-hub/) page, read about and create your own Docker ID. We'll use it as our Docker Hub user ID.
-
 ![Figure 3-1: The stages of a continuous deployment pipeline](images/ch03/manual-cd-stages.png)
 
 We'll discuss the steps of each of those stages later on. For now, we need a cluster we'll use for the hands-on exercises that'll help us get a better understanding of the pipeline we'll build later. If we are successful with the manually executed steps, writing pipeline script should be relatively simple.
+
+I> If you are not familiar with Docker Hub, please go to [Docker Hub introduction](https://docs.docker.com/docker-hub/) page and register. We'll need the hub ID later on.
 
 ## Creating A Cluster
 
@@ -747,7 +747,7 @@ exit
 
 We are ready to create our first production release. We trust our tests, and they proved that it is relatively safe to deploy to production. Since we cannot deploy to air, we need to create a production release first.
 
-i> We will not rebuild the image, as the artifact produced (our docker image) in the build and confirmed by our tests, is the one we care about. Rebuilding would not only be a waste, it could potentially be a different artifact than what we tested, that must never happen!
+I> We will not rebuild the image. The artifact we produced (our Docker image) and confirmed through our tests, is the one we care for. Rebuilding would not only be a waste, and it could potentially be a different artifact than the one we tested. That must never happen!
 
 Please make sure to replace `[...]` with your Docker Hub user in one of the commands that follow.
 

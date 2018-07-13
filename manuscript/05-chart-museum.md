@@ -230,7 +230,7 @@ echo $CM_ADDR
 
 In my case, the output is `cm.18.221.122.90.nip.io`.
 
-If you go back to the values output, you'll notice that the Chart requires host to be defined as a key,value pairs. The problem with that is "special" characters cannot be used as part of keys. In the case of our address, we need to escape all the dots. We'll use a bit of `sed` magic for that.
+If you go back to the values output, you'll notice that the Chart requires host to be defined as a key/value pairs. The problem is that "special" characters cannot be used as part of keys. In the case of our address, we need to escape all the dots. We'll use a bit of `sed` magic for that.
 
 ```bash
 CM_ADDR_ESC=$(echo $CM_ADDR \
