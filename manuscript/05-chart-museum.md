@@ -303,7 +303,7 @@ The Chart is installed. Instead of waiting in silence for all the Pods to start 
 
 We defined the username and the password through `--set` arguments. They shouldn't be stored in `helm/chartmuseum-values.yml` since that would defy the purpose of secrecy.
 
-Personally, I believe that there's no reason to hide the Charts. They do not (should not) contain anything confidential. The applications are stored in a container registry. Even if someone decides to use out Charts, that person would not be able to deploy our images, if our registry is configured to require authentication.
+Personally, I believe that there's no reason to hide the Charts. They do not (should not) contain anything confidential. The applications are stored in a container registry. Even if someone decides to use our Charts, that person would not be able to deploy our images, if our registry is configured to require authentication.
 
 If that is not enough, and we do want to protect our Charts besides protecting images, we should ask yourself who should not be allowed to access them. If we want to prevent only outsiders from accessing our Charts, the fix is easy. We can put our cluster inside a VPN and make the domain accessible only to internal users. On the other hand, if we want to prevent even internal users from accessing our Charts, we can add basic HTTP authentication. We already saw the `secret` section when we inspected the values. You could set `env.secret.BASIC_AUTH_USER` and `env.secret.BASIC_AUTH_PASS` to enable basic authentication. That's what we did in our example.
 
