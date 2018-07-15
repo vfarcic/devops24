@@ -774,7 +774,7 @@ Applying all those changes through `--set` arguments would end up as a very long
 
 We'll use [nip.io](http://nip.io) to generate valid domains. The service provides a wildcard DNS for any IP address. It extracts IP from the nip.io subdomain and sends it back in the response. For example, if we generate 192.168.99.100.nip.io, it'll be resolved to 192.168.99.100. We can even add sub-sub domains like something.192.168.99.100.nip.io, and it would still be resolved to 192.168.99.100. It's a simple and awesome service that quickly became an indispensable part of my toolbox.
 
-The service will be handy with Ingress since it will allow us to generate separate domains for each application, instead of resorting to paths which, by the way, are not supported by many Charts. If our cluster is accessible through *192.168.99.100*, we can have *jenkins.192.168.99.100.nip.io* and *go-demo-3.192.168.99.100.nip.io*.
+The service will be handy with Ingress since it will allow us to generate separate domains for each application, instead of resorting to paths which, as you will see, are unsupported by many Charts. If our cluster is accessible through *192.168.99.100*, we can have *jenkins.192.168.99.100.nip.io* and *go-demo-3.192.168.99.100.nip.io*.
 
 We could use [xip.ip](http://xip.io) instead. For the end-users, there is no significant difference between the two. The main reason why we'll use nip.io instead of xip.io is integration with some of the tool. Minishift, for example, comes with Routes pre-configured to use nip.io.
 
