@@ -210,6 +210,8 @@ We can, and we will change the image tag. We'll try to make that our practice wi
 
 By default, access to the API is disabled through the `DISABLE_API: true` entry. We'll have to enable it if we are to interact with the API. We can see that there are, among others, `BASIC_AUTH_USER` and `BASIC_AUTH_PASS` secrets which we can use if we'd like to provide a basic HTTP authentication.
 
+i> Please visit [ChartMuseum API](https://github.com/helm/chartmuseum#api) documentation if you're interested in more details.
+
 Further down are the commented resources. We'll have to define them ourselves.
 
 We'll need to persist the state of the application and make it accessible through Ingress. Both can be accomplished by changing related `enabled` entries to `true` and, in case of Ingress, by adding a few annotations and a host.
@@ -281,7 +283,7 @@ ingress:
 
 This is becoming monotonous, and that's OK. It should be that way. Installations should be boring and follow the same pattern. We found that pattern in Helm.
 
-The *chartmuseum-values.yml* file defines the values we discussed. It sets the `tag` we'll use, and it enables the API. It defines the `resources`, and you already know that the values we're using should be taken with a lot of skepticism. In the "real" production, the amount of memory and CPU your applications require will differ significantly from what we can observe in our examples.
+The *chartmuseum-values.yml* file defines the values we discussed. It sets the `tag` we'll use, and it enables the API. It defines the `resources`, and you already know that the values we're using should be taken with a lot of skepticism. In the "real" production, the amount of memory and CPU your applications require will differ significantly from what we can observe in our examples. So we should always monitor our applications real usage patterns, and fine-tune the configuration instead of guessing.
 
 We enabled `persistence`, and we'll use the default StorageClass, since we did not specify any explicitly.
 
@@ -733,7 +735,7 @@ We will continue using ChartMuseum throughout the rest of the book, and I will l
 
 We could have set up a container registry, but we didn't. There are too many tools in the market ranging from free solutions like [Docker Registry](https://docs.docker.com/registry/) all the way until enterprise products like [Docker Trusted Registry](https://docs.docker.com/ee/dtr/) and JFrog' [Artifactory](https://www.jfrog.com/confluence/display/RTF/Docker+Registry). The problem is that Docker Registry (free version) is very insecure. It provides only a very basic authentication. Still, the price is right (it's free). On the other hand, you might opt for one of the commercial solutions and leverage the additional features they provide. Never the less, I felt that for our use-case it is the best if we stick with [Docker Hub](https://hub.docker.com/). Almost everyone has an account there, and it is an excellent choice for the examples we're having. Once you translate the knowledge from here to your "real" processes, you should have no problem switching to any other container registry if you choose to do so. By now, you should have all the skills required to run a registry in your cluster.
 
-All in all, we'll continue using Docker Hub for storing container images, and we'll run Monocular in our cluster and use it to distribute Helm Charts.
+All in all, we'll continue using Docker Hub for storing container images, and we'll run ChartMuseum in our cluster and use it to distribute Helm Charts.
 
 All that's left is for us to remove the Charts we installed. We'll delete them all at once. Alternatively, you can delete the whole cluster if you do plan to make a break. In any case, the next chapter will start from scratch.
 
