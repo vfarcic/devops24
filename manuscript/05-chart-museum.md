@@ -210,7 +210,7 @@ We can, and we will change the image tag. We'll try to make that our practice wi
 
 By default, access to the API is disabled through the `DISABLE_API: true` entry. We'll have to enable it if we are to interact with the API. We can see that there are, among others, `BASIC_AUTH_USER` and `BASIC_AUTH_PASS` secrets which we can use if we'd like to provide a basic HTTP authentication.
 
-i> Please visit [Chart Museum API](https://github.com/helm/chartmuseum#api) documentation if you're interested in more details.
+i> Please visit [ChartMuseum API](https://github.com/helm/chartmuseum#api) documentation if you're interested in more details.
 
 Further down are the commented resources. We'll have to define them ourselves.
 
