@@ -1379,7 +1379,7 @@ dependencies:
     repository:  https://kubernetes-charts.storage.googleapis.com
 ```
 
-The `requirements.yaml` file lists all the dependencies of out Chart. Since all we need is Jenkins, it is the only requirement we specified.
+The `requirements.yaml` file lists all the dependencies of our Chart. Since all we need is Jenkins, it is the only requirement we specified.
 
 Typically, we'd define our Chart and use `requirements.yaml` to add the dependencies our application needs. However, this use-case is a bit different. We do not have a Chart or, to be more precise, we did not define even a single YAML file in templates. All we want is to install Jenkins, customized to serve our needs.
 
@@ -1462,7 +1462,7 @@ jenkins:
 
 If we compare that with `helm/jenkins-values.yml`, we'll notice that most entries are almost the same. There is one significant difference though. This time, all the entries are inside `jenkins`. That way, we're telling Helm that the values should be applied to the dependency named `jenkins` and defined in `requirements.yaml`.
 
-If we ignore the fact that all the entries are now inside `jenkins`, we're missinganother significant difference is that we set `jenkins.Master.CustomConfigMap` to `true`. According to the instructions we saw in the README, that will allow us to provide a custom ConfigMap that will replace Jenkins' `config.xml` file by parsing `templates/config.tmpl`. We'll take a closer look at it soon.
+If we ignore the fact that all the entries are now inside `jenkins`, there is another significant difference in that we set `jenkins.Master.CustomConfigMap` to `true`. According to the instructions we saw in the README, this flag will allow us to provide a custom ConfigMap that will replace Jenkins' `config.xml` file by parsing `templates/config.tmpl`. We'll take a closer look at it soon.
 
 The other new parameter is `CredentialsXmlSecret`. It holds the name of the Kubernetes secret where we'll store Jenkins' `credentials.xml` file we copied earlier. That parameter is tightly coupled with `SecretsFilesSecret` which holds the name of yet another Kubernetes secret which, this time, will contain the secrets which we copied to the local directory `cluster/jenkins/secrets`.
 
@@ -1552,7 +1552,7 @@ Similarly to the section enabled through the existence of the `jenkins.Master.Do
 ...
 ```
 
-Just as with the EC2, that snippet was copied from the previous Jenkins instance. I enveloped it with the `ìf`/`end` block. All occurrences of the Google project were replaced with `{{.Values.Master.GProject}}`.
+Just as with the EC2, that snippet was copied from the previous Jenkins instance. I enveloped it with the `if`/`end` block. All occurrences of the Google project were replaced with `{{.Values.Master.GProject}}`.
 
 Unfortunately, changing the template that produces Jenkins' `config.xml` file is not enough, so I had to modify a few other entries in `config.tpl`.
 
@@ -1834,7 +1834,7 @@ If each team gets a Jenkins master, each team will be able to work independently
 
 The productivity of a team is often directly proportional to the ability to do things without being limited with the actions of other teams and, at the same time freedom not to worry whether their work will negatively affect others. In Kubernetes, we get that freedom through Namespaces. In Jenkins, we get it by having masters dedicated to teams.
 
-The Helm Chart we created is a step towards multi-master strategy. Jenkins we installed can be considered dedicated to the team in charge or *go-demo-3* application. Or it can be devoted to a bigger team. The exact division will differ from one organization to another. What matters is that no matter how many Jenkins masters we need, all we have to do is execute `helm install` for each. Given enough resources in the cluster, we can have a hundred fully operational Jenkins masters in only a few minutes time. And they will not be Jenkins masters waiting to be configured, but rather masters already loaded with everything a team needs. All they'd need to do is create Pipelines that will execute the steps necessary for their application to move from a commit into production. That's the subject of the next chapter.
+The Helm Chart we created is a step towards multi-master strategy. The Jenkins we installed can be considered dedicated to the team in charge of the *go-demo-3* application. Or it can be devoted to a bigger team. The exact division will differ from one organization to another. What matters is that no matter how many Jenkins masters we need, all we have to do is execute `helm install` for each. Given enough resources in the cluster, we can have a hundred fully operational Jenkins masters in only a few minutes time. And they will not be Jenkins masters waiting to be configured, but rather masters already loaded with everything a team needs. All they'd need to do is create Pipelines that will execute the steps necessary for their application to move from a commit into production. That's the subject of the next chapter.
 
 One more chapter is finished and, like all the others, the next one will start from scratch. Please use the commands that follow to clean up the resources we created or, if you're using a temporary cluster, go ahead and destroy it.
 
