@@ -1462,7 +1462,7 @@ jenkins:
 
 If we compare that with `helm/jenkins-values.yml`, we'll notice that most entries are almost the same. There is one significant difference though. This time, all the entries are inside `jenkins`. That way, we're telling Helm that the values should be applied to the dependency named `jenkins` and defined in `requirements.yaml`.
 
-If we ignore the fact that all the entries are now inside `jenkins`, we're missinganother significant difference is that we set `jenkins.Master.CustomConfigMap` to `true`. According to the instructions we saw in the README, that will allow us to provide a custom ConfigMap that will replace Jenkins' `config.xml` file by parsing `templates/config.tmpl`. We'll take a closer look at it soon.
+If we ignore the fact that all the entries are now inside `jenkins`, we're missing another significant difference is that we set `jenkins.Master.CustomConfigMap` to `true`. According to the instructions we saw in the README, that will allow us to provide a custom ConfigMap that will replace Jenkins' `config.xml` file by parsing `templates/config.tmpl`. We'll take a closer look at it soon.
 
 The other new parameter is `CredentialsXmlSecret`. It holds the name of the Kubernetes secret where we'll store Jenkins' `credentials.xml` file we copied earlier. That parameter is tightly coupled with `SecretsFilesSecret` which holds the name of yet another Kubernetes secret which, this time, will contain the secrets which we copied to the local directory `cluster/jenkins/secrets`.
 
