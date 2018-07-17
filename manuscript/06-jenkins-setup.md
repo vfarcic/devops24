@@ -1379,7 +1379,7 @@ dependencies:
     repository:  https://kubernetes-charts.storage.googleapis.com
 ```
 
-The `requirements.yaml` file lists all the dependencies of out Chart. Since all we need is Jenkins, it is the only requirement we specified.
+The `requirements.yaml` file lists all the dependencies of our Chart. Since all we need is Jenkins, it is the only requirement we specified.
 
 Typically, we'd define our Chart and use `requirements.yaml` to add the dependencies our application needs. However, this use-case is a bit different. We do not have a Chart or, to be more precise, we did not define even a single YAML file in templates. All we want is to install Jenkins, customized to serve our needs.
 
