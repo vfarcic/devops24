@@ -1552,7 +1552,7 @@ Similarly to the section enabled through the existence of the `jenkins.Master.Do
 ...
 ```
 
-Just as with the EC2, that snippet was copied from the previous Jenkins instance. I enveloped it with the `ìf`/`end` block. All occurrences of the Google project were replaced with `{{.Values.Master.GProject}}`.
+Just as with the EC2, that snippet was copied from the previous Jenkins instance. I enveloped it with the `if`/`end` block. All occurrences of the Google project were replaced with `{{.Values.Master.GProject}}`.
 
 Unfortunately, changing the template that produces Jenkins' `config.xml` file is not enough, so I had to modify a few other entries in `config.tpl`.
 
