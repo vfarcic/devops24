@@ -79,7 +79,7 @@ TODO: Increase minikube to 4GB and 4CPU
 
 We already automated Jenkins installation so that it provides all the features we need out-of-the-box. Therefore, the exercises that follow should be very straightforward.
 
-If you are a **Docker For Mac or Windows**, **minikube**, or **minishift** user, we'll need to bring back up the VM we created in the previous chapter. Feel free to skip the commands that follow if you did not `suspent` the VM at the end of the previous chapter, or if you are hosting your cluster in AWS or GCP.
+If you are a **Docker For Mac or Windows**, **minikube**, or **minishift** user, we'll need to bring back up the VM we created in the previous chapter. Feel free to skip the commands that follow if you did not `suspend` the VM at the end of the previous chapter, or if you are hosting your cluster in AWS or GCP.
 
 ```bash
 cd cd/docker-build
@@ -158,6 +158,7 @@ helm install helm/jenkins \
     --set jenkins.Master.DockerVM=$DOCKER_VM \
     --set jenkins.Master.DockerAMI=$AMI_ID \
     --set jenkins.Master.GProject=$G_PROJECT \
+    --set jenkins.Master.GAuthFile=$G_AUTH_FILE \
     --set jenkins.Master.GlobalLibraries=true # TODO: Remove
 ```
 
@@ -233,6 +234,8 @@ From the Jenkins home screen, please click the *New Item* link from the left-han
 
 Type *go-demo-3* as the *item name*, select *Pipeline* as the job type, and click the *OK* button.
 
+I> As a rule of thumb, name your pipeline job after the application/repository you're building.
+
 Once inside job's configuration screen, click the *Pipeline* tab in the top of the screen, and type the script that follows inside the *Script* field.
 
 ```groovy
@@ -267,6 +270,8 @@ I> If you prefer to copy and paste, the job is available in the [cdp-jenkins-bui
 Since we already went through all those steps manually, the same steps inside a Jenkins job should be self-explanatory. However, this might be your first contact with Jenkins pipeline, so we'll briefly explain what's going on.
 
 First of all, the job is written using the **scripted pipeline**. The alternative would be to use **declarative pipeline** which forces a certain structure and naming convention. Personally, I prefer the latter. Declarative pipeline is easier to write and read, and it provides structure that makes implementation of some patterns much easier. However, it also comes with a few limitations. In our case, those limitations are enough to make declarative pipeline a bad choice. Namely, it does not allow us to mix different types of agents and it does not support all the options available in `podTemplate`. Since scripted pipeline has no limitations, we opted for that flavour, even though it makes the code often harder to maintain.
+
+I> Visit [jenkins.io](https://jenkins.io/doc/book/pipeline/) if you're somewhat new to Jenkins pipeline and want to learn more.
 
 What did we do so far?
 
@@ -429,7 +434,7 @@ We also defined `label` with a unique value by adding a suffix based on random U
 
 The `podTemplate` itself is very similar to those we used in quite a few occasions. It'll be created in the `go-demo-3-build` Namespace dedicated to building and testing applications owned by the `go-demo-3` team. The `yaml` contains definitions of the Pod that contains containers with `helm`, `kubectl`, and `golang`. Those are the tools we'll need to execute the steps of the *functional testing* stage.
 
-The curios part is the way nodes (agents) are organized in this iteration of the pipeline. Everything is inside one big block of `node(label)`. As a result, all the steps will be executed in one of the containers of the `podTemplate`. However, since we do not want every to run inside the cluster, inside the node based on the `podTemplate` is the same `node("docker")` block we are using for building and pushing Docker images.
+The curious part is the way nodes (agents) are organized in this iteration of the pipeline. Everything is inside one big block of `node(label)`. As a result, all the steps will be executed in one of the containers of the `podTemplate`. However, since we do not want every part of the build to run inside the cluster, inside the node based on the `podTemplate`, is the same `node("docker")` block we are using for building and pushing Docker images.
 
 The reason for using nested `node` blocks lies in Jenkins' ability to delete unused Pods. The moment `podTemplate` node block is closed, Jenkins would remove the associated Pod. To preserve the state we'll generate inside that Pod, we're making sure that it is alive through the whole build by enveloping all the steps (even thouse running somewhere else) inside one huge `node(label)` block.
 
@@ -447,7 +452,7 @@ The sole purpose for using `try`/`catch` blocks is in `finally`. In it, we are d
 
 To summarize, `try` block ensures that errors are caught. Without it, pipeline would stop executing on the first sign of error, and the release under test would never be removed. The `catch` block re-throws the error, and the `finally` block deletes the release no matter what happens.
 
-Before we test the new iteration of the pipeline, please replace the values of the environment variables to fit your situation. As a minimum, you'll need to replace `vfarcic` with your GitHub user and `acme.com` with the value stored in the environment variable `ADDR` in your terminal session.
+Before we test the new iteration of the pipeline, please replace the values of the environment variables to fit your situation. As a minimum, you'll need to replace `vfarcic` with your GitHub user and Docker Hub user as before, and `acme.com` with the value stored in the environment variable `ADDR` in your terminal session.
 
 Once finished with the changes, please click the *Save* button. Use the *Open Blue Ocean* link from the left-hand menu to switch to the new UI, click the *Run* button, followed by a click on the row of the new build.
 
