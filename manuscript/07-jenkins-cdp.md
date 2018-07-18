@@ -452,7 +452,7 @@ The sole purpose for using `try`/`catch` blocks is in `finally`. In it, we are d
 
 To summarize, `try` block ensures that errors are caught. Without it, pipeline would stop executing on the first sign of error, and the release under test would never be removed. The `catch` block re-throws the error, and the `finally` block deletes the release no matter what happens.
 
-Before we test the new iteration of the pipeline, please replace the values of the environment variables to fit your situation. As a minimum, you'll need to replace `vfarcic` with your GitHub user and DockerHub user as before, and `acme.com` with the value stored in the environment variable `ADDR` in your terminal session.
+Before we test the new iteration of the pipeline, please replace the values of the environment variables to fit your situation. As a minimum, you'll need to replace `vfarcic` with your GitHub user and Docker Hub user as before, and `acme.com` with the value stored in the environment variable `ADDR` in your terminal session.
 
 Once finished with the changes, please click the *Save* button. Use the *Open Blue Ocean* link from the left-hand menu to switch to the new UI, click the *Run* button, followed by a click on the row of the new build.
 
