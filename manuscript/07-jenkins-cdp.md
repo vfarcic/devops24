@@ -158,6 +158,7 @@ helm install helm/jenkins \
     --set jenkins.Master.DockerVM=$DOCKER_VM \
     --set jenkins.Master.DockerAMI=$AMI_ID \
     --set jenkins.Master.GProject=$G_PROJECT \
+    --set jenkins.Master.GAuthFile=$G_AUTH_FILE \
     --set jenkins.Master.GlobalLibraries=true # TODO: Remove
 ```
 
