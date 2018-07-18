@@ -346,7 +346,7 @@ Next, we'll open the job's configuration screen.
 open "http://$JENKINS_ADDR/job/go-demo-3/configure"
 ```
 
-Please replace the existing code with the contents of the [cdp-jenkins-func.groovy Gist](https://gist.github.com/4edc53d5dd11814651485c9ff3672fb7).
+Please replace the existing code with the content of the [cdp-jenkins-func.groovy Gist](https://gist.github.com/4edc53d5dd11814651485c9ff3672fb7).
 
 We'll explore only the differences between the two revisions of the pipeline. They are as follows.
 
@@ -532,7 +532,7 @@ The major difference between Docker images and Charts is in the way how we're ge
 
 One thing worth noting is that we will not use ChartMuseum for deploying applications through Jenkins' pipelines. We already have the Chart inside the repository that we're cloning. We'll store them in ChartMuseum only for those that want to deploy Charts manually without Jenkins. A typical user of the Charts in ChartMuseum are developers that want to spin up applications inside local clusters that are outside Jenkins' control.
 
-Just as with the previous stages, we are focused only on the essential steps which you should extend to suit your specific needs. An example that might serve as inspiration for the missing steps are those that would create a release in GitHub, GitLab, or Bitbucket. Also, it might be useful to build Docker images with manifest files in case you're planning on deploying them to different operating system families (e.g., ARM, Windows, etc). We'll skip those, as quite a few others, in an attempt to keep the pipeline simple, and yet fully functional.
+Just as with the previous stages, we are focused only on the essential steps which you should extend to suit your specific needs. An example that might serve as inspiration for the missing steps are those that would create a release in GitHub, GitLab, or Bitbucket. Also, it might be useful to build Docker images with manifest files in case you're planning on deploying them to different operating system families (e.g., ARM, Windows, etc). We'll skip those, as quite a few others, in an attempt to keep the pipeline simple, and yet fully functional. Another thing that would be useful to add is an automated way to create and publish release notes.
 
 ![Figure 7-TODO: The essential steps of the release stage](images/ch07/cd-stages-release.png)
 
@@ -570,7 +570,7 @@ Now we can update the job.
 open "http://$JENKINS_ADDR/job/go-demo-3/configure"
 ```
 
-Please replace the existing code with the contents of the [cdp-jenkins-release.groovy Gist](https://gist.github.com/2e89eec6ca991ab676d740733c409d35).
+Please replace the existing code with the content of the [cdp-jenkins-release.groovy Gist](https://gist.github.com/2e89eec6ca991ab676d740733c409d35).
 
 Just as before, we'll explore only the differences between the two pipeline iterations.
 
@@ -633,22 +633,29 @@ Finally, we switched to the `helm` container of the `podTemplate`. Once inside, 
 
 Before we move on, you'll need to make the necessary changes to the values of the environment variables. Most likely, all you need to do is change `vfarcic` to your Docker Hub and GitHub users as well as `acme.com` in addresses to the value of the environment variable `ADDR` available in your terminal session.
 
-Don't forget to click the *Save* button to persist the change and follow the same processes as before to run a new build by clicking the *Open Blue Ocean* link from the left-hand menu, followed with the *Run* button, and a click on the row of the new build. Please wait until the build is finished.
+Don't forget to click the *Save* button to persist the change. After that, follow the same processes as before to run a new build by clicking the *Open Blue Ocean* link from the left-hand menu, followed with the *Run* button. Click on the row of the new build and wait until it's finished.
 
 ![Figure 7-TODO: Jenkins build with the build, the functional testing, and the release stages](images/ch07/jenkins-build-release.png)
 
-TODO: Continue
+If everything went as expected, we should have a couple of new images pushed to Docker Hub. Let's confirm that.
 
 ```bash
 open "https://hub.docker.com/r/$DH_USER/go-demo-3/tags/"
 ```
 
+This time, besides the tags based branches (for now with `null`), we got two new ones that represent the production-ready release. 
+
 ![Figure 7-TODO: Images pushed to Docker Hub](images/ch07/docker-hub-go-demo-3.png)
+
+Similarly, we should also have the Chart stored in ChartMuseum.
 
 ```bash
 curl -u admin:admin \
     "http://$CM_ADDR/index.yaml"
 ```
+
+
+The output is as follows.
 
 ```yaml
 apiVersion: v1
@@ -677,55 +684,109 @@ entries:
 generated: "2018-07-17T21:56:28Z"
 ```
 
+Now that we confirmed that both the images and Charts are being pushed to their registries, we can move onto the last stage of the pipeline.
+
 ## Deploy Stage
 
-TODO: Explanation
+We're almost finished with the pipeline, at least in its current form.
 
-TODO: Diagram
+The purpose of the *deploy stage* is to install the new release to production and do the last round of tests that only verifies whether the new release integrates with the rest of the system. Those tests are often very simple since they do not validate the release on functional level. We already know that the features work as expected and immutability of the containers guarantee that what was deployed as a test release is the same as what will be upgraded to production.
+
+If something goes wrong, we need to be able to act swiftly and roll back the release. I'll skip the discussion about the inability to roll back when changing database schemas and a few other cases. Instead, for the sake of simplicity, I'll assume that we'll roll back always if any of the steps in this stage fail.
+
+![Figure 7-TODO: The essential steps of the deploy stage](images/ch07/cd-stages-deploy.png)
+
+Let's go back to *go-demo-3* configuration screen and update the pipeline.
 
 ```bash
 open "http://$JENKINS_ADDR/job/go-demo-3/configure"
-
-# Replace the script with the one that follows
 ```
 
-Please replace the existing code with the contents of the [cdp-jenkins-deploy.groovy Gist](https://gist.github.com/3657e7262b65749f29ddd618cf511d72).
+Please replace the existing code with the content of the [cdp-jenkins-deploy.groovy Gist](https://gist.github.com/3657e7262b65749f29ddd618cf511d72).
 
-```bash
-# Click the *Save* button
+The additions to the pipeline are as follows.
 
-# Click the *Open Blue Ocean* link from the left-hand menu
-
-# Click the *Run* button
-
-# Click on the row of the new build
+```groovy
+...
+env.PROD_ADDRESS = "go-demo-3.acme.com"
+...
+    stage("deploy") {
+      try {
+        container("helm") {
+          sh """helm upgrade \
+            go-demo-3 \
+            helm/go-demo-3 -i \
+            --tiller-namespace go-demo-3-build \
+            --namespace go-demo-3 \
+            --set image.tag=${env.TAG} \
+            --set ingress.host=${env.PROD_ADDRESS}
+            --reuse-values"""
+        }
+        container("kubectl") {
+          sh """kubectl -n go-demo-3 \
+            rollout status deployment \
+            go-demo-3"""
+        }
+        container("golang") {
+          sh "go get -d -v -t"
+          sh """DURATION=1 ADDRESS=${env.PROD_ADDRESS} \
+            go test ./... -v \
+            --run ProductionTest"""
+        }
+      } catch(e) {
+        container("helm") {
+          sh """helm rollback \
+            go-demo-3 0 \
+            --tiller-namespace go-demo-3-build"""
+          error "Failed production tests"
+        }
+      }
+    }
+  }
+}
 ```
+
+We added yet another environment variable (`PROD_ADDRESS`) that holds the address through which our production releases are accessible. We'll use it both for defining Ingress host as well as for the final round of testing.
+
+Inside the stage, we're upgrading the production release with the `helm upgrade` command. The key value is `image.tag` that specifies the image tag that should be used.
+
+Before we proceed with testing, we're waiting until the update rolls out. If there is something obviously wrong with the upgrade (e.g., tag does not exist or there are no available resources), the `rollout status` command will fail.
+
+Finally, we're executing the last round of tests. In our case, the tests will run in a loop for one minute.
+
+All the steps in this stage are inside a big `try` block, so failure of any of the steps will be handled with the `catch` block. Inside it is a simple `helm rollback` command set to revision `0` which will result in rollback to the previous release.
+
+Just as in the other stages, we're jumping from one container to another depending on the tool we need at any given moment.
+
+Before we move on, please make the necessary changes to the values of the environment variables. Just as before, you likely need to change `vfarcic` to your Docker Hub and GitHub users as well as `acme.com` to the value of the environment variable `ADDR` available in your terminal session.
+
+Please click the *Save* button once you're finish with the changes that will make the pipeline work in your environment. The rest is the same as those we performed countless times before. Click the *Open Blue Ocean* link from the left-hand menu, press the *Run* button, and click on the row of the new build. Wait until the build is finished.
 
 ![Figure 7-TODO: Jenkins build with all the continuous deployment stages](images/ch07/jenkins-build-deploy.png)
+
+Since this is the first time we're running the *deploy stage*, we'll double-check that the production release was indeed deployed correctly.
 
 ```bash
 helm ls \
     --tiller-namespace go-demo-3-build
 ```
 
+The output is as follows.
+
 ```
 NAME      REVISION UPDATED        STATUS   CHART           NAMESPACE
 go-demo-3 1        Wed Jul 18 ... DEPLOYED go-demo-3-0.0.1 go-demo-3
 ```
 
-```bash
-helm history go-demo-3 \
-    --tiller-namespace go-demo-3-build
-```
+This is the first time we upgraded `go-demo-3` production release, so the revision is `1`.
 
-```
-REVISION UPDATED        STATUS   CHART           DESCRIPTION     
-1        Wed Jul 18 ... DEPLOYED go-demo-3-0.0.1 Install complete
-```
+How about Pods? Are they running as expected inside the `go-demo-3` Namespace dedicated to production releases of that team?
 
 ```bash
 kubectl -n go-demo-3 get pods
 ```
+
+The output is as follows.
 
 ```
 NAME           READY STATUS  RESTARTS AGE
@@ -737,23 +798,43 @@ go-demo-3-db-1 2/2   Running 0        6m
 go-demo-3-db-2 2/2   Running 0        5m
 ```
 
+All the Pods are indeed running. We have three replicas of the API and three replicas of the database.
+
+Finally, we'll send a request to the newly deployed release and confirm that we are getting a response.
+
 ```bash
 curl "http://go-demo-3.$ADDR/demo/hello"
 ```
 
-```
-hello, world!
-```
+The output should be the familiar `hello, world!` message.
 
-```bash
-# TODO: Failure notifications
-```
+## What Are We Missing In Our Pipeline?
+
+We already discussed some the steps that we might be missing. We might want to store test results in SonarQube. We might want to generate release notes and store them in GitHub. We might need to run performance tests. There are many things we could have done, but we didn't. Those additional steps will differ greatly from one organization to another. Even with a company, one team might have different steps than the other. Guessing which ones you might need would be an exercise in futility. I would almost certainly guessed wrong.
+
+One step that almost everyone needs is notification of a failure. We need to be notified when something goes wrong and fix the issue. However, there are too many destinations where those notifications might need to be sent. Some prefer email, while others opt for chats. In case latter case, it could be Slack, HipChat, Skype, and many others. We might even choose to create a JIRA issue when one of the steps in the pipeline fail. Since even a simple notification can be performed in so many different ways, I'll skip adding them to the pipeline. I'm sure that you won't have a problem looking for a plugin you need (e.g. [Slack Notification](https://plugins.jenkins.io/slack)) and injecting notifications into the stages. We already have a few `try` statements and notifications can be injected into `catch` blocks. You might need to add a few additional `try`/`catch` blocks. I'm confident you'll know how to do that, so we'll move onto the next subject.
 
 ## Shared Libraries
 
+The pipeline we designed works as we expect. However, we'll have a problem on our hands if other teams start copying and pasting the same script for their pipelines. We'd end up with a lot of duplicated code that will be hard to maintain.
+
+Sure, not all pipelines will be the same. Each is likely to be different, so copy and paste practice will only be the first action. People will find the pipeline that is closest to what they're trying to accomplish, replica it, and then change it to suit their needs. Some steps are likely going to be the same for many (if not all) projects, while others will be specific to only one, or only a few pipelines.
+
+The more pipelines we design, the more patterns will emerge. Everyone might want to build Docker images with the same command, but with different arguments. Others might use Helm to install their applications, but do not yet have any tests to run (be nice, do not judge them). Someone might choose to use Rust for the new project and the commands will be unique only for a single pipeline.
+
+What we need to do is look for patterns. When we notice that a step, or a set of steps, are the same across multiple pipelines, we should be able to convert that snippet into a library, just as what we're likely doing when repetition happens in code of our applications. Those libraries need to be accessible to all those who need it and also need to be flexible so that their behavior can be adjusted to slightly different needs. We should be able to provide arguments to those libraries.
+
+What we truly need is the ability to create new pipeline steps that are tailored to our needs. Just as there is a general step `git`, we might want to something like `k8sUpgrade` that will perform Helm's `upgrade` command. We can accomplish that, and quite a few other things through Jenkins` *Global Pipeline Libraries*.
+
+We'll explore libraries through practical examples so the firsts step is to set it up.
+
 ```bash
 open "http://$JENKINS_ADDR/configure"
+```
 
+TODO: Continue
+
+```bash
 # Search for *Global Pipeline Libraries*
 # Click *Add*
 # Name: *library*
@@ -775,7 +856,7 @@ kubectl -n go-demo-3-jenkins cp \
 open "http://$JENKINS_ADDR/job/go-demo-3/configure"
 ```
 
-Please replace the existing code with the contents of the [cdp-jenkins-lib.groovy Gist](https://gist.github.com/e9821d0430ca909d68eecc7ccbb1825d).
+Please replace the existing code with the content of the [cdp-jenkins-lib.groovy Gist](https://gist.github.com/e9821d0430ca909d68eecc7ccbb1825d).
 
 ```bash
 # Click the *Save* button
