@@ -79,7 +79,7 @@ TODO: Increase minikube to 4GB and 4CPU
 
 We already automated Jenkins installation so that it provides all the features we need out-of-the-box. Therefore, the exercises that follow should be very straightforward.
 
-If you are a **Docker For Mac or Windows**, **minikube**, or **minishift** user, we'll need to bring back up the VM we created in the previous chapter. Feel free to skip the commands that follow if you did not `suspent` the VM at the end of the previous chapter, or if you are hosting your cluster in AWS or GCP.
+If you are a **Docker For Mac or Windows**, **minikube**, or **minishift** user, we'll need to bring back up the VM we created in the previous chapter. Feel free to skip the commands that follow if you did not `suspend` the VM at the end of the previous chapter, or if you are hosting your cluster in AWS or GCP.
 
 ```bash
 cd cd/docker-build
