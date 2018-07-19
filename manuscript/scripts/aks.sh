@@ -16,61 +16,85 @@ az group create \
     --name devops24-group \
     --location eastus
 
+az vm list-sizes -l eastus
+
+export VM_SIZE=Standard_DS1
+
 az aks create \
     --resource-group devops24-group \
     --name devops24-cluster \
     --node-count 2 \
-    --node-vm-size Standard_DS1 \
+    --node-vm-size $VM_SIZE \
     --generate-ssh-keys
 
 az aks get-credentials \
     --resource-group devops24-group \
     --name devops24-cluster
 
-kubectl apply -f \
-    https://raw.githubusercontent.com/kubernetes/ingress-nginx/master/deploy/namespace.yaml
-
-kubectl apply -f \
-    https://raw.githubusercontent.com/kubernetes/ingress-nginx/master/deploy/default-backend.yaml
-
-kubectl apply -f \
-    https://raw.githubusercontent.com/kubernetes/ingress-nginx/master/deploy/configmap.yaml
-
-kubectl apply -f \
-    https://raw.githubusercontent.com/kubernetes/ingress-nginx/master/deploy/tcp-services-configmap.yaml
-
-kubectl apply -f \
-    https://raw.githubusercontent.com/kubernetes/ingress-nginx/master/deploy/udp-services-configmap.yaml
-
-# kubectl apply -f \
-#     https://raw.githubusercontent.com/kubernetes/ingress-nginx/master/deploy/rbac.yaml
-
-# kubectl apply -f \
-#     https://raw.githubusercontent.com/kubernetes/ingress-nginx/master/deploy/with-rbac.yaml
-
-curl https://raw.githubusercontent.com/kubernetes/ingress-nginx/master/deploy/without-rbac.yaml \
-    | kubectl apply -f -
-
-kubectl patch deployment -n ingress-nginx nginx-ingress-controller --type='json' \
-  --patch="$(curl https://raw.githubusercontent.com/kubernetes/ingress-nginx/master/deploy/publish-service-patch.yaml)"
-
-curl https://raw.githubusercontent.com/kubernetes/ingress-nginx/master/deploy/provider/azure/service.yaml \
-    | kubectl apply -f -
-
-# kubectl apply -f https://raw.githubusercontent.com/kubernetes/ingress-nginx/master/deploy/provider/patch-service-with-rbac.yaml
+kubectl apply \
+    -f https://raw.githubusercontent.com/kubernetes/ingress-nginx/master/deploy/mandatory.yaml
 
 kubectl apply \
-    -f https://raw.githubusercontent.com/kubernetes/ingress-nginx/master/deploy/provider/patch-service-without-rbac.yaml
+    -f https://raw.githubusercontent.com/kubernetes/ingress-nginx/master/deploy/provider/cloud-generic.yaml
 
-IP=[...]
+LB_IP=$(kubectl -n ingress-nginx \
+    get svc ingress-nginx \
+    -o jsonpath="{.status.loadBalancer.ingress[0].ip}")
 
-DNSNAME="demo-aks-ingress"
+echo $LB_IP
 
-RESOURCEGROUP=$(az network public-ip list --query "[?ipAddress!=null]|[?contains(ipAddress, '$IP')].[resourceGroup]" --output tsv)
+#######
+# CJE #
+#######
 
-PIPNAME=$(az network public-ip list --query "[?ipAddress!=null]|[?contains(ipAddress, '$IP')].[name]" --output tsv)
+CLUSTER_DNS=$LB_IP.nip.io
 
-az network public-ip update --resource-group $RESOURCEGROUP --name  $PIPNAME --dns-name $DNSNAME
+echo $CLUSTER_DNS
+
+JENKINS_DNS=jenkins.$CLUSTER_DNS
+
+echo $JENKINS_DNS
+
+mkdir -p cluster
+
+cd cluster
+
+open "https://downloads.cloudbees.com/cje2/latest/"
+
+RELEASE_URL=[...]
+
+curl -o cje.tgz $RELEASE_URL
+
+tar -xvf cje.tgz
+
+cd cje2_*
+
+ls -l
+
+kubectl get sc -o yaml
+
+cat cje.yml
+
+kubectl create ns jenkins
+
+cat cje.yml \
+    | sed -e \
+    "s@https://cje.example.com@http://cje.example.com@g" \
+    | sed -e \
+    "s@cje.example.com@$JENKINS_DNS@g" \
+    | sed -e \
+    "s@ssl-redirect: \"true\"@ssl-redirect: \"false\"@g" \
+    | kubectl --namespace jenkins \
+    create -f - \
+    --save-config --record
+
+kubectl -n jenkins \
+    rollout status sts cjoc
+
+kubectl -n jenkins \
+    get all
+
+open "http://$JENKINS_DNS/cjoc"
 
 #######################
 # Destroy the cluster #

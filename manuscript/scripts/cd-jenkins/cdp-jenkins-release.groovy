@@ -9,9 +9,10 @@ env.TAG = "${currentBuild.displayName}"
 env.TAG_BETA = "${env.TAG}-${env.BRANCH_NAME}"
 env.CHART_VER = "0.0.1"
 env.CHART_NAME = "go-demo-3-${env.BUILD_NUMBER}-${env.BRANCH_NAME}"
+def label = "jenkins-slave-${UUID.randomUUID().toString()}"
 
 podTemplate(
-  label: "kubernetes",
+  label: label,
   namespace: "go-demo-3-build",
   serviceAccount: "build",
   yaml: """
@@ -33,7 +34,7 @@ spec:
     tty: true
 """
 ) {
-  node("kubernetes") {
+  node(label) {
     node("docker") {
       stage("build") {
         git "${env.REPO}"

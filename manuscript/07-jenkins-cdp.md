@@ -3,12 +3,11 @@
 - [X] Code
 - [X] Code review Docker for Mac/Windows
 - [X] Code review minikube
-- [ ] Code review kops
+- [X] Code review kops
 - [ ] Code review minishift
 - [ ] Code review GKE
 - [ ] Code review EKS
 - [ ] Write
-- [ ] The story
 - [ ] Text review
 - [ ] Diagrams
 - [ ] Gist
@@ -47,7 +46,7 @@ We already discussed what a continuous deployment pipeline looks like. In case y
 
 **Rule number three**: You trust your automation. When a test fails, there is a bug, and you fix it before anything else. You might belong to a big group of companies that have flaky tests that sometimes work, and sometimes fail for random reasons. The same can be said for builds, deployments, and just about any other step of the process. If you see yourself in that group, you'll have to fix your code first. Tests are code, just as builds, and deployments, and everything else is. When code produces inconsistent results, we fix it, we do not restart it. Unfortunately, I do see a lot of companies that rather re-run a build that failed because of flaky tests than fix the cause of that flakiness. Or, companies that solve half of production problems by restarting applications. Anyways, if you do not trust your automation, you cannot deploy to production automatically. You cannot even say that it is production ready.
 
-Now that we established a very simple ground rules, we can move on and describe the pipeline we'll build. It'll be a simple one, and yet very close to what you might use in your "real" systems. We are going to build something. Since building without running unit and other types of static tests should be declared officially illegal and punishable with public shame, we'll include those in our **build stage**. Then we're going execute the steps of the **functional testing stage** that will execute all sort of tests that require a live application. Therefore, we'll need to deploy a test release during this stage. Once we're confident that our application behaves as expected, we're going to make a **production release**, followed with the **deployment stage** that will not only upgrade the production release but also run another round of tests to validate whether everything works as expected.
+Now that we established a very simple ground rules, we can move on and describe the pipeline we'll build. It'll be a simple one, and yet very close to what you might use in your "real" systems. We are going to build something. Since building without running unit and other types of static tests should be declared officially illegal and punishable with public shame, we'll include those in our **build stage**. Then we're going execute the steps of the **functional testing stage** that will execute all sort of tests that require a live application. Therefore, we'll need to deploy a test release during this stage. Once we're confident that our application behaves as expected, we're going to make a **production release**, followed with the **deploy stage** that will not only upgrade the production release but also run another round of tests to validate whether everything works as expected.
 
 ![Figure 7-TODO: The stages of a continuous deployment pipeline](images/ch07/cd-stages.png)
 
@@ -63,13 +62,13 @@ TODO: Write
 
 TODO: Merge go-demo-3 and rename vfarcic
 
-TODO: ChartMuseum, CM_ADDR, and CM_ADDR_ESC
+TODO: ChartMuseum and CM_ADDR
 
 TODO: Increase Docker For Mac/Windows to 4GB and 4CPU
 
 TODO: Docker For Mac/Windows needs a "real" IP
 
-TODO: Increase minikube to 4GB and 4CPU
+TODO: Increase Docker for Mac/Windows, minikube, and minishift to 4GB and 4CPU
 
 * [docker4mac-4gb.sh](https://gist.github.com/4b5487e707043c971989269883d20d28): **Docker for Mac** with 3 CPUs, 4 GB RAM, with **nginx Ingress**, with **tiller**, with `LB_IP` variable set to the IP of the cluster, and with **ChartMuseum**.
 * [minikube-4gb.sh](https://gist.github.com/0a29803842b62c5c033e4c75cd37f3d4): **minikube** with 3 CPUs, 4 GB RAM, with `ingress`, `storage-provisioner`, and `default-storageclass` addons enabled, with **tiller**, with `LB_IP` variable set to the VM created by minikube, and with **ChartMuseum**.
@@ -158,8 +157,7 @@ helm install helm/jenkins \
     --set jenkins.Master.DockerVM=$DOCKER_VM \
     --set jenkins.Master.DockerAMI=$AMI_ID \
     --set jenkins.Master.GProject=$G_PROJECT \
-    --set jenkins.Master.GAuthFile=$G_AUTH_FILE \
-    --set jenkins.Master.GlobalLibraries=true # TODO: Remove
+    --set jenkins.Master.GAuthFile=$G_AUTH_FILE
 ```
 
 We generated a `nip.io` address and installed Jenkins in the `go-demo-3-jenkins` Namespace. Remember, this Jenkins is dedicated to the *go-demo-3* team, and we might have many other instances serving the needs of other teams.
@@ -173,6 +171,10 @@ kubectl -n go-demo-3-jenkins \
 ```
 
 The only thing we'll validate, right now, is whether the node that we'll use to build and push Docker images, is indeed connected to Jenkins.
+
+W> ## A note to Windows users
+W> 
+W> Don't forget that `open` might not work in Windows and that you might need to replace it with `echo`, copy the output, and paste it into a tab of your favorite browser.
 
 ```bash
 open "http://$JENKINS_ADDR/computer"
@@ -825,68 +827,192 @@ The pipeline we designed works as we expect. However, we'll have a problem on ou
 
 Sure, not all pipelines will be the same. Each is likely to be different, so copy and paste practice will only be the first action. People will find the pipeline that is closest to what they're trying to accomplish, replica it, and then change it to suit their needs. Some steps are likely going to be the same for many (if not all) projects, while others will be specific to only one, or only a few pipelines.
 
-The more pipelines we design, the more patterns will emerge. Everyone might want to build Docker images with the same command, but with different arguments. Others might use Helm to install their applications, but do not yet have any tests to run (be nice, do not judge them). Someone might choose to use Rust for the new project and the commands will be unique only for a single pipeline.
+The more pipelines we design, the more patterns will emerge. Everyone might want to build Docker images with the same command, but with different arguments. Others might use Helm to install their applications, but do not yet have any tests to run (be nice, do not judge them). Someone might choose to use [Rust](https://www.rust-lang.org/) for the new project and the commands will be unique only for a single pipeline.
 
 What we need to do is look for patterns. When we notice that a step, or a set of steps, are the same across multiple pipelines, we should be able to convert that snippet into a library, just as what we're likely doing when repetition happens in code of our applications. Those libraries need to be accessible to all those who need it and also need to be flexible so that their behavior can be adjusted to slightly different needs. We should be able to provide arguments to those libraries.
 
 What we truly need is the ability to create new pipeline steps that are tailored to our needs. Just as there is a general step `git`, we might want to something like `k8sUpgrade` that will perform Helm's `upgrade` command. We can accomplish that, and quite a few other things through Jenkins` *Global Pipeline Libraries*.
 
-We'll explore libraries through practical examples so the firsts step is to set it up.
+We'll explore libraries through practical examples, so the firsts step is to configure them.
 
 ```bash
 open "http://$JENKINS_ADDR/configure"
 ```
 
-TODO: Continue
+Please search for *Global Pipeline Libraries* section of the configuration, and click the *Add* button.
 
-```bash
-# Search for *Global Pipeline Libraries*
-# Click *Add*
-# Name: *library*
-# Default version: *master*
-# Load implicitly: *true*
-# Modern SCM: *true*
-# Git: *true*
-# Project Repository: *https://github.com/vfarcic/jenkins-shared-libraries.git*
-# Click *Apply*
-```
+Type *my-library* as the *Name* (it can be anything else) and *master* as the *Default version*. In our context, the latter defines the branch from which we'll load the libraries.
+
+Next, we'll click the *Load implicitly* checkbox. As a result, the libraries will be available automatically to all the pipeline jobs. Otherwise, our jobs would need to have `@Library('my-library')` instruction.
+
+Select *Modern SCM* from the *Retrieval method* section and select *Git* from *Source Code Management*.
+
+We're almost done. The only thing left is to specify the repository from which Jenkins will load the libraries. I already created a repo with the libraries we'll use (and a few others we won't need). However, GitHub API has a limit to the number of requests that can be made per hour so if you (and everyone else) uses my repo, you might see some undesirable effects. My recommendation is to go to [vfarcic/jenkins-shared-libraries.git](https://github.com/vfarcic/jenkins-shared-libraries.git) and fork it. Once the fork is created, copy the address from the *Clone and download* drop-down list, return to Jenkins UI, and paste it into the *Project Repository* field.
+
+We're finished with the configuration. Don't forget to click the *Save* button to persist the changes.
 
 ![Figure 7-TODO: Jenkins Global Pipeline Libraries configuration screen](images/ch07/jenkins-global-pipeline-libraries.png)
+
+Let's take a closer look at the repository we'll use as the *global pipeline library*.
+
+```bash
+export GH_USER=[...]
+
+open "https://github.com/$GH_USER/jenkins-shared-libraries.git"
+```
+
+Please replace `[...]` with your GitHub user before opening the forked repository in a browser.
+
+You'll see that the repository has only `.gitignore` and the `vars` dir in the root. Jenkins' *Global Pipeline Libraries* use a naming convention to discover the libraries we'd like to use. The can be either in `src` or `vars`. The formed is rarely used these days, so we're having only the latter.
+
+If you enter into the `vars` directory, you'll see that there are quite a few `*.groovy` files mixed with a few `*.txt` files. We'll postpone exploration of the latter group of files and concentrate on the Groovy files. We'll use those with names that start with `k8s`.
+
+Please find the *k8sBuildImageBeta.groovy* file and open it. You'll notice that the code inside it is almost the same as the one we used in the *build stage*. There are a few difference, so let's go through the structure of the shared functions. It'll be a very short explanation.
+
+THe name of the file (e.g., *k8sBuildImageBeta.groovy*) becomes a pipeline step (e.g., `k8sBuildImageBeta`). If we use a step converted from a file, Jenkins will invoke the function `call`. So, every file needs to have such function, even though additional internal functions can be defined as well. The `call` function can have any number of arguments. If we continue using the same example, you'll see that `call` inside *k8sBuildImageBeta.groovy* has a single argument `image`. It could have been defined with the explicit type like `String image`, but in most cases there's no need for it. Groovy will figure out the type.
+
+Inside the `call` function are almost the same steps as those we used inside the *build stage*. I copied and pasted them. The only modification to the steps was to replace Docker image references with the `image` argument. Since we already know that Groovy extrapolates arguments in a string when they are prefixed with the dollar sign (`$`) and optional curly braces (`{` and `}`), our `image` argument became `${image}`.
+
+Using arguments in the functions is important. They make them reusable across different pipelines. If *k8sBuildImageBeta.groovy* would have `go-demo-3` image hard-coded, that would not be useful to anyone except those trying to build *go-demo* application. The alternative would be to use environment variables and ditch arguments altogether. I've seen that pattern in many organization and I think it's horrible. It does not make it clear what is needed to use the function/step. There are a few exceptions though. My usage of environment variables is limited to those available to all builds. For example, `${env.BRANCH_NAME}` is always available. One does not need to create it when writing a pipeline script. For everything else, please use arguments. That will be a clear indication to the users of those functions what is required.
+
+I won't go through all the Groovy files that start with `k8s` since they follow the same logic as *k8sBuildImageBeta.groovy*. They are copies of what we used in our pipeline, with addition with a few arguments. So, instead of me going over all the functions, please take some time to explore them yourself. Return here once you're done and we'll put those functions to good use and clarify a few other important aspects of Jenkins' shared libraries.
+
+Before we continue, you might want to persist the changes we did to Jenkins configuration. All the information about the shared libraries is available in *org.jenkinsci.plugins.workflow.libs.GlobalLibraries.xml* file. We just need to copy it.
 
 ```bash
 kubectl -n go-demo-3-jenkins cp \
     $JENKINS_POD:var/jenkins_home/org.jenkinsci.plugins.workflow.libs.GlobalLibraries.xml \
     cluster/jenkins/secrets
+```
 
+I already modified the template of the Jenkins Helm Chart to include the file we just copied. All you have to do the next time you install Jenkins is to add `jenkins.Master.GlobalLibraries` value. The full argument should be as follows.
+
+```
+--set jenkins.Master.GlobalLibraries=true
+```
+
+Now we can refactor our pipeline to use shared libraries and see whether that simplifies things.
+
+```bash
 open "http://$JENKINS_ADDR/job/go-demo-3/configure"
 ```
 
 Please replace the existing code with the content of the [cdp-jenkins-lib.groovy Gist](https://gist.github.com/e9821d0430ca909d68eecc7ccbb1825d).
 
+We'll explore only the differences when compared with the previous iteration of the pipeline. They are as follows.
+
+```groovy
+...
+env.PROJECT = "go-demo-3"
+env.REPO = "https://github.com/vfarcic/go-demo-3.git"
+env.IMAGE = "vfarcic/go-demo-3"
+env.DOMAIN = "acme.com"
+env.ADDRESS = "go-demo-3.acme.com"
+env.CM_ADDR = "cm.acme.com"
+env.CHART_VER = "0.0.1"
+...
+  node("kubernetes") {
+    node("docker") {
+      stage("build") {
+        git "${env.REPO}"
+        k8sBuildImageBeta(env.IMAGE)
+      }
+    }
+    stage("func-test") {
+      try {
+        container("helm") {
+          git "${env.REPO}"
+          k8sUpgradeBeta(env.PROJECT, env.DOMAIN)
+        }
+        container("kubectl") {
+          k8sRolloutBeta(env.PROJECT)
+        }
+        container("golang") {
+          k8sFuncTestGolang(env.PROJECT, env.DOMAIN)
+        }
+      } catch(e) {
+          error "Failed functional tests"
+      } finally {
+        container("helm") {
+          k8sDeleteBeta(env.PROJECT)
+        }
+      }
+    }
+    stage("release") {
+      node("docker") {
+        k8sPushImage(env.IMAGE)
+      }
+      container("helm") {
+        k8sPushHelm(env.PROJECT, env.CHART_VER, env.CM_ADDR)
+      }
+    }
+    stage("deploy") {
+      try {
+        container("helm") {
+          k8sUpgrade(env.PROJECT, env.ADDRESS)
+        }
+        container("kubectl") {
+          k8sRollout(env.PROJECT)
+        }
+        container("golang") {
+          k8sProdTestGolang(env.ADDRESS)
+        }
+      } catch(e) {
+        container("helm") {
+          k8sRollback(env.PROJECT)
+        }
+      }
+    }
+  }
+}
+```
+
+We have fewer environment variables since part of the logic for constructing the values is moved into the functions. The `podTemplate` is still the same, and the real differences are noticeable inside stages.
+
+All the stages now contain much simpler steps. Everything is much simpler since the logic, steps, and the commands are moved to functions. All we're doing is treat those functions as simplified steps by invoking them.
+
+You might say that even though the pipeline is now much simpler, it is still not trivial. You'd be right. We could have replaced them with bigger and fewer libraries. We could have had only four libraries like `build`, `test`, `relase`, and `deploy`. However, that would reduce flexibility. Every team in our organization would need to build in the same way, or skip using that library and do the coding inside the pipeline. By having very focused libraries that do only one, or only a few things, we gain more flexibility when combining them.
+
+A good example are the libraries used in the `deploy` stage. If there was only one library (e.g. `k8sDeploy`), everyone would need to use Go to test. As it is now, a different team could choose to use `k8sUpgrade` and `k8sRollout` libraries, but skip `k8sProdTestGolang`. Maybe their application is coded in [Rust](https://www.rust-lang.org/) and they will need a different library. Or, that's the only project that uses Rust and there's no need for a library since there is no repetition. They could choose to re-use libraries that fit their process, and write themselves whatever they're missing.
+
+I> From my experience, Jenkins' shared libraries can be small and with a single purpose. That way, we can combine them as if they are pieces of a puzzle, instead of constantly adding complexity by trying to fit all the scenarios into one or a few libraries.
+
+Another thing worth mentioning is that `node` and `container` blocks are not inside libraries. There are two reasons for that. First, I think it is easier to understand the flow of the pipeline (without going into libraries) when those blocks are there. The second, and much more important reason, is that they are not allowed in declarative pipeline. We are using scripted flavor only because a few things are missing in declarative. However, declarative pipeline is the future and you should be prepared to switch once those issues are resolved. I will refactor the code into declarative once that becomes an option.
+
+Before we move forward, please replace the values of the environment variables those that fit your situation. As a reminder, you most likely need to change `vfarcic` with your GitHub and Docker Hub users, and `acme.com` with the value of the the environment variable `ADDR` available in your terminal session.
+
+Once you're finished adjusting the values, please click the *Save* button to persist the changes. Click the *Open Blue Ocean* link from the left-hand menu, followed with the *Run* button. Go to the new build and wait until it is finished.
+
+We refactored the pipeline by making it more readable and easier to maintain. We did not introduce new functionalities, so the result of this build should be functionally the same as the previous that was done with the prior iteration of the code. Let's confirm that.
+
+Did we push a new image to Docker Hub?
+
 ```bash
-# Click the *Save* button
-
-# Click the *Open Blue Ocean* link from the left-hand menu
-
-# Click the *Run* button
-
-# Click on the row of the new build
-
 open "https://hub.docker.com/r/$DH_USER/go-demo-3/tags/"
+```
 
+The new image (with a few tags) was pushed. How about Helm upgrades?
+
+```bash
 helm ls \
     --tiller-namespace go-demo-3-build
 ```
+
+The output is as follows.
 
 ```
 NAME      REVISION UPDATED        STATUS   CHART           NAMESPACE
 go-demo-3 2        Wed Jul 18 ... DEPLOYED go-demo-3-0.0.1 go-demo-3
 ```
 
+We are now on the second revision, so that part seems to be working as expected. To be on the safe side, we'll check the history.
+
 ```bash
 helm history go-demo-3 \
     --tiller-namespace go-demo-3-build
 ```
+
+The output is as follows.
 
 ```
 REVISION UPDATED        STATUS     CHART           DESCRIPTION
@@ -894,33 +1020,29 @@ REVISION UPDATED        STATUS     CHART           DESCRIPTION
 2        Wed Jul 18 ... DEPLOYED   go-demo-3-0.0.1 Upgrade complete
 ```
 
-```bash
-kubectl -n go-demo-3 get pods
-```
+The first revision was superseded by the second. Our mission has been accomplished, but our pipeline is still not as it's supposed to be.
 
-```
-NAME           READY STATUS  RESTARTS AGE
-go-demo-3-db-0 2/2   Running 0        28m
-go-demo-3-db-1 2/2   Running 0        27m
-go-demo-3-db-2 2/2   Running 0        27m
-go-demo-3-...  1/1   Running 0        4m
-go-demo-3-...  1/1   Running 0        4m
-go-demo-3-...  1/1   Running 0        4m
-```
-
-```bash
-curl "http://go-demo-3.$ADDR/demo/hello"
-```
-
-```
-hello, world!
-```
+TODO: txt files
 
 ## Jenkinsfile & Multistage Builds
+
+The pipeline we designed has at least two big shortcomings. It is not aware of branches and it is not in source control.
+
+Every time we instructed Jenkins to use `git` step, it pulled the latest commit from the `master` branch. While that might be OK for demos, it is definitely unacceptable in real-world situations. Our pipeline must pull the commit that initiated a build from the correct branch. In other words, no matter where we push a commit, that same commit must be used by the pipeline.
+
+If we start processing all commits, no matter from which branch they're coming, we will soon realize that it does not make sense to always execute the same stages. As an example, the *release* and *deploy* stages should be executed only if a commit is made to the master branch. Otherwise, we'd create a new production release always, even if the branch is called *i-am-bored-so-i-decided-to-experiment*. As you can imagine, that is not what we'd like to happen.
+
+I have a mantra that I already repeated quite a few times in this book. Everything we do, no matter whether its code, configuration, or a properties file, **must** be in version control. I even go as far as to say that if someone finds something on some server that is not stored in version control, that person has full rights to remove that something. **If it's not in Git, it does not exist.* As simple as that. Everything else can be considered "hocus-pocus, ad-hoc, nobody knows what was done" type of things. Pipeline is code and, as such, it must be stored in version control. There can be no exceptions.
+
+Fortunately, we can solve all those problems through a combination of Jenkinsfiles, Multi-Stage Builds, and a bit of refactoring.
+
+Let's take a look at *Jenkinsfile* located in the root of *go-demo-3* repository.
 
 ```bash
 cat ../go-demo-3/Jenkinsfile
 ```
+
+The output is as follows.
 
 ```groovy
 import java.text.SimpleDateFormat
@@ -931,7 +1053,7 @@ currentBuild.displayName = new SimpleDateFormat("yy.MM.dd").format(new Date()) +
 
 podTemplate(
   label: label,
-  namespace: "go-demo-3-build", // Not allowed with declarative
+  namespace: "go-demo-3-build",
   serviceAccount: "build",
   yaml: """
 apiVersion: v1
@@ -965,7 +1087,7 @@ spec:
         sh "cp /etc/config/build-config.properties ."
         props = readProperties interpolate: true, file: "build-config.properties"
       }
-      node("docker") { // Not allowed with declarative
+      node("docker") {
         checkout scm
         k8sBuildImageBeta(props.image)
       }
@@ -1021,15 +1143,39 @@ spec:
 }
 ```
 
+As you can see, the content of Jenkinsfile is a pipeline similar to the one we previously created in Jenkins. Soon we'll discover how to tell Jenkins to use that file instead. For now, we'll explore the differences between the pipeline we defined in Jenkins and the one available in Jenkinsfile.
+
+On the first look, you might say that both pipelines are the same. Take a closer look and you'll notice that there are quite a few differences. They might be subtle, but they are important nevertheless.
+
+The first difference is that there are no environment variables. Instead, there is a single variable `props`. Now let's fast forward to the `build` stage.
+
+We added a set of new steps to the `build` stage. We are using `readProperties` to read the `build-config.properties` file and store interpolated values to the `props` variable. There is a bug in Jenkins that prevents us from using absolute paths, so before we `readProperies`, we copy the file from `/etc/config/` to the current directory.
+
+If you go back to `podTemplate` definition you'll notice that the `helm` container has a mount to the directory `/etc/config`. Further down, the same volume is defined as `configMap`. In other words, we're injecting the `build-config.properties` file as Kubernetes ConfigMap and using its content to interpolate all the variables we need.
+
+You don't have to use ConfigMap. It could be a Secret, or it could be a file located in code repository. It does not matter how the file gets there, but that it contains the values we'll need for our pipeline. Those are the same values we defined previously as environment variables. In my opinion, that's a much more elegant and easier way to define them. If you do not like the idea of a properties file, feel free to continue using environment variables as we did in previous iterations of the pipeline.
+
+The next important difference is that we changed `git` steps with `checkout scm`. Later on, we'll establish a connection between pipeline jobs and repositories and branches and Jenkins will know which repository, branch, and commit to pull. Until now, we were always pulling HEAD of the master branch and that is, obviously, unacceptable. We'll see how `checkout scm` works later on. For now, just remember that Jenkins will know what to pull with that instruction.
+
+The step directly below `checkout scm` features the usage of `readProperties` step we declared earlier. Since we specified `interpolate: true`, Jenkins converted each property into a different variable or, to be more precise, a different map entry. We're leveraging that with steps like `k8sBuildImageBeta(props.image)` where `props.image` is one of the interpolated property keys.
+
+The rest of the pipeline is the same as what we had before, except that environment variables are replaced with `props.SOMETHING` variables.
+
+There is one more important difference though. Two of the stages (`release` and `deploy`) are now enveloped in `if ("${BRANCH_NAME}" == "master")` blocks. That allows us to control which parts of the pipeline are executed always, and which will run only if the branch is *master*. You might choose different conditions. For our use case, the logic is straightforward. If a commit (or a merge) is done to master, we want to execute the whole pipeline that, ultimately, upgrades the production release. All the other branches (typically feature branches), should only validate whether the commit works as expected. They should not make a (production) release nor they should deploy to production.
+
+Now that we know that our pipeline needs a ConfigMap named `go-demo-3-build`, our next step will be to create it. We already have a YAML file in the application's repository.
+
 ```bash
 cat ../go-demo-3/k8s/build-config.yml
 ```
+
+The output is as follows.
 
 ```yaml
 kind: ConfigMap
 apiVersion: v1
 metadata:
-  creationTimestamp: 2016-02-18T19:14:38Z
+  creationTimestamp: 2016-02-18...
   name: build-config
   namespace: go-demo-3-build
 data:
@@ -1042,126 +1188,60 @@ data:
     chartVer=0.0.1
 ```
 
+If you focus on the `build-config.properties` data entry, you'll notice that it contains similar values as those we used before through environment variables. Obviously, we won't be able to create the ConfigMap as-is since we need to replace `acme.com` with the address and `vfarcic` with your Docker Hub user. We'll use a bit of `sed` magic to modify the YAML before passing it to `kubectl`.
+
 ```bash
 cat ../go-demo-3/k8s/build-config.yml \
     | sed -e "s@acme.com@$ADDR@g" \
     | sed -e "s@vfarcic@$DH_USER@g" \
     | kubectl apply -f - --record
-
-open "http://$JENKINS_ADDR/job/go-demo-3/"
-
-# Click *Delete Pipeline*
-
-open "http://$JENKINS_ADDR/blue/create-pipeline"
-
-# Select *GitHub*
-
-# Type *Your GitHub access token*
-
-# TODO: Instructions for creating the token
-
-# Select the organization
-
-# Type *go-demo-3* in the *Search...* field
-
-# Select *go-demo-3*
-
-# Click the *Create Pipeline* button
-
-# TODO: Observe multiple jobs
-
-# TODO: Click the *Branches* tab (master, feature-1, feature-2)
-
-# TODO: Click the *Pull Requests* tab
-
-# TODO: Click the *Activity* tab
-
-# TODO: Not enough capacity to run the builds in parallel
-
-# Wait until *feature-1*, *feature-2*, or *PR-1* builds are finished (*PR-2* will fail)
-
-# Click on the build and observe that it did not execute all the stages (only *build* and *func-test*)
-
-# Wait until PR-1 build starts
-
-export GH_USER=[...]
-
-open "https://github.com/$GH_USER/go-demo-3/pull/1"
-
-# Observe the status of the build
 ```
+
+We'll replace the job we used so far with a different kind so our next step is to delete it.
+
+```bash
+open "http://$JENKINS_ADDR/job/go-demo-3/"
+```
+
+Please click the *Delete Pipeline* link and confirm the action.
+
+Now we are ready to create a job in the way we should have done it all along if we didn't need an easy to modify playground.
+
+```bash
+open "http://$JENKINS_ADDR/blue/create-pipeline"
+```
+
+Please select *GitHub* and you'll be asked for *Your GitHub access token*. If you do NOT have a token at hand, please click the *Create an access token here* link and you will be redirected to the page in GitHub that is already pre-configured with all the permissions the token needs. All you have to do is type *Token description (anything should do, use *jenkins* is today is not your creative day) and click the *Generate token* button at the bottom.
+
+You'll see the newly generated token. Make sure to copy it and optionally save it somewhere. This is the first and the last time you will see the value of the token.
+
+Go back to Jenkins UI, paste the token into the *Your GitHub access token* field, and click the *Connect* button.
+
+Next, we need to select the organization. You might see more than one if you are an active GitHub user. Choose the one where you forked *go-demo-3* repository.
+
+You'll see the list of all the repositories you own. Select *go-demo-3*. If there are too many, you can use the *Search...* field to filter the results.
+
+The only thing left is to click the *Create Pipeline* button, and Jenkins will start create jobs. There will be one for each branch. You should, as a minimum, see three jobs; *master*, *feature-1*, and *feature-2*. If we add a WebHook to our GitHub repository, Jenkins would be notified every time we create a new branch, and it would create a corresponding job. Similarly, when we delete a branch, the job would be deleted as well.
+
+Unfortunately, we might not be able to create a WebHook for our examples. At least, not for all of you. Those that are running a local cluster using Docker For Mac or Windows, minikube, or minishift, do not have an IP that is reachable from GitHub. Since I don't want to discriminate those that run a cluster locally from those running it in one of the Cloud providers, I'll skip providing detailed instructions. Instead, when you translate lessons learned from this book into your production cluster, please follow the instructions from [GitHub Webhook: Pipeline Multibranch](https://support.cloudbees.com/hc/en-us/articles/115003019232-GitHub-Webhook-Pipeline-Multibranch) (the *C. Validate GitHub WebHook section*). Google is your friend if you prefer using GitLab, BitBucket, or some other Git solution.
+
+Going back to Jenkins...
+
+The first build of each job that corresponds to a different branch or a pull request is running. You can click on the *Branches* tab if you are interested only in jobs based on branches. Similarly, you can click on the *Pull Requests* tab to see the PRs. I did create a few pull requests in the *vfarcic/go-demo-3* repository but they were not transferred to your fork. For now, you'll need to trust that new jobs will be created for each PR, as long as there is a GitHub WebHook that will notify Jenkins when we create them.
+
+The communication between GitHub and Jenkins goes both ways. On the one hand, GitHub is notifying Jenkins whenever we create a new branch, commit something, or on any other action configured through WebHooks. On the other hand, Jenkins will notify GitHub as well. A good example are pull requests. If we'd have one, would see that the status of the corresponding build would be available in PRs screen. We'd see both the activity while build is running, as well as the outcome once it's finished.
 
 ![Figure 7-TODO: Jenkins integration with GitHub pull requests](images/ch07/jenkins-github-pr.png)
 
-```bash
-# Wait until *master* build is finished
+The *Activity* tab shows all the builds, independently whether they come from a branch or a pull request.
 
-helm ls \
-    --tiller-namespace go-demo-3-build
-```
+We have a problem. The `go-demo-3-build` Namespace does not have enough capacity to run more than one build at a time. I did my best to keep ResourceQuotas and overall cluster capacity to a minimum so that the cost for those running in Cloud is as small as possible. For those running a cluster locally, we have limits of your laptops which also do not allow us to have a big cluster. Small capacity is not really a big deal though if we have enough patience. One of the builds is running while others are waiting in a queue. Once the first build is finished, the second one will start, and then the third, all the way until all the builds are finished. So, we'll have to wait for a while.
 
-```
-NAME      REVISION UPDATED        STATUS   CHART           NAMESPACE
-go-demo-3 3        Wed Jul 18 ... DEPLOYED go-demo-3-0.0.1 go-demo-3
-```
+Please wait until a build of a feature branch is finished (e.g., *feature-1*  or *feature-2*). Click on the row that represents that build and observe the stages. You'll notice that there are only two (*build* and *func-test*). The second half of the pipeline (*release* and *deploy*) was not executed since the `if` condition did not evaluate to `true`.
 
-```bash
-helm history go-demo-3 \
-    --tiller-namespace go-demo-3-build
-```
+Similarly, once the build of the *master* branch is finished, enter inside it and observe that all the stages were executed thus upgrading our production release. Feel free to go to your cluster and confirm that a new Helm revision was created and that new Pods are running. Similarly, a new image should be available in Docker Hub.
 
-```
-REVISION UPDATED        STATUS     CHART           DESCRIPTION
-1        Wed Jul 18 ... SUPERSEDED go-demo-3-0.0.1 Install complete
-2        Wed Jul 18 ... SUPERSEDED go-demo-3-0.0.1 Upgrade complete
-3        Wed Jul 18 ... DEPLOYED   go-demo-3-0.0.1 Upgrade complete
-```
-
-```bash
-kubectl -n go-demo-3 get pods
-```
-
-```
-NAME           READY STATUS  RESTARTS AGE
-go-demo-3-...  1/1   Running 0        5m
-go-demo-3-...  1/1   Running 0        5m
-go-demo-3-...  1/1   Running 0        5m
-go-demo-3-db-0 2/2   Running 0        53m
-go-demo-3-db-1 2/2   Running 0        53m
-go-demo-3-db-2 2/2   Running 0        52m
-```
-
-```bash
-curl "http://go-demo-3.$ADDR/demo/hello"
-```
-
-```
-hello, world!
-```
-
-```bash
-open "https://hub.docker.com/r/$DH_USER/go-demo-3/tags/"
-
-# Observe that tags now have branch names instead of *null*
-```
-
-## Scripted vs Declarative Pipeline
-
-TODO: Write
-
-## Webhooks
-
-```bash
-# TODO: No public IP for Docker for Mac/Windows and minikube
-```
-
-TODO: Code
-
-## Manual Testing & The Attempt To Use The Same Artifacts
-
-TODO: Write
-
-TODO: Reference to the CI chapter
+TODO: Screenshot
 
 ## What Now?
 

@@ -91,15 +91,6 @@
 - [ ] Build images (kaniko, buildah)
 - [ ] [cert-manager](https://github.com/jetstack/cert-manager)
 
-## Contributors
-
-* @neerajkothari (confirmed)
-* @djacob (pending)
-* @chengoldbond (pending)
-* @zarbis (pending)
-* @gmlp
-* @joostvdg
-
 ## Chapter
 
 - [ ] Code

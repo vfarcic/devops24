@@ -139,9 +139,9 @@ We retrieved the hostname (or IP) from the Ingress resource, and now we are read
 open "http://$CLUSTER_DNS/jenkins"
 ```
 
-T> ## A note to Windows users
-T> 
-T> Git Bash might not be able to use the `open` command. If that's the case, replace the `open` command with `echo`. As a result, you'll get the full address that should be opened directly in your browser of choice.
+W> ## A note to Windows users
+W> 
+W> Git Bash might not be able to use the `open` command. If that's the case, replace the `open` command with `echo`. As a result, you'll get the full address that should be opened directly in your browser of choice.
 
 W> In some cases (e.g., GKE), it might take a few minutes until the external load balancer is created. If you see 40x or 50x error message, please wait for a while and try to open Jenkins in the browser again.
 

@@ -8,9 +8,10 @@ env.DOMAIN = "acme.com"
 env.ADDRESS = "go-demo-3.acme.com"
 env.CM_ADDR = "acme.com"
 env.CHART_VER = "0.0.1"
+def label = "jenkins-slave-${UUID.randomUUID().toString()}"
 
 podTemplate(
-  label: "kubernetes",
+  label: label,
   namespace: "go-demo-3-build",
   serviceAccount: "build",
   yaml: """
@@ -32,7 +33,7 @@ spec:
     tty: true
 """
 ) {
-  node("kubernetes") {
+  node(label) {
     node("docker") {
       stage("build") {
         git "${env.REPO}"
