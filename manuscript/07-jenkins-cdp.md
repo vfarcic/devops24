@@ -10,7 +10,7 @@
 - [X] Write
 - [ ] Text review
 - [X] Diagrams
-- [ ] Gist
+- [X] Gist
 - [ ] Review the title
 - [ ] Proofread
 - [ ] Add to slides
@@ -59,6 +59,8 @@ Let's create a cluster and get going.
 ## Cluster
 
 We'll start the practical section of the chapter by going to the fork of the *vfarcic/k8s-specs* repository and making sure that we have the latest revision.
+
+I> All the commands from this chapter are available in the [07-jenkins-cdp.sh](https://gist.github.com/d0cbca319360eb000098383a09fd65f7) Gist.
 
 ```bash
 cd k8s-specs
