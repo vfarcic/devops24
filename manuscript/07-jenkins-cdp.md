@@ -74,6 +74,7 @@ TODO: Increase Docker for Mac/Windows, minikube, and minishift to 4GB and 4CPU
 * [minikube-4gb.sh](https://gist.github.com/0a29803842b62c5c033e4c75cd37f3d4): **minikube** with 3 CPUs, 4 GB RAM, with `ingress`, `storage-provisioner`, and `default-storageclass` addons enabled, with **tiller**, with `LB_IP` variable set to the VM created by minikube, and with **ChartMuseum** and its address set as `CM_ADDR` variable.
 * [kops-cm.sh](https://gist.github.com/603e2dca21b4475985a078b0f78db88c): **kops in AWS** with 3 t2.small masters and 2 t2.medium nodes spread in three availability zones, with **nginx Ingress**, with **tiller**, and with `LB_IP` variable set to the IP retrieved by pinging ELB's hostname, and with **ChartMuseum** and its address set as `CM_ADDR` variable.. The Gist assumes that the prerequisites are set through [Appendix B](#appendix-b).
 * [minishift-4gb.sh](https://gist.github.com/b3d9c8da6e6dfd3b49d3d707595f6f99): **minishift** with 3 CPUs, 3 GB RAM, with version 1.16+, with **tiller**, and with `LB_IP` variable set to the VM created by minishift, and with **ChartMuseum** and its address set as `CM_ADDR` variable.
+* [gke-cm.sh](https://gist.github.com/52b52500c469548e9d98c3f03529c609): **Google Kubernetes Engine (GKE)** with 3 n1-highcpu-2 (2 CPUs, 1.8 GB RAM) nodes (one in each zone), with **nginx Ingress** controller running on top of the "standard" one that comes with GKE, with **tiller**, with `LB_IP` variable set to the IP of the external load balancer created when installing nginx Ingress, and with **ChartMuseum** and its address set as `CM_ADDR` variable. We'll use nginx Ingress for compatibility with other platforms. Feel free to modify the YAML files and Helm Charts if you prefer NOT to install nginx Ingress.
 
 ## Installing Jenkins
 
@@ -99,6 +100,19 @@ AMI_ID=$(grep 'artifact,0,id' \
     | cut -d: -f2)
 
 echo $AMI_ID
+```
+
+If **GKE** is your cluster of choice, we'll need to define variables `G_PROJECT` and `G_AUTH_FILE` which we'll pass to Helm Chart. We'll retrieve the project using `gcloud` CLI and the authentication file is a reference to the one we stored in `/cluster/jenkins/secrets` directory in the previous chapter.
+
+```bash
+export G_PROJECT=$(gcloud info \
+    --format='value(config.project)')
+
+echo $G_PROJECT
+
+G_AUTH_FILE=$(ls cluster/jenkins/secrets/key*json | xargs -n 1 basename)
+
+echo $G_AUTH_FILE
 ```
 
 Next, we'll need to create the Namespaces we'll need. Let's take a look at the definition we'll use.
@@ -210,9 +224,11 @@ Please copy the output of the `echo` command, go back to the browser, and use it
 
 Once inside the nodes screen, you'll see different results depending on how you set up the node for building and pushing Docker images.
 
-If you are a **Docker For Mac or Windows** or a **minikube** user, you'll see a node called `docker-build`. That confirms that we successfully connected Jenkins with the VM we created with Vagrant.
+If you are a **Docker For Mac or Windows**, a **minikube** user, or a **minishift** user, you'll see a node called `docker-build`. That confirms that we successfully connected Jenkins with the VM we created with Vagrant.
 
 If you created a cluster in **AWS** using **kops**, you should see a drop-down list called **docker-agents**.
+
+**GKE** users should see a drop-down list called **docker**.
 
 W> ## A note to AWS EC2 users
 W>

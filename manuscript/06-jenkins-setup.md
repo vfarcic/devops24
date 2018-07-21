@@ -1656,7 +1656,7 @@ helm install helm/jenkins \
     --set jenkins.Master.GAuthFile=$G_AUTH_FILE
 ```
 
-Please note that, depending on your choices, `AMI_ID`, `G_PROJECT`, and `G_AUTH_FILE` might not be set and, as the result, not all the changes we made to the Chart will be available.
+Please note that, depending on your choices, `AMI_ID`, `G_PROJECT`, and `G_AUTH_FILE` might not be set and, as a result, not all the changes we made to the Chart will be available.
 
 Do you remember the patch I explained before? The one that is a temporary fix for the inability to change ClusterRoleBinding to RoleBinding? We still need to apply it.
 
