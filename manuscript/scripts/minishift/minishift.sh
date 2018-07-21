@@ -14,7 +14,9 @@ IP=$(minishift ip)
 NAME=$(echo $IP | tr '.' '-')
 
 oc config set current-context \
-    default/$NAME:8443/system:admin
+    myproject/$NAME:8443/system:admin
+
+# Change `myproject` to `default` if the previous command fails
 
 #######################
 # Destroy the cluster #

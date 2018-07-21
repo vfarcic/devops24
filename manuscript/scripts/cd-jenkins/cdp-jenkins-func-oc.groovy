@@ -25,6 +25,10 @@ spec:
     image: vfarcic/kubectl
     command: ["cat"]
     tty: true
+  - name: oc
+    image: vfarcic/openshift-client
+    command: ["cat"]
+    tty: true
   - name: golang
     image: golang:1.9
     command: ["cat"]
@@ -61,6 +65,13 @@ spec:
             --set ingress.host=${env.ADDRESS} \
             --set replicaCount=2 \
             --set dbReplicaCount=1"""
+        }
+        container("oc") {
+          sh """oc -n go-demo-3-build \
+            create route edge \
+            --service ${env.CHART_NAME} \
+            --insecure-policy Allow \
+             --hostname ${env.ADDRESS}"""
         }
         container("kubectl") {
           sh """kubectl -n go-demo-3-build \

@@ -14,7 +14,9 @@ IP=$(minishift ip)
 NAME=$(echo $IP | tr '.' '-')
 
 oc config set current-context \
-    default/$NAME:8443/system:admin
+    myproject/$NAME:8443/system:admin
+
+# Change `myproject` to `default` if the previous command fails
 
 ##################
 # Install Tiller #
@@ -56,6 +58,11 @@ helm install stable/chartmuseum \
     --set env.secret.BASIC_AUTH_USER=admin \
     --set env.secret.BASIC_AUTH_PASS=admin
 
+oc -n charts create route edge \
+    --service cm-chartmuseum \
+    --hostname $CM_ADDR \
+    --insecure-policy Allow
+
 kubectl -n charts \
     rollout status deploy \
     cm-chartmuseum
@@ -66,29 +73,19 @@ curl "http://$CM_ADDR/health" # It should return `{"healthy":true}`
 # Destroy the cluster #
 #######################
 
-minishift delete -f --clear-cache
+minishift delete -f
 
 # Only if creating the cluster fails with `The server uses a certificate signed by unknown authority` message
 # rm -rf ~/.minishift ~/.kube
 
 kubectl config delete-cluster $NAME:8443
 
-kubectl config delete-cluster 127-0-0-1:8443
-
-kubectl config delete-context /$NAME:8443/developer
-
-kubectl config delete-context default/$NAME:8443/system:admin
-
-kubectl config delete-context minishift
-
 kubectl config delete-context myproject/$NAME:8443/developer
 
 kubectl config delete-context myproject/$NAME:8443/system:admin
 
-kubectl config delete-context default/127-0-0-1:8443/system:admin
+kubectl config delete-context minishift
 
 kubectl config unset users.developer/$NAME:8443
 
 kubectl config unset users.system:admin/$NAME:8443
-
-kubectl config unset users.system:admin/127-0-0-1:8443

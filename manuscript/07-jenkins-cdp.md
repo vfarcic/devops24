@@ -4,7 +4,7 @@
 - [X] Code review Docker for Mac/Windows
 - [X] Code review minikube
 - [X] Code review kops
-- [ ] Code review minishift
+- [X] Code review minishift
 - [ ] Code review GKE
 - [ ] Code review EKS
 - [ ] Write
@@ -70,9 +70,10 @@ TODO: Docker For Mac/Windows needs a "real" IP
 
 TODO: Increase Docker for Mac/Windows, minikube, and minishift to 4GB and 4CPU
 
-* [docker4mac-4gb.sh](https://gist.github.com/4b5487e707043c971989269883d20d28): **Docker for Mac** with 3 CPUs, 4 GB RAM, with **nginx Ingress**, with **tiller**, with `LB_IP` variable set to the IP of the cluster, and with **ChartMuseum**.
-* [minikube-4gb.sh](https://gist.github.com/0a29803842b62c5c033e4c75cd37f3d4): **minikube** with 3 CPUs, 4 GB RAM, with `ingress`, `storage-provisioner`, and `default-storageclass` addons enabled, with **tiller**, with `LB_IP` variable set to the VM created by minikube, and with **ChartMuseum**.
-* [kops-cm.sh](https://gist.github.com/603e2dca21b4475985a078b0f78db88c): **kops in AWS** with 3 t2.small masters and 2 t2.medium nodes spread in three availability zones, with **nginx Ingress**, with **tiller**, and with `LB_IP` variable set to the IP retrieved by pinging ELB's hostname, and with **ChartMuseum**. The Gist assumes that the prerequisites are set through [Appendix B](#appendix-b).
+* [docker4mac-4gb.sh](https://gist.github.com/4b5487e707043c971989269883d20d28): **Docker for Mac** with 3 CPUs, 4 GB RAM, with **nginx Ingress**, with **tiller**, with `LB_IP` variable set to the IP of the cluster, and with **ChartMuseum** and its address set as `CM_ADDR` variable.
+* [minikube-4gb.sh](https://gist.github.com/0a29803842b62c5c033e4c75cd37f3d4): **minikube** with 3 CPUs, 4 GB RAM, with `ingress`, `storage-provisioner`, and `default-storageclass` addons enabled, with **tiller**, with `LB_IP` variable set to the VM created by minikube, and with **ChartMuseum** and its address set as `CM_ADDR` variable.
+* [kops-cm.sh](https://gist.github.com/603e2dca21b4475985a078b0f78db88c): **kops in AWS** with 3 t2.small masters and 2 t2.medium nodes spread in three availability zones, with **nginx Ingress**, with **tiller**, and with `LB_IP` variable set to the IP retrieved by pinging ELB's hostname, and with **ChartMuseum** and its address set as `CM_ADDR` variable.. The Gist assumes that the prerequisites are set through [Appendix B](#appendix-b).
+* [minishift-4gb.sh](https://gist.github.com/b3d9c8da6e6dfd3b49d3d707595f6f99): **minishift** with 3 CPUs, 3 GB RAM, with version 1.16+, with **tiller**, and with `LB_IP` variable set to the VM created by minishift, and with **ChartMuseum** and its address set as `CM_ADDR` variable.
 
 ## Installing Jenkins
 
@@ -147,6 +148,12 @@ helm init --service-account build \
 
 Now we are ready to install Jenkins.
 
+W> ## A note to minishift users
+W>
+W> Helm will try to install Jenkins Chart with the process in a container running as user 0. By default, that is not allowed in OpenShift. We'll skip discussing the best approach to correct the issue, and I'll assume you already know how to set the permissions on the per-Pod basis. Instead, we'll do the most straightforward fix. Please execute the command that follows to allow the creation of restricted Pods to run as any user.
+W>
+W> `oc patch scc restricted -p '{"runAsUser":{"type": "RunAsAny"}}'`
+
 ```bash
 JENKINS_ADDR="go-demo-3-jenkins.$LB_IP.nip.io"
 
@@ -159,6 +166,14 @@ helm install helm/jenkins \
     --set jenkins.Master.GProject=$G_PROJECT \
     --set jenkins.Master.GAuthFile=$G_AUTH_FILE
 ```
+
+W> ## A note to minishift users
+W>
+W> OpenShift requires Routes to make services accessible outside the cluster. To make things more complicated, they are not part of "standard Kubernetes" so we'll need to create one using `oc`. Please execute the command that follows.
+W>
+W> `oc -n go-demo-3-jenkins create route edge --service go-demo-3-jenkins --insecure-policy Allow --hostname $JENKINS_ADDR`
+W>
+W> That command created an `edge` Router tied to the `go-demo-3-jenkins` Service. Since we do not have SSL certificates for HTTPS communication, we also specified that it is OK to use insecure policy which will allow us to access Jenkins through plain HTTP. Finally, the last argument defined the address through which we'd like to access Jenkins UI.
 
 We generated a `nip.io` address and installed Jenkins in the `go-demo-3-jenkins` Namespace. Remember, this Jenkins is dedicated to the *go-demo-3* team, and we might have many other instances serving the needs of other teams.
 
@@ -174,7 +189,7 @@ The only thing we'll validate, right now, is whether the node that we'll use to 
 
 W> ## A note to Windows users
 W> 
-W> Don't forget that `open` might not work in Windows and that you might need to replace it with `echo`, copy the output, and paste it into a tab of your favorite browser.
+W> Don't forget that `open` command might not work in Windows and that you might need to replace it with `echo`, copy the output, and paste it into a tab of your favorite browser.
 
 ```bash
 open "http://$JENKINS_ADDR/computer"
@@ -353,7 +368,9 @@ Next, we'll open the job's configuration screen.
 open "http://$JENKINS_ADDR/job/go-demo-3/configure"
 ```
 
-Please replace the existing code with the content of the [cdp-jenkins-func.groovy Gist](https://gist.github.com/4edc53d5dd11814651485c9ff3672fb7).
+If you are **NOT using minishift**, please replace the existing code with the content of the [cdp-jenkins-func.groovy Gist](https://gist.github.com/4edc53d5dd11814651485c9ff3672fb7).
+
+If you are using **minishift**, replace the existing code with the content of the [cdp-jenkins-func-oc.groovy Gist](https://gist.github.com/1661c2527eda2bfe1e35c77f448f7c34).
 
 We'll explore only the differences between the two revisions of the pipeline. They are as follows.
 
@@ -436,6 +453,10 @@ We also defined `label` with a unique value by adding a suffix based on random U
 
 The `podTemplate` itself is very similar to those we used in quite a few occasions. It'll be created in the `go-demo-3-build` Namespace dedicated to building and testing applications owned by the `go-demo-3` team. The `yaml` contains definitions of the Pod that contains containers with `helm`, `kubectl`, and `golang`. Those are the tools we'll need to execute the steps of the *functional testing* stage.
 
+W> ## A note to minishift users
+W>
+W> Your version of the pipeline contains a few things that other Kubernetes users do not need. You'll notice that there is an additional container named `oc` in the `podTemplate`. Further down, in the `func-test` stage, we're using that container to create an Edge Route that provides the same functionality as Ingress controller used by other Kubernetes flavours.
+
 The curious part is the way nodes (agents) are organized in this iteration of the pipeline. Everything is inside one big block of `node(label)`. As a result, all the steps will be executed in one of the containers of the `podTemplate`. However, since we do not want every part of the build to run inside the cluster, inside the node based on the `podTemplate`, is the same `node("docker")` block we are using for building and pushing Docker images.
 
 The reason for using nested `node` blocks lies in Jenkins' ability to delete unused Pods. The moment `podTemplate` node block is closed, Jenkins would remove the associated Pod. To preserve the state we'll generate inside that Pod, we're making sure that it is alive through the whole build by enveloping all the steps (even thouse running somewhere else) inside one huge `node(label)` block.
@@ -453,6 +474,7 @@ The `try` block is followed with `catch` that is executed only if one of the ste
 The sole purpose for using `try`/`catch` blocks is in `finally`. In it, we are deleting the application we deployed. Since it executes no matter whether there was an error, we have reasonable guarantee that we'll have a clean system no matter the outcome of the pipeline.
 
 To summarize, `try` block ensures that errors are caught. Without it, pipeline would stop executing on the first sign of error, and the release under test would never be removed. The `catch` block re-throws the error, and the `finally` block deletes the release no matter what happens.
+
 
 Before we test the new iteration of the pipeline, please replace the values of the environment variables to fit your situation. As a minimum, you'll need to replace `vfarcic` with your GitHub user and Docker Hub user as before, and `acme.com` with the value stored in the environment variable `ADDR` in your terminal session.
 
@@ -549,7 +571,7 @@ Before we move on, we'll need to create a new set of credentials in Jenkins to s
 open "http://$JENKINS_ADDR/credentials/store/system/domain/_/newCredentials"
 ```
 
-Please type *admin* and both the *Username* and the *Password*.  The *ID* and the *Description* should be set to *chartmuseum*. Once finished, please click the *OK* button to persist the credentials.
+Please type *admin* and both the *Username* and the *Password*. The *ID* and the *Description* should be set to *chartmuseum*. Once finished, please click the *OK* button to persist the credentials.
 
 ![Figure 7-TODO: ChartMuseum Jenkins credentials](images/ch07/jenkins-credentials-cm.png)
 
@@ -577,7 +599,9 @@ Now we can update the job.
 open "http://$JENKINS_ADDR/job/go-demo-3/configure"
 ```
 
-Please replace the existing code with the content of the [cdp-jenkins-release.groovy Gist](https://gist.github.com/2e89eec6ca991ab676d740733c409d35).
+If you are **NOT using minishift**, please replace the existing code with the content of the [cdp-jenkins-release.groovy Gist](https://gist.github.com/2e89eec6ca991ab676d740733c409d35).
+
+If you are a **minishift** user, replace the existing code with the content of the [cdp-jenkins-release-oc.groovy Gist](https://gist.github.com/33650e28417ceb1f2f349ec71b8a934d).
 
 Just as before, we'll explore only the differences between the two pipeline iterations.
 
@@ -709,7 +733,9 @@ Let's go back to *go-demo-3* configuration screen and update the pipeline.
 open "http://$JENKINS_ADDR/job/go-demo-3/configure"
 ```
 
-Please replace the existing code with the content of the [cdp-jenkins-deploy.groovy Gist](https://gist.github.com/3657e7262b65749f29ddd618cf511d72).
+If you are **NOT using minishift**, please replace the existing code with the content of the [cdp-jenkins-deploy.groovy Gist](https://gist.github.com/3657e7262b65749f29ddd618cf511d72).
+
+If you are using **minishift**, please replace the existing code with the content of the [cdp-jenkins-deploy-oc.groovy Gist](https://gist.github.com/1a490bff0c90b021e3390a66dd75284e).
 
 The additions to the pipeline are as follows.
 
@@ -756,6 +782,10 @@ env.PROD_ADDRESS = "go-demo-3.acme.com"
 We added yet another environment variable (`PROD_ADDRESS`) that holds the address through which our production releases are accessible. We'll use it both for defining Ingress host as well as for the final round of testing.
 
 Inside the stage, we're upgrading the production release with the `helm upgrade` command. The key value is `image.tag` that specifies the image tag that should be used.
+
+W> ## A note to minishift users
+W>
+W> Just as in the `func-test` stage, we had to add yet another Edge Route to the `deploy` stage so that we can gain the same functionality as Ingress controller used by other Kubernetes flavours.
 
 Before we proceed with testing, we're waiting until the update rolls out. If there is something obviously wrong with the upgrade (e.g., tag does not exist or there are no available resources), the `rollout status` command will fail.
 
@@ -885,7 +915,7 @@ kubectl -n go-demo-3-jenkins cp \
     cluster/jenkins/secrets
 ```
 
-I already modified the template of the Jenkins Helm Chart to include the file we just copied. All you have to do the next time you install Jenkins is to add `jenkins.Master.GlobalLibraries` value. The full argument should be as follows.
+I already modified the template of the Jenkins Helm Chart to include the file we just copied. All you have to do the next time you install Jenkins with Helm is to add `jenkins.Master.GlobalLibraries` value. The full argument should be as follows.
 
 ```
 --set jenkins.Master.GlobalLibraries=true
@@ -897,7 +927,9 @@ Now we can refactor our pipeline to use shared libraries and see whether that si
 open "http://$JENKINS_ADDR/job/go-demo-3/configure"
 ```
 
-Please replace the existing code with the content of the [cdp-jenkins-lib.groovy Gist](https://gist.github.com/e9821d0430ca909d68eecc7ccbb1825d).
+If you are **NOT using minishift**, please replace the existing code with the content of the [cdp-jenkins-lib.groovy Gist](https://gist.github.com/e9821d0430ca909d68eecc7ccbb1825d).
+
+If you are using **minishift**, please replace the existing code with the content of the [cdp-jenkins-lib-oc.groovy Gist]().
 
 We'll explore only the differences when compared with the previous iteration of the pipeline. They are as follows.
 
@@ -922,7 +954,7 @@ env.CHART_VER = "0.0.1"
       try {
         container("helm") {
           git "${env.REPO}"
-          k8sUpgradeBeta(env.PROJECT, env.DOMAIN)
+          k8sUpgradeBeta(env.PROJECT, env.DOMAIN, "--set replicaCount=2 --set dbReplicaCount=1")
         }
         container("kubectl") {
           k8sRolloutBeta(env.PROJECT)
@@ -1096,7 +1128,7 @@ spec:
       try {
         container("helm") {
           checkout scm
-          k8sUpgradeBeta(props.project, props.domain)
+          k8sUpgradeBeta(props.project, props.domain, "--set replicaCount=2 --set dbReplicaCount=1")
         }
         container("kubectl") {
           k8sRolloutBeta(props.project)
@@ -1143,6 +1175,10 @@ spec:
 }
 ```
 
+W> ## A note to minishift users
+W>
+W> Due to differences between OpenShift and other Kubernetes flavors, you'll have to explore the file called Jenkinsfile.oc. It contains a similar differences as those we commented earlier.
+
 As you can see, the content of Jenkinsfile is a pipeline similar to the one we previously created in Jenkins. Soon we'll discover how to tell Jenkins to use that file instead. For now, we'll explore the differences between the pipeline we defined in Jenkins and the one available in Jenkinsfile.
 
 On the first look, you might say that both pipelines are the same. Take a closer look and you'll notice that there are quite a few differences. They might be subtle, but they are important nevertheless.
@@ -1162,6 +1198,10 @@ The step directly below `checkout scm` features the usage of `readProperties` st
 The rest of the pipeline is the same as what we had before, except that environment variables are replaced with `props.SOMETHING` variables.
 
 There is one more important difference though. Two of the stages (`release` and `deploy`) are now enveloped in `if ("${BRANCH_NAME}" == "master")` blocks. That allows us to control which parts of the pipeline are executed always, and which will run only if the branch is *master*. You might choose different conditions. For our use case, the logic is straightforward. If a commit (or a merge) is done to master, we want to execute the whole pipeline that, ultimately, upgrades the production release. All the other branches (typically feature branches), should only validate whether the commit works as expected. They should not make a (production) release nor they should deploy to production.
+
+W> ## A note to minishift users
+W>
+W> Please replace *Jenkinsfile* with *Jenkinsfile.oc*, commit the change, and push it to the forked repository. You'll have to repeat the same step for all the branches.
 
 Now that we know that our pipeline needs a ConfigMap named `go-demo-3-build`, our next step will be to create it. We already have a YAML file in the application's repository.
 
@@ -1221,7 +1261,7 @@ Next, we need to select the organization. You might see more than one if you are
 
 You'll see the list of all the repositories you own. Select *go-demo-3*. If there are too many, you can use the *Search...* field to filter the results.
 
-The only thing left is to click the *Create Pipeline* button, and Jenkins will start create jobs. There will be one for each branch. You should, as a minimum, see three jobs; *master*, *feature-1*, and *feature-2*. If we add a WebHook to our GitHub repository, Jenkins would be notified every time we create a new branch, and it would create a corresponding job. Similarly, when we delete a branch, the job would be deleted as well.
+The only thing left is to click the *Create Pipeline* button, and Jenkins will start create jobs. There will be one for each branch. You should, as a minimum, see three jobs; *master*, *feature-3*, and *feature-4*. If we add a WebHook to our GitHub repository, Jenkins would be notified every time we create a new branch, and it would create a corresponding job. Similarly, when we delete a branch, the job would be deleted as well.
 
 Unfortunately, we might not be able to create a WebHook for our examples. At least, not for all of you. Those that are running a local cluster using Docker For Mac or Windows, minikube, or minishift, do not have an IP that is reachable from GitHub. Since I don't want to discriminate those that run a cluster locally from those running it in one of the Cloud providers, I'll skip providing detailed instructions. Instead, when you translate lessons learned from this book into your production cluster, please follow the instructions from [GitHub Webhook: Pipeline Multibranch](https://support.cloudbees.com/hc/en-us/articles/115003019232-GitHub-Webhook-Pipeline-Multibranch) (the *C. Validate GitHub WebHook section*). Google is your friend if you prefer using GitLab, BitBucket, or some other Git solution.
 
@@ -1237,7 +1277,7 @@ The *Activity* tab shows all the builds, independently whether they come from a 
 
 We have a problem. The `go-demo-3-build` Namespace does not have enough capacity to run more than one build at a time. I did my best to keep ResourceQuotas and overall cluster capacity to a minimum so that the cost for those running in Cloud is as small as possible. For those running a cluster locally, we have limits of your laptops which also do not allow us to have a big cluster. Small capacity is not really a big deal though if we have enough patience. One of the builds is running while others are waiting in a queue. Once the first build is finished, the second one will start, and then the third, all the way until all the builds are finished. So, we'll have to wait for a while.
 
-Please wait until a build of a feature branch is finished (e.g., *feature-1*  or *feature-2*). Click on the row that represents that build and observe the stages. You'll notice that there are only two (*build* and *func-test*). The second half of the pipeline (*release* and *deploy*) was not executed since the `if` condition did not evaluate to `true`.
+Please wait until a build of a feature branch is finished (e.g., *feature-3*  or *feature-4*). Click on the row that represents that build and observe the stages. You'll notice that there are only two (*build* and *func-test*). The second half of the pipeline (*release* and *deploy*) was not executed since the `if` condition did not evaluate to `true`.
 
 Similarly, once the build of the *master* branch is finished, enter inside it and observe that all the stages were executed thus upgrading our production release. Feel free to go to your cluster and confirm that a new Helm revision was created and that new Pods are running. Similarly, a new image should be available in Docker Hub.
 
