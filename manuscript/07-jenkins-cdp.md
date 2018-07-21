@@ -6,7 +6,7 @@
 - [X] Code review kops
 - [X] Code review minishift
 - [ ] Code review GKE
-- [ ] Code review EKS
+- [X] Code review EKS
 - [ ] Write
 - [ ] Text review
 - [ ] Diagrams
@@ -75,6 +75,7 @@ TODO: Increase Docker for Mac/Windows, minikube, and minishift to 4GB and 4CPU
 * [kops-cm.sh](https://gist.github.com/603e2dca21b4475985a078b0f78db88c): **kops in AWS** with 3 t2.small masters and 2 t2.medium nodes spread in three availability zones, with **nginx Ingress**, with **tiller**, and with `LB_IP` variable set to the IP retrieved by pinging ELB's hostname, and with **ChartMuseum** and its address set as `CM_ADDR` variable.. The Gist assumes that the prerequisites are set through [Appendix B](#appendix-b).
 * [minishift-4gb.sh](https://gist.github.com/b3d9c8da6e6dfd3b49d3d707595f6f99): **minishift** with 3 CPUs, 3 GB RAM, with version 1.16+, with **tiller**, and with `LB_IP` variable set to the VM created by minishift, and with **ChartMuseum** and its address set as `CM_ADDR` variable.
 * [gke-cm.sh](https://gist.github.com/52b52500c469548e9d98c3f03529c609): **Google Kubernetes Engine (GKE)** with 3 n1-highcpu-2 (2 CPUs, 1.8 GB RAM) nodes (one in each zone), with **nginx Ingress** controller running on top of the "standard" one that comes with GKE, with **tiller**, with `LB_IP` variable set to the IP of the external load balancer created when installing nginx Ingress, and with **ChartMuseum** and its address set as `CM_ADDR` variable. We'll use nginx Ingress for compatibility with other platforms. Feel free to modify the YAML files and Helm Charts if you prefer NOT to install nginx Ingress.
+* [eks-cm.sh](https://gist.github.com/fd9c0cdb3a104e7c745e1c91f7f75a2e): **Elastic Kubernetes Service (EKS)** with 2 t2.medium nodes, with **nginx Ingress** controller, with a **default StorageClass**, with **tiller**, with `LB_IP` variable set tot he IP retrieved by pinging ELB's hostname, and with **ChartMuseum** and its address set as `CM_ADDR` variable.
 
 ## Installing Jenkins
 
@@ -945,7 +946,7 @@ open "http://$JENKINS_ADDR/job/go-demo-3/configure"
 
 If you are **NOT using minishift**, please replace the existing code with the content of the [cdp-jenkins-lib.groovy Gist](https://gist.github.com/e9821d0430ca909d68eecc7ccbb1825d).
 
-If you are using **minishift**, please replace the existing code with the content of the [cdp-jenkins-lib-oc.groovy Gist]().
+If you are using **minishift**, please replace the existing code with the content of the [cdp-jenkins-lib-oc.groovy Gist](https://gist.github.com/ff6e0b04f165d2b26d326c116a7cc14f).
 
 We'll explore only the differences when compared with the previous iteration of the pipeline. They are as follows.
 
@@ -1297,7 +1298,7 @@ Please wait until a build of a feature branch is finished (e.g., *feature-3*  or
 
 Similarly, once the build of the *master* branch is finished, enter inside it and observe that all the stages were executed thus upgrading our production release. Feel free to go to your cluster and confirm that a new Helm revision was created and that new Pods are running. Similarly, a new image should be available in Docker Hub.
 
-TODO: Screenshot
+![Figure 7-TODO: The jobs from the go-demo-3 Multi-Branch Pipeline](images/ch07/jenkins-multi-branch-pipeline.png)
 
 ## What Now?
 
@@ -1305,6 +1306,8 @@ TODO: Screenshot
 # TODO: Builds were slow due to low resources
 
 # TODO: Make sure that at least 10 minutes passed since the last build or the VM will stay in AWS
+
+# TODO: Destroy the cluster
 
 cd cd/docker-build
 
