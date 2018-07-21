@@ -7,9 +7,9 @@
 - [X] Code review minishift
 - [ ] Code review GKE
 - [X] Code review EKS
-- [ ] Write
+- [X] Write
 - [ ] Text review
-- [ ] Diagrams
+- [X] Diagrams
 - [ ] Gist
 - [ ] Review the title
 - [ ] Proofread
@@ -48,7 +48,7 @@ We already discussed what a continuous deployment pipeline looks like. In case y
 
 Now that we established a very simple ground rules, we can move on and describe the pipeline we'll build. It'll be a simple one, and yet very close to what you might use in your "real" systems. We are going to build something. Since building without running unit and other types of static tests should be declared officially illegal and punishable with public shame, we'll include those in our **build stage**. Then we're going execute the steps of the **functional testing stage** that will execute all sort of tests that require a live application. Therefore, we'll need to deploy a test release during this stage. Once we're confident that our application behaves as expected, we're going to make a **production release**, followed with the **deploy stage** that will not only upgrade the production release but also run another round of tests to validate whether everything works as expected.
 
-![Figure 7-TODO: The stages of a continuous deployment pipeline](images/ch07/cd-stages.png)
+![Figure 7-1: The stages of a continuous deployment pipeline](images/ch07/cd-stages.png)
 
 You might not agree with the names of the stages. That's OK. It does not matter much how you name things, nor how you group steps. What matters is that the pipeline has everything we need to feel confident that a release can be safely deployed to production. Steps matter, stages are only labels. However, we won't discuss the exact steps just yet. Instead, we'll break those stages apart and build one at the time. During the process, we'll discuss which steps are required.
 
@@ -58,17 +58,25 @@ Let's create a cluster and get going.
 
 ## Cluster
 
-TODO: Write
+We'll start the practical section of the chapter by going to the fork of the *vfarcic/k8s-specs* repository and making sure that we have the latest revision.
 
-TODO: Merge go-demo-3 and rename vfarcic
+```bash
+cd k8s-specs
 
-TODO: ChartMuseum and CM_ADDR
+git pull
+```
 
-TODO: Increase Docker For Mac/Windows to 4GB and 4CPU
+Next, we'll merge your *go-demo-3* fork with the upstream. If you forgot the commands, they are available in the [go-demo-3-merge.sh gist](https://gist.github.com/171172b69bb75903016f0676a8fe9388).
 
-TODO: Docker For Mac/Windows needs a "real" IP
+Now comes boring, but necessary part. We need to create a cluster, unless you kept the one from the previous chapter running.
 
-TODO: Increase Docker for Mac/Windows, minikube, and minishift to 4GB and 4CPU
+The additional requirements, when compared with the Gists from the previous chapter, are **ChartMuseum** and environment variable `CM_ADDR` that contains the address through which we can access it.
+
+If you're using a local cluster created through **Docker For Mac or Windows**, **minikube**, or **minishift**, we'll have to increase its size to **4GB RAM** and **4CPU**.
+
+**Docker For Mac or Windows** users will need to get the "real" IP of the cluster, instead of `localhost` we used so far. You should be able to get it by executing `ifconfig` and picking the address dedicated to Docker.
+
+For your convenience, the Gists and the specs are available below.
 
 * [docker4mac-4gb.sh](https://gist.github.com/4b5487e707043c971989269883d20d28): **Docker for Mac** with 3 CPUs, 4 GB RAM, with **nginx Ingress**, with **tiller**, with `LB_IP` variable set to the IP of the cluster, and with **ChartMuseum** and its address set as `CM_ADDR` variable.
 * [minikube-4gb.sh](https://gist.github.com/0a29803842b62c5c033e4c75cd37f3d4): **minikube** with 3 CPUs, 4 GB RAM, with `ingress`, `storage-provisioner`, and `default-storageclass` addons enabled, with **tiller**, with `LB_IP` variable set to the VM created by minikube, and with **ChartMuseum** and its address set as `CM_ADDR` variable.
@@ -76,6 +84,8 @@ TODO: Increase Docker for Mac/Windows, minikube, and minishift to 4GB and 4CPU
 * [minishift-4gb.sh](https://gist.github.com/b3d9c8da6e6dfd3b49d3d707595f6f99): **minishift** with 3 CPUs, 3 GB RAM, with version 1.16+, with **tiller**, and with `LB_IP` variable set to the VM created by minishift, and with **ChartMuseum** and its address set as `CM_ADDR` variable.
 * [gke-cm.sh](https://gist.github.com/52b52500c469548e9d98c3f03529c609): **Google Kubernetes Engine (GKE)** with 3 n1-highcpu-2 (2 CPUs, 1.8 GB RAM) nodes (one in each zone), with **nginx Ingress** controller running on top of the "standard" one that comes with GKE, with **tiller**, with `LB_IP` variable set to the IP of the external load balancer created when installing nginx Ingress, and with **ChartMuseum** and its address set as `CM_ADDR` variable. We'll use nginx Ingress for compatibility with other platforms. Feel free to modify the YAML files and Helm Charts if you prefer NOT to install nginx Ingress.
 * [eks-cm.sh](https://gist.github.com/fd9c0cdb3a104e7c745e1c91f7f75a2e): **Elastic Kubernetes Service (EKS)** with 2 t2.medium nodes, with **nginx Ingress** controller, with a **default StorageClass**, with **tiller**, with `LB_IP` variable set tot he IP retrieved by pinging ELB's hostname, and with **ChartMuseum** and its address set as `CM_ADDR` variable.
+
+Now we are ready to install Jenkins.
 
 ## Installing Jenkins
 
@@ -256,7 +266,7 @@ We couldn't push to a registry without authentication, so we'll have to login to
 
 There are a few things that we are NOT going to do, even though you probably should when applying the lessons learned your "real" projects. We do not have static analysis. We are NOT generating code coverage, we are NOT creating reports, and we are not sending the result to analysis tools like [SonarQube](https://www.sonarqube.org/). More importantly, we are NOT running any security scanning. There are many other things we could do in this chapter, but we are not. The reason is simple. There is an almost infinite number of tools and steps we could do. They depend on programming languages, internal processes, and what so not. The goal is to understand the logic, and adapt the examples to your own needs. With that in mind, we'll stick only to the bare minimum, not only in this stage, but also in those that follow. It is up to you to extend them to fit your specific needs.
 
-![Figure 7-TODO: The essential steps of the build stage](images/ch07/cd-stages-build.png)
+![Figure 7-2: The essential steps of the build stage](images/ch07/cd-stages-build.png)
 
 Let's define the steps of the build stage as a Jenkins job.
 
@@ -339,7 +349,7 @@ Click the *Open Blue Ocean* link from the left-hand menu, followed with a click 
 
 Once the build starts, a new row will appear. Click it to enter into the details of the build, and observe the progress until it's finished and everything is green.
 
-![Figure 7-TODO: Jenkins build with a single stage](images/ch07/jenkins-build-build.png)
+![Figure 7-3: Jenkins build with a single stage](images/ch07/jenkins-build-build.png)
 
 Let's check whether Jenkins executed the steps correctly. If it did, we should have a new image pushed to our Docker Hub account.
 
@@ -367,7 +377,7 @@ I> When running multiple sets of different tests, consider using `parallel` cons
 
 Finally, we'll have to `delete` the Chart we installed. After all, there's no point wasting resources by running an application longer than we need. In our scenario, as soon as the execution of the tests is finished, we'll remove the application under test. However, there is a twist. Jenkins, like most other CI/CD tools, will stop the execution of the first error. So, we'll have to envelop all the steps in this stage inside a big `try`/`catch`/`finally` statement.
 
-![Figure 7-TODO: The essential steps of the functional stage](images/ch07/cd-stages-func.png)
+![Figure 7-4: The essential steps of the functional stage](images/ch07/cd-stages-func.png)
 
 Before we move on and write the new version of the pipeline, we'll need an address that we'll use as Ingress host of our application under tests.
 
@@ -537,7 +547,7 @@ As we can see, the two Pods of the API and one of the DB are running together wi
 
 Please return to Jenkins UI and wait until the build is finished.
 
-![Figure 7-TODO: Jenkins build with the build and the functional testing stage](images/ch07/jenkins-build-func.png)
+![Figure 7-5: Jenkins build with the build and the functional testing stage](images/ch07/jenkins-build-func.png)
 
 If everything works as we designed, the release under test should have been removed once the testing was finished. Let's confirm that.
 
@@ -580,7 +590,7 @@ One thing worth noting is that we will not use ChartMuseum for deploying applica
 
 Just as with the previous stages, we are focused only on the essential steps which you should extend to suit your specific needs. An example that might serve as inspiration for the missing steps are those that would create a release in GitHub, GitLab, or Bitbucket. Also, it might be useful to build Docker images with manifest files in case you're planning on deploying them to different operating system families (e.g., ARM, Windows, etc). We'll skip those, as quite a few others, in an attempt to keep the pipeline simple, and yet fully functional. Another thing that would be useful to add is an automated way to create and publish release notes.
 
-![Figure 7-TODO: The essential steps of the release stage](images/ch07/cd-stages-release.png)
+![Figure 7-6: The essential steps of the release stage](images/ch07/cd-stages-release.png)
 
 Before we move on, we'll need to create a new set of credentials in Jenkins to store ChartMuseum's username and password.
 
@@ -590,7 +600,7 @@ open "http://$JENKINS_ADDR/credentials/store/system/domain/_/newCredentials"
 
 Please type *admin* and both the *Username* and the *Password*. The *ID* and the *Description* should be set to *chartmuseum*. Once finished, please click the *OK* button to persist the credentials.
 
-![Figure 7-TODO: ChartMuseum Jenkins credentials](images/ch07/jenkins-credentials-cm.png)
+![Figure 7-7: ChartMuseum Jenkins credentials](images/ch07/jenkins-credentials-cm.png)
 
 Next, we'll retrieve the updated `credentials.xml` file and store it in the `cluster/jenkins` directory. That way, if we want to create a new Jenkins instance, the new credentials will be available just as those that we created in the previous chapter.
 
@@ -683,7 +693,7 @@ Before we move on, you'll need to make the necessary changes to the values of th
 
 Don't forget to click the *Save* button to persist the change. After that, follow the same processes as before to run a new build by clicking the *Open Blue Ocean* link from the left-hand menu, followed with the *Run* button. Click on the row of the new build and wait until it's finished.
 
-![Figure 7-TODO: Jenkins build with the build, the functional testing, and the release stages](images/ch07/jenkins-build-release.png)
+![Figure 7-8: Jenkins build with the build, the functional testing, and the release stages](images/ch07/jenkins-build-release.png)
 
 If everything went as expected, we should have a couple of new images pushed to Docker Hub. Let's confirm that.
 
@@ -693,7 +703,7 @@ open "https://hub.docker.com/r/$DH_USER/go-demo-3/tags/"
 
 This time, besides the tags based branches (for now with `null`), we got two new ones that represent the production-ready release. 
 
-![Figure 7-TODO: Images pushed to Docker Hub](images/ch07/docker-hub-go-demo-3.png)
+![Figure 7-9: Images pushed to Docker Hub](images/ch07/docker-hub-go-demo-3.png)
 
 Similarly, we should also have the Chart stored in ChartMuseum.
 
@@ -742,7 +752,7 @@ The purpose of the *deploy stage* is to install the new release to production an
 
 If something goes wrong, we need to be able to act swiftly and roll back the release. I'll skip the discussion about the inability to roll back when changing database schemas and a few other cases. Instead, for the sake of simplicity, I'll assume that we'll roll back always if any of the steps in this stage fail.
 
-![Figure 7-TODO: The essential steps of the deploy stage](images/ch07/cd-stages-deploy.png)
+![Figure 7-10: The essential steps of the deploy stage](images/ch07/cd-stages-deploy.png)
 
 Let's go back to *go-demo-3* configuration screen and update the pipeline.
 
@@ -816,7 +826,7 @@ Before we move on, please make the necessary changes to the values of the enviro
 
 Please click the *Save* button once you're finish with the changes that will make the pipeline work in your environment. The rest is the same as those we performed countless times before. Click the *Open Blue Ocean* link from the left-hand menu, press the *Run* button, and click on the row of the new build. Wait until the build is finished.
 
-![Figure 7-TODO: Jenkins build with all the continuous deployment stages](images/ch07/jenkins-build-deploy.png)
+![Figure 7-11: Jenkins build with all the continuous deployment stages](images/ch07/jenkins-build-deploy.png)
 
 Since this is the first time we're running the *deploy stage*, we'll double-check that the production release was indeed deployed correctly.
 
@@ -898,7 +908,7 @@ We're almost done. The only thing left is to specify the repository from which J
 
 We're finished with the configuration. Don't forget to click the *Save* button to persist the changes.
 
-![Figure 7-TODO: Jenkins Global Pipeline Libraries configuration screen](images/ch07/jenkins-global-pipeline-libraries.png)
+![Figure 7-12: Jenkins Global Pipeline Libraries configuration screen](images/ch07/jenkins-global-pipeline-libraries.png)
 
 Let's take a closer look at the repository we'll use as the *global pipeline library*.
 
@@ -1071,7 +1081,64 @@ REVISION UPDATED        STATUS     CHART           DESCRIPTION
 
 The first revision was superseded by the second. Our mission has been accomplished, but our pipeline is still not as it's supposed to be.
 
-TODO: txt files
+## Consulting Global Libraries Documentation
+
+We already saw that we can open a repository with global pipeline libraries, and consult the functions to find out what they do. While the developer in me prefers that option, many might find it to complicated and might prefer something more "non-developer friendly". Fortunatelly, there is an alternative way to document and consult libraries.
+
+Let's go back to the forked repository with the libraries.
+
+```bash
+open "https://github.com/$GH_USER/jenkins-shared-libraries/tree/master/vars"
+```
+
+If you pay closer attention, you'll notice that all Groovy files with names that start with `k8s`, have an accompanying `txt` file. Let's take a closer look at one of them.
+
+```bash
+curl "https://raw.githubusercontent.com/$GH_USER/jenkins-shared-libraries/master/vars/k8sBuildImageBeta.txt"
+```
+
+The output is as follows.
+
+```
+## Builds a Docker image with a beta release
+
+The image is tagged with the **build display name** suffixed with the **branch name**
+
+**Arguments:**
+
+* **image**: the name of the Docker image (e.g. `vfarcic/go-demo-3`).
+
+**Requirements:**
+
+* A node with Docker
+* Docker Hub credentials with the ID **docker**
+```
+
+Do not get confused with `txt` extension. Documentation can be written not only in plain text, but also as HTML or Markdown. As you can see, I chose the latter.
+
+it is completely up to you how you'll write content of a corresponding documentation of a function. There is no prescribed formula. The only thing that matters is that the name of the `txt` file is the same as the name of the `groovy` function. The only difference is in the extension.
+
+But, how do we visualize those helper files, besides vising the repository where they reside? Before I answer that question, we'll make a slight change to Jenkins' security configuration.
+
+```bash
+open "http://$JENKINS_ADDR/configureSecurity/"
+```
+
+Please scroll down to the *Markup Formatter* section and change the value to *PegDown*. Click the *Apply* button to persist the change. From now on, Jenkins will format everything using Markdown parser. Since our helper files are also written in Markdown, we should be able to visualize them correctly.
+
+Let's find the documentation of the libraries.
+
+```bash
+open "http://$JENKINS_ADDR/job/go-demo-3/"
+```
+
+We are in the old view of the Multi-Stage Builds job we created shortwhile ago. If you look at the left-hand menu, you'll see the link *Pipeline Syntax*. Click it.
+
+The screen we're looking at contains quite a few useful links. There's *Snippet Generator* that we can use to generate code for each of the available steps. *Declarative Directive Generator* generates the code specific to Declarative Pipeline syntax that we're not (yet) using. I'll left you explore those and the other links at your own leisure. The one we're interested right now is the *Global Variables Reference* link. Please click it.
+
+Inside the *Global Variable Reference* screen are all the variables and functions we can use. We're interested in those with names starting with *k8s*. Please scroll down until you find them. You'll see that *.txt* files are nicely formatted and available to anyone interested how to use our functions.
+
+![Figure 7-13: Global Pipeline Libraries documentation](images/ch07/jenkins-libraries-docs.png)
 
 ## Jenkinsfile & Multistage Builds
 
@@ -1288,7 +1355,7 @@ The first build of each job that corresponds to a different branch or a pull req
 
 The communication between GitHub and Jenkins goes both ways. On the one hand, GitHub is notifying Jenkins whenever we create a new branch, commit something, or on any other action configured through WebHooks. On the other hand, Jenkins will notify GitHub as well. A good example are pull requests. If we'd have one, would see that the status of the corresponding build would be available in PRs screen. We'd see both the activity while build is running, as well as the outcome once it's finished.
 
-![Figure 7-TODO: Jenkins integration with GitHub pull requests](images/ch07/jenkins-github-pr.png)
+![Figure 7-14: Jenkins integration with GitHub pull requests](images/ch07/jenkins-github-pr.png)
 
 The *Activity* tab shows all the builds, independently whether they come from a branch or a pull request.
 
@@ -1298,20 +1365,26 @@ Please wait until a build of a feature branch is finished (e.g., *feature-3*  or
 
 Similarly, once the build of the *master* branch is finished, enter inside it and observe that all the stages were executed thus upgrading our production release. Feel free to go to your cluster and confirm that a new Helm revision was created and that new Pods are running. Similarly, a new image should be available in Docker Hub.
 
-![Figure 7-TODO: The jobs from the go-demo-3 Multi-Branch Pipeline](images/ch07/jenkins-multi-branch-pipeline.png)
+![Figure 7-15: The jobs from the go-demo-3 Multi-Branch Pipeline](images/ch07/jenkins-multi-branch-pipeline.png)
 
 ## What Now?
 
+We are, finally, finished designing the first iteration of a fully functioning continuous deployment pipeline. All the subjects we explored in previous chapters and all the problems we solved led us to this point. Everything we learned before were prerequisites for the pipeline we just created.
+
+We succeeded! We are victorious! And we deserve a break.
+
+Before you run away, there are two things I'd like to comment.
+
+Our builds were very slow. Realistically, they should be at least twice as fast. However, we are operating in a very small cluster and, more importantly, `go-demo-3-build` Namespace has very limited resources and very low defaults. Kubernetes throttled CPU usage of the containers involved in builds to maintain the default values we set on that Namespace. That was intentional. I wanted to keep the cluster and the Namespaces small so that the costs are at a minimum. If you're running a cluster in AWS or GCE, the total price should be minimal. On the other hand, if you are running it locally, the changes are that you don't have a laptop in which you can spare much more memory and CPU for the cluster. In either case, the important thing to note is that you should be more generous when creating a "real" production pipelines.
+
+The second, and the last note concerns the VM we're using to build and push Docker images. If you're using AWS or GCE, it was created dynamically with each build. If you recall the settings, the VMs are removed only after ten minutes of inactivity. Please make sure that period passed before you destroy your cluster. If, on the other hand, you created a local VM with Vagrant, please execute the commands that follow to suspend it.
+
 ```bash
-# TODO: Builds were slow due to low resources
-
-# TODO: Make sure that at least 10 minutes passed since the last build or the VM will stay in AWS
-
-# TODO: Destroy the cluster
-
 cd cd/docker-build
 
 vagrant suspend
 
 cd ../../
 ```
+
+That's it. We reached yet another end of a chapter. Feel free to destroy the cluster if you're not planning to continue with the next chapter straight away.
