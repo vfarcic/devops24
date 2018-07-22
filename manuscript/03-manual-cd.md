@@ -6,11 +6,11 @@ We should be able to execute most of the CDP steps from anywhere. Developers sho
 
 Our goal in this chapter is to define the minimum number of steps a continuous deployment process might need. From there on, it would be up to you to extend those steps to serve a particular use-case you might be facing in your project.
 
-Once we know what should be done, we'll proceed and define the commands that will get us there. We'll do our best to create the CDP steps in a way that they can be easily ported to Jenkins, CodeShip, or any other tool we might choose to use. We'll try to be tools agnostic. There will always be some steps that are very specific to the tools we'll use, but I hope that they will be limited to scaffolding, and not the CDP logic.
+Once we know what should be done, we'll proceed and define the commands that will get us there. We'll do our best to create the CDP steps in a way that they can be easily ported to other tools. We'll try to be tools agnostic. There will always be some steps that are very specific to the tools we'll use, but I hope that they will be limited to scaffolding, and not the CDP logic.
 
 I> This chapter assumes that you are already familiar with LimitRanges and ResourceQuotas, besides the requirements from the previous chapters. If you're not, please refer to [The DevOps 2.3 Toolkit: Kubernetes](https://amzn.to/2GvzDjy) for more info.
 
-Whether we'll manage to reach our goals entirely is yet to be seen. For now, we'll ignore the existence of Jenkins, CodeShip, and all the other tools that could be used to orchestrate our continuous deployment processes. Instead, we'll focus purely on Shell and the commands we need to execute. We might write a script or two though.
+Whether we'll manage to reach our goals entirely is yet to be seen. For now, we'll ignore the existence of Jenkins and all the other tools that could be used to orchestrate our continuous deployment processes. Instead, we'll focus purely on Shell and the commands we need to execute. We might write a script or two though.
 
 ## To Continuously Deliver Or To Continuously Deploy?
 

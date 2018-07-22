@@ -20,11 +20,11 @@
 
 # Creating A Continuous Deployment Pipeline With Jenkins
 
-T> Having A Continuous Deployment pipeline capable of the fully automated application life-cycle is a true sign of maturity of an organization.
+T> Having A Continuous Deployment pipeline capable of a fully automated application life-cycle is a true sign of maturity of an organization.
 
-This is it. The time has come to put all the knowledge we obtained so far into a good use. We are about to define a "real" continuous deployment pipeline in Jenkins. Our goal is to move every commit through a set of steps until it is the application is installed (upgraded) and tested in production. We will surely face some new challenges but I am confident that we'll manage to overcome them. We already have all the ingredients, and the only thing left is to put them all together into a continuous deployment pipeline.
+This is it. The time has come to put all the knowledge we obtained into a good use. We are about to define a "real" continuous deployment pipeline in Jenkins. Our goal is to move every commit through a set of steps until the application is installed (upgraded) and tested in production. We will surely face some new challenges, but I am confident that we'll manage to overcome them. We already have all the ingredients, and the only thing left is to put them all together into a continuous deployment pipeline.
 
-W> If you read the previous chapter before July 2018, you'll need to re-run the commands from it. While writing this chapter I realized that the previous one requires a few tweaks.
+W> If you read the previous chapter before August 2018, you'll need to re-run the commands from it. While writing this chapter I realized that the previous one requires a few tweaks.
 
 Before we move into a practical section, we might want to spend a few moments discussing our goals.
 
@@ -69,6 +69,8 @@ git pull
 ```
 
 Next, we'll merge your *go-demo-3* fork with the upstream. If you forgot the commands, they are available in the [go-demo-3-merge.sh gist](https://gist.github.com/171172b69bb75903016f0676a8fe9388).
+
+W> It is very important that you change all the references of `vfarcic/go-demo-3` to the address of your Docker Hub account. If, for example, your hub user is `jdoe`, you should change all `vfarcic/go-demo-3` references to `jdoe/go-demo-3`. Even though I invite you to change it in all the files, the mandatory changes are in files *helm/go-demo-3/Chart.yaml*, *helm/go-demo-3/templates/deployment.yaml*, and *k8s/build-config.yml*. Please make sure to apply the changes in all the branches and do not forget to push them to GitHub.
 
 Now comes boring, but necessary part. We need to create a cluster, unless you kept the one from the previous chapter running.
 

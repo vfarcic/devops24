@@ -8,23 +8,25 @@
 - [X] 04-helm.md
 - [X] 05-chart-museum.md
 - [X] 06-jenkins-setup.md
-- [ ] 07-jenkins-cd.md
+- [ ] 07-jenkins-cdp.md
 - [ ] terraform/kubeadm
-- [ ] aks
-- [ ] 08-big-picture-jenkins.md
-- [ ] 09-codeship.md
-- [ ] 10-jenkins-openshift.md
-- [ ] 11-jenkinsx.md
-- [ ] 12-gitlab.md
-- [ ] Write CD with CJE
-- [ ] Write CD with Argo (https://applatix.com/open-source/argo/)
+- [ ] 08-jenkins-cd.md
+- [ ] Remove warning from 07-jenkins-cdp.md about reading the previous chapter
+- [ ] 09-jenkins-ci.md
+- [ ] 10-extending-pipeline.md (Sonar, security scanning, etc)
+- [ ] 11-big-picture.md
+
+## The DevOps 2.X Toolkit
+
+- [ ] kubernetes Networking - different CNI plugin/provider (Flannel, Calico, etc)
+- [ ] JenkinsX
+- [ ] CodeShip
+- [ ] OpenShift Jenkins
+- [ ] GitLabCI
+- [ ] CJE
+- [ ] CD with Argo (https://applatix.com/open-source/argo/)
 - [ ] Spinnaker
-- [ ] Write https://github.com/azure/brigade
-- [ ] Write Windows support
-- [ ] Add DO with https://github.com/digitalocean/csi-digitalocean
-
-## The DevOps 2.5 Toolkit
-
+- [ ] Windows support
 - [ ] Write daemon-set.md
 - [ ] logging (ELK + FluentD, PaperTrail)
 - [ ] Write persistent-volume.md (EBS, EFS, Rook, GlusterFS, Ceph, NFS)
@@ -37,7 +39,6 @@
 - [ ] Write cron-job.md
 - [ ] Write architecture.md
 - [ ] Write gce.md
-- [ ] Write networking (Calico)
 - [ ] Write aws.md
 - [ ] Write azure.md
 - [ ] Write digital-ocean.md
@@ -64,14 +65,12 @@
 - [ ] Change rs YAMLs to v1
 - [ ] Change deployment YAMLs to v1
 - [ ] AWS Fargate
-- [ ] Jenkins X (https://jenkins-x.github.io/jenkins-x-website/)
 - [ ] DockerEE
 - [ ] OpenShift
 - [ ] Rancher
 - [ ] kismatic
 - [ ] https://kubernetes.io/docs/setup/pick-right-solution/
 - [ ] RBAC with LDAP
-- [ ] kubernetes Networking - different CNI plugin/provider (Flannel, Calico, etc)
 - [ ] Pod / Init Containers
 - [ ] Pod / Preset
 - [ ] Pod / Disruptions
