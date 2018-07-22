@@ -1151,7 +1151,7 @@ We're almost done with *Google Compute Engine* Jenkins' configuration.
 
 Select *n1-standard-2* as the *Machine Type*, select *default* as both the *Network* and the *Subnetwork* and check both *External IP* and *Internal IP* check boxes.
 
-I> In GCE, you will need to have either an external IP or a NAT gateway setup in order to download anything from the internet. As we do not want to bother you with the NAT gateway setup, we will configure an *External IP*. As we also want to have our connection traffic not unnecessarily going through the internet, we also select *Internal IP* to make sure Jenkins still uses the internal IP.
+I> In GCE, you will need to have either an external IP or a NAT gateway setup to download anything from the internet. As we do not want to bother you with the NAT gateway setup, we will configure an *External IP*. As we also want to have our connection traffic not unnecessarily going through the internet, we also select *Internal IP* to make sure Jenkins still uses the internal IP.
 
 The *Image project* should be set to the same value as the one we stored in the environment variable `G_PROJECT`.
 
