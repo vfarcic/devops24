@@ -1611,7 +1611,7 @@ Downloading jenkins from repo https://kubernetes-charts.storage.googleapis.com
 Deleting outdated charts
 ```
 
-We can ignore the failures from the `local` and `chartmusesum` repositories. They are still configured in our local Helm even though they're not currently running.
+We can ignore the failures from the `local` and `chartmuseum` repositories. They are still configured in our local Helm even though they're not currently running.
 
 The important parts of the output are the last entries showing that Helm downloaded `jenkins` from the official repository. We can confirm that further by listing the files in the `helm/jenkins/charts` directory.
 
