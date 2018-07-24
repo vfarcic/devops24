@@ -13,9 +13,9 @@
 - [X] Gist
 - [X] Review the title
 - [X] Proofread
-- [ ] Add to slides
+- [X] Add to slides
 - [ ] Publish on TechnologyConversations.com
-- [ ] Add to Book.txt
+- [X] Add to Book.txt
 - [ ] Publish on LeanPub.com
 
 # Creating A Continuous Deployment Pipeline With Jenkins
