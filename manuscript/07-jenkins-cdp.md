@@ -1,23 +1,3 @@
-## TODO
-
-- [X] Code
-- [X] Code review Docker for Mac/Windows
-- [X] Code review minikube
-- [X] Code review kops
-- [X] Code review minishift
-- [X] Code review GKE
-- [X] Code review EKS
-- [X] Write
-- [X] Text review
-- [X] Diagrams
-- [X] Gist
-- [X] Review the title
-- [X] Proofread
-- [X] Add to slides
-- [ ] Publish on TechnologyConversations.com
-- [X] Add to Book.txt
-- [ ] Publish on LeanPub.com
-
 # Creating A Continuous Deployment Pipeline With Jenkins
 
 T> Having A Continuous Deployment pipeline capable of a fully automated application life-cycle is a real sign of maturity of an organization.
@@ -182,13 +162,13 @@ helm init --service-account build \
     --tiller-namespace go-demo-3-build
 ```
 
-Now we are ready to install Jenkins.
-
 W> ## A note to minishift users
 W>
 W> Helm will try to install Jenkins Chart with the process in a container running as user `0`. By default, that is not allowed in OpenShift. We'll skip discussing the best approach to correct the issue, and I'll assume you already know how to set the permissions on the per-Pod basis. Instead, we'll do the most straightforward fix by executing the command that follows that will allow the creation of restricted Pods to run as any user.
 W>
 W> `oc patch scc restricted -p '{"runAsUser":{"type": "RunAsAny"}}'`
+
+Now we are ready to install Jenkins.
 
 ```bash
 JENKINS_ADDR="go-demo-3-jenkins.$LB_IP.nip.io"
