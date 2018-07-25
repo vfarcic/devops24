@@ -1351,7 +1351,7 @@ The communication between GitHub and Jenkins goes both ways. On the one hand, Gi
 
 ![Figure 7-14: Jenkins integration with GitHub pull requests](images/ch07/jenkins-github-pr.png)
 
-Please note that each of the jobs based on different branches are now using `checkout scm` in their pipelines. Since now Jenkins keeps tracks of repositories, branches, and commits, there is no need for us to be explicit through steps like `git`. The `checkout scm` instruction will be interpreted by Jenkins, and a specific commit will be pulled. This by itself is a significant advantage of using Jenkins' multistage builds.
+Please note that each of the jobs based on different branches are now using `checkout scm` in their pipelines. Since now Jenkins keeps tracks of repositories, branches, and commits, there is no need for us to be explicit through steps like `git`. When a job is triggered by a commit, and Jenkins is notified via a webhook, it'll make sure it is that specific commit that is checked out. This by itself is a significant advantage of using Jenkins' multistage builds.
 
 The *Activity* tab shows all the builds, independently whether they come from a branch or a pull request.
 
