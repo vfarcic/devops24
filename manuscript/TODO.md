@@ -1,6 +1,6 @@
 ## The DevOps 2.4 Toolkit
 
-- [ ] 00-preface.md
+- [X] 00-preface.md
 - [ ] 00-big-picture.md
 - [X] 01-sts.md
 - [X] 02-sa.md
@@ -15,6 +15,7 @@
 - [ ] 09-jenkins-ci.md
 - [ ] 10-extending-pipeline.md (Sonar, security scanning, etc)
 - [ ] 11-big-picture.md
+- [ ] Preface to TechnologyConversations.com
 
 ## The DevOps 2.X Toolkit
 
