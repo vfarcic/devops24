@@ -60,9 +60,9 @@ To Eva for her unwavering support and loving.
 
 To Pavle for making the awesome design of the cover.
 
-To Mortem for being so proud when people put his name in books.
+To Morten for being so proud when people put his name in books.
 
-To Ture and Lillian for providing free and unlimited booze on vacations.
+To Ture and Lillian for providing unlimited free booze on vacations.
 
 # Prerequisites
 
