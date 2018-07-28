@@ -8,9 +8,9 @@
 - [X] 04-helm.md
 - [X] 05-chart-museum.md
 - [X] 06-jenkins-setup.md
-- [ ] 07-jenkins-cdp.md
-- [ ] terraform/kubeadm
+- [X] 07-jenkins-cdp.md
 - [ ] 08-jenkins-cd.md
+- [ ] terraform/kubeadm
 - [ ] Remove warning from 07-jenkins-cdp.md about reading the previous chapter
 - [ ] 09-jenkins-ci.md
 - [ ] 10-extending-pipeline.md (Sonar, security scanning, etc)

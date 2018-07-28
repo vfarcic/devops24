@@ -56,14 +56,6 @@ His random thoughts and tutorials can be found in his blog [TechnologyConversati
 
 To Sara, the only person that truly matters in this world.
 
-To Eva for her unwavering support and loving.
-
-To Pavle for making the awesome design of the cover.
-
-To Morten for being so proud when people put his name in books.
-
-To Ture and Lillian for providing unlimited free booze on vacations.
-
 # Prerequisites
 
 Each chapter will assume that you have a working Kubernetes cluster. It doesn't matter whether that's a single-node cluster running locally or a fully operational production-like cluster. What matters is that you have (at least) one.
