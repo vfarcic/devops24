@@ -6,7 +6,7 @@ TODO
 
 TODO
 
-**Joost van der Griendt** is one of those people that embrace a challenge wholeheartedly. We worked together for the same customer and quickly established a great relationship. From there on, he started helping me with discussions and advice on the subjects I worked on. Later on, he began contributing to this book. At times he was so proactive and helpful that I could not keep up with his pull requests. Just when I would think that I'm done for the day, I'd see a new pull request with more questions, changes, additions, and corrections. It's partly his fault that I did not get enough sleep.
+**Joost van der Griendt** is one of those people that embrace a challenge wholeheartedly. We worked together for the same customer and quickly established a great relationship. From there on, he started helping me with discussions and advice on the subjects I worked on. Later on, he began contributing to this book. At times he was so proactive and helpful that I could not keep up with his pull requests. Just when I would think that I'm done for the day, I'd see a new pull request with more questions, changes, additions, and corrections.
 
 In his own words...
 
