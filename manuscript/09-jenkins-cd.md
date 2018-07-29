@@ -21,24 +21,34 @@
 
 ## Cluster
 
-* [docker4mac.sh](TODO): TODO
+* [docker4mac-cd.sh](TODO): TODO
+
+```bash
+cd k8s-specs
+
+git pull
+```
 
 ## Infra
 
 ```bash
 GH_USER=[...]
 
-# If Docker For Mac / Win
-# TODO: Fork https://github.com/vfarcic/k8s-docker4macwin.git
-
-# If Docker For Mac / Win
-REPO=k8s-prod
+# Fork https://github.com/vfarcic/k8s-prod.git
 
 cd ..
 
-git clone https://github.com/$GH_USER/$REPO.git
+git clone https://github.com/$GH_USER/k8s-prod.git
 
-cd $REPO
+cd k8s-prod
+
+# Add prod Namespace ResourceQuotas, etc
+
+# Explore the files in *chart* directory.
+
+cat helm/requirements.yaml
+
+cat helm/values-orig.yaml
 
 ADDR=$LB_IP.nip.io
 
@@ -49,33 +59,28 @@ ADDR_ESC=$(echo $ADDR \
 
 echo $ADDR_ESC
 
-helm dependency update chart
-
-# TODO: Add prod Namespace ResourceQuotas, etc
-
-# TODO: Explore the files in *chart* directory.
-
 cat helm/values-orig.yaml \
     | sed -e "s@acme-escaped.com@$ADDR_ESC@g" \
     | sed -e "s@acme.com@$ADDR@g" \
     | tee helm/values.yaml
 
-kubectl -n prod \
-    create secret generic \
-    jenkins-credentials \
-    --from-file cluster/jenkins/credentials.xml
+git commit -a -m "Address"
 
-kubectl -n prod \
-    create secret generic \
-    jenkins-secrets \
-    --from-file cluster/jenkins/secrets
+git push
 
 helm install helm \
     -n prod \
     --namespace prod
 
-helm init --service-account build \
-    --tiller-namespace go-demo-3-build
+kubectl -n prod \
+    create secret generic \
+    jenkins-credentials \
+    --from-file ../k8s-specs/cluster/jenkins/credentials.xml
+
+kubectl -n prod \
+    create secret generic \
+    jenkins-secrets \
+    --from-file ../k8s-specs/cluster/jenkins/secrets
 
 helm ls
 
@@ -90,6 +95,8 @@ curl "http://cm.$ADDR/health"
 kubectl -n prod \
     rollout status \
     deploy prod-jenkins
+
+JENKINS_ADDR="jenkins.$ADDR"
 
 open "http://$JENKINS_ADDR"
 
@@ -113,10 +120,10 @@ cd go-demo-5
 
 # Replace `vfarcic/go-demo-5` with `$DH_USER/go-demo-5` in helm/go-demo-5/Chart.yaml, helm/go-demo-5/templates/deployment.yaml
 
-cat k8s/build.yml \
-    | sed -e "s@acme.com@$ADDR@g" \
-    | sed -e "s@vfarcic@$DH_USER@g" \
-    | kubectl apply -f - --record
+kubectl apply -f k8s/build.yml --record
+
+helm init --service-account build \
+    --tiller-namespace go-demo-5-build
 
 # Combination of ../go-demo-3/k8s/ns.yml and ../go-demo-3/k8s/build-config.yml
 
@@ -129,5 +136,56 @@ cat Jenkinsfile.orig \
     | sed -e "s@vfarcic@$DH_USER@g" \
     | tee Jenkinsfile
 
-cat Jenkinsfile
+git commit -a -m "Jenkinsfile"
+
+git push
+
+open "http://$JENKINS_ADDR/configure"
+
+# Add a new cloud > Kubernetes
+# Name = go-demo-5-build
+# Kubernetes URL = https://kubernetes.default
+# Kubernetes Namespace = go-demo-5-build
+# Jenkins URL = http://prod-jenkins.prod:8080
+# Jenkins tunnel = prod-jenkins-agent.prod:50000
+# Save
+
+# Create a multistage build job for go-demo-5
+
+curl -u admin:admin \
+    "http://cm.$ADDR/index.yaml"
+
+# Copy the output from the last step of the job
+
+cd ../go-demo-5
+
+GD5_TAG=[...]
+
+cat helm/values-orig.yaml \
+    | sed -e "s@acme-escaped.com@$ADDR_ESC@g" \
+    | sed -e "s@acme.com@$ADDR@g" \
+    | sed -e "s@go-demo-5-tag@latest@g" \
+    | tee helm/values.yaml
+
+# Create a multistage build job for k8s-prod
+
+helm repo add chartmuseum \
+    http://cm.$ADDR \
+    --username admin \
+    --password admin
+
+helm repo list
+
+helm repo update
+
+helm inspect chartmuseum/go-demo-5
+
+helm dependency update helm
+
+# Fails due to a bug
+
+helm fetch \
+    -d helm/charts \
+    --version 0.0.1 \
+    chartmuseum/go-demo-5
 ```
