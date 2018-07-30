@@ -15,3 +15,7 @@ In his own words...
 **Prageeth Warnak** was continually sending pull requests with corrections and suggestions. He made this book much clearer than it would be if I had to rely on my, often incorrect, assumptions of what readers expect.
 
 Prageeth is a seasoned IT professional currently working as the lead software architect for Australian telco giant Telstra. He enjoys working with new technologies, and he likes spending his leisure time reading books (especially those written by Viktor), watching Netflix and Fox news,yes he is a originalist and a conservative. He lives in Melbourne with his family. He is fascinated getting Microservices and DevOps done right.
+
+**Neeraj Kothari** - Review, Suggestions, Windows testing, etc
+
+Neeraj is an architect mostly worked with American banks. New technologies excites him which makes him learn all the time and like to analyze and connect the dots in fast changing technology world. He is passionate about Microservices and DevOps. He likes to read, day dream and watch movies, His favorite author is Malcolm Gladwell.   
