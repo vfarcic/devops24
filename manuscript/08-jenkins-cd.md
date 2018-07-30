@@ -64,7 +64,9 @@ cat helm/values-orig.yaml \
     | sed -e "s@acme.com@$ADDR@g" \
     | tee helm/values.yaml
 
-git commit -a -m "Address"
+git add .
+
+git commit -m "Address"
 
 git push
 
@@ -138,7 +140,9 @@ cat Jenkinsfile.orig \
     | sed -e "s@vfarcic@$DH_USER@g" \
     | tee Jenkinsfile
 
-git commit -a -m "Jenkinsfile"
+git add .
+
+git commit -m "Jenkinsfile"
 
 git push
 
@@ -203,7 +207,9 @@ cd ../go-demo-5
 
 # Increment the version of *helm/go-demo-5/Chart.yaml* to `0.0.2`
 
-git commit -a -m "Version bump"
+git add .
+
+git commit -m "Version bump"
 
 git push
 
