@@ -67,29 +67,7 @@ helm install stable/jenkins \
     --set Master.HostName=$JENKINS_ADDR
 ```
 
-Jenkins Helm Chart comes with one big drawback. It uses ClusterRoleBinding for binding with the ServiceAccount `jenkins`. As a result, we cannot fine-tune permissions. We cannot define that, for example, Jenkins can operate only in the `jenkins` Namespace. Instead, the permissions we bind will apply to all Namespaces. That, as you can imagine, is a huge security risk. Jenkins could, for example, remove all the Pods from `kube-system`. Even if we have full trust in all the people working in our company and if we're sure that no one will try to define any malicious Pipeline, having cluster-wide permissions introduces a possible risk of doing something wrong by accident. We wouldn't like that to happen.
-
-I> I made a [pull request](https://github.com/kubernetes/charts/pull/6190) that should allow us to switch from ClusterRoleBinding to RoleBinding. I'll update the book once the PR is merged. Until then, we'll remedy the issue with a workaround.
-
-First, we'll remove the ClusterRoleBinding created through the Chart.
-
-```bash
-kubectl delete clusterrolebinding \
-    jenkins-role-binding
-```
-
-Next, we'll create a RoleBinding. It'll be the same as the ClusterRoleBinding we just removed with only the `kind` being different.
-
-```bash
-cat helm/jenkins-patch.yml
-
-kubectl apply -n jenkins \
-    -f helm/jenkins-patch.yml
-```
-
-I am intentionally not providing more details since this is only a workaround until the PR is merged. Also, I'll assume that you already know how Roles, RoleBindings, and ServiceAccounts work and that you'll be able to deduce the logic just by exploring the definitions.
-
-Finally, we'll confirm that Jenkins is rolled out.
+Next, we'll confirm that Jenkins is rolled out.
 
 ```bash
 kubectl -n jenkins \
@@ -1459,7 +1437,7 @@ jenkins:
     # GAuthFile:
   rbac:
     install: true
-    # roleBindingKind: RoleBinding
+    roleBindingKind: RoleBinding
 ```
 
 If we compare that with `helm/jenkins-values.yml`, we'll notice that most entries are almost the same. There is one significant difference though. This time, all the entries are inside `jenkins`. That way, we're telling Helm that the values should be applied to the dependency named `jenkins` and defined in `requirements.yaml`.

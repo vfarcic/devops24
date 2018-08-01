@@ -91,6 +91,8 @@
 - [ ] Run containers (Docker, containerD, rkt, cri-o)
 - [ ] Build images (kaniko, buildah)
 - [ ] [cert-manager](https://github.com/jetstack/cert-manager)
+- [ ] [Google Cloud Build](https://cloud.google.com/cloud-build/docs/)
+- [ ] [KNative](https://github.com/knative/)
 
 ## Chapter
 

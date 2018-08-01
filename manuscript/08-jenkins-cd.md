@@ -115,12 +115,12 @@ cd ..
 
 # Fork vfarcic/go-demo-5
 
-DH_USER=[...]
-
 git clone \
-    https://github.com/$DH_USER/go-demo-5.git
+    https://github.com/$GH_USER/go-demo-5.git
 
 cd go-demo-5
+
+DH_USER=[...]
 
 # Replace `vfarcic/go-demo-5` with `$DH_USER/go-demo-5` in helm/go-demo-5/Chart.yaml, helm/go-demo-5/templates/deployment.yaml
 
@@ -161,6 +161,8 @@ open "http://$JENKINS_ADDR/configure"
 curl -u admin:admin \
     "http://cm.$ADDR/index.yaml"
 
+VERSION=0.0.2
+
 # Copy the output from the last step of the job
 
 helm repo add chartmuseum \
@@ -173,13 +175,15 @@ helm repo list
 helm repo update
 
 helm inspect chartmuseum/go-demo-5 \
-    --version 0.0.1
+    --version $VERSION
 
 cd ../k8s-prod
 
+cat helm/requirements.yaml
+
 echo "- name: go-demo-5
   repository: \"@chartmuseum\"
-  version: 0.0.1" \
+  version: $VERSION" \
   | tee -a helm/requirements.yaml
 
 echo "go-demo-5:
@@ -187,25 +191,40 @@ echo "go-demo-5:
     host: go-demo-5.$ADDR" \
     | tee -a helm/values.yaml
 
+# Increment helm/Chart.yaml
+
+git add .
+
+git commit -m "Added go-demo-5"
+
+git push
+
 helm dependency update helm
 
-# # Fails due to a bug
+# Fails due to a bug
 
 helm fetch \
     -d helm/charts \
-    --version 0.0.1 \
+    --version $VERSION \
     chartmuseum/go-demo-5
+
+ls -l helm/charts
 
 helm upgrade prod helm \
     --namespace prod
 
+kubectl -n prod get pods
+
 curl "http://go-demo-5.$ADDR/demo/hello"
+
+kubectl -n prod \
+    describe deploy prod-go-demo-5
 
 # Run another build of *go-demo-5* in Jenkins
 
 cd ../go-demo-5
 
-# Increment the version of *helm/go-demo-5/Chart.yaml* to `0.0.2`
+# Increment the version of *helm/go-demo-5/Chart.yaml*
 
 git add .
 
@@ -213,5 +232,25 @@ git commit -m "Version bump"
 
 git push
 
+# Run a new build of go-demo-5
+
+cd ../k8s-prod
+
+cat Jenkinsfile.orig
+
+cat Jenkinsfile.orig \
+    | sed -e "s@acme.com@$ADDR@g" \
+    | tee Jenkinsfile
+
+git add .
+
+git commit -m "Jenkinsfile"
+
+git push
+
+# TODO: Create a k8s cloud config
+
 # Create a multistage build job for k8s-prod
+
+helm history prod
 ```
