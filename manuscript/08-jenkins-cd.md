@@ -42,8 +42,6 @@ git clone https://github.com/$GH_USER/k8s-prod.git
 
 cd k8s-prod
 
-# Add prod Namespace ResourceQuotas, etc
-
 # Explore the files in *chart* directory.
 
 cat helm/requirements.yaml
@@ -161,7 +159,7 @@ open "http://$JENKINS_ADDR/configure"
 curl -u admin:admin \
     "http://cm.$ADDR/index.yaml"
 
-VERSION=0.0.2
+VERSION=0.0.1
 
 # Copy the output from the last step of the job
 
@@ -191,8 +189,6 @@ echo "go-demo-5:
     host: go-demo-5.$ADDR" \
     | tee -a helm/values.yaml
 
-# Increment helm/Chart.yaml
-
 git add .
 
 git commit -m "Added go-demo-5"
@@ -214,6 +210,9 @@ helm upgrade prod helm \
     --namespace prod
 
 kubectl -n prod get pods
+
+kubectl -n prod rollout status \
+    deployment prod-go-demo-5
 
 curl "http://go-demo-5.$ADDR/demo/hello"
 
@@ -248,9 +247,12 @@ git commit -m "Jenkinsfile"
 
 git push
 
-# TODO: Create a k8s cloud config
-
 # Create a multistage build job for k8s-prod
 
 helm history prod
+
+kubectl -n prod \
+    describe deploy prod-go-demo-5
+
+curl "http://go-demo-5.$ADDR/demo/hello"
 ```
