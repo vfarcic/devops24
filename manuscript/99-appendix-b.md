@@ -452,7 +452,6 @@ kops create cluster \
     --master-zones $ZONES \
     --ssh-public-key devops23.pub \
     --networking kubenet \
-    --kubernetes-version v1.8.4 \
     --authorization RBAC \
     --yes
 ```
