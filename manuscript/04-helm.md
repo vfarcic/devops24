@@ -306,6 +306,8 @@ kubectl -n jenkins \
     rollout status deploy jenkins
 ```
 
+W> The `rollout status` command might exit with the `error: watch closed before Until timeout` message. Don't panic. Jenkins might need more time to initialize than that command's timeout. If that happens, wait until Jenkins Pod is running.
+
 We are almost ready to open Jenkins in a browser. But, before we do that, we need to retrieve the hostname (or IP) through which we can access our first Helm install.
 
 ```bash

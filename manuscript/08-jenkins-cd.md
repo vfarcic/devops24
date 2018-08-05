@@ -156,17 +156,12 @@ open "http://$JENKINS_ADDR/configure"
 
 # Create a multistage build job for go-demo-5
 
-curl -u admin:admin \
-    "http://cm.$ADDR/index.yaml"
+curl "http://cm.$ADDR/index.yaml"
 
-VERSION=0.0.1
-
-# Copy the output from the last step of the job
+VERSION=[...]
 
 helm repo add chartmuseum \
-    http://cm.$ADDR \
-    --username admin \
-    --password admin
+    http://cm.$ADDR
 
 helm repo list
 
@@ -197,17 +192,11 @@ git push
 
 helm dependency update helm
 
-# Fails due to a bug
-
-helm fetch \
-    -d helm/charts \
-    --version $VERSION \
-    chartmuseum/go-demo-5
-
 ls -l helm/charts
 
 helm upgrade prod helm \
-    --namespace prod
+    --namespace prod \
+    --set something=else
 
 kubectl -n prod get pods
 
@@ -240,6 +229,10 @@ cat Jenkinsfile.orig
 cat Jenkinsfile.orig \
     | sed -e "s@acme.com@$ADDR@g" \
     | tee Jenkinsfile
+
+# Increment go-demo-5 version in helm/requirements.yaml
+
+# Increment version in helm/Chart.yaml
 
 git add .
 
