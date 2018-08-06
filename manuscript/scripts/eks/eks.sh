@@ -10,6 +10,8 @@ export AWS_SECRET_ACCESS_KEY=[...] # Replace [...] with AWS secret access key
 
 export AWS_DEFAULT_REGION=us-west-2
 
+mkdir -p cluster
+
 eksctl create cluster \
     -n devops24 \
     --kubeconfig cluster/kubecfg-eks \
@@ -30,10 +32,6 @@ kubectl apply \
 
 kubectl apply \
     -f https://raw.githubusercontent.com/kubernetes/ingress-nginx/master/deploy/provider/aws/patch-configmap-l4.yaml
-
-kubectl patch service ingress-nginx \
-    -p '{"spec":{"externalTrafficPolicy":"Local"}}' \
-    -n ingress-nginx
 
 ########################
 # Install StorageClass #

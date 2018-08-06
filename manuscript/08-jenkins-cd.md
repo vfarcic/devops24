@@ -1,7 +1,7 @@
 ## TODO
 
-- [ ] Code
-- [ ] Code review Docker for Mac/Windows
+- [X] Code
+- [X] Code review Docker for Mac/Windows
 - [ ] Code review minikube
 - [ ] Code review kops
 - [ ] Code review minishift
@@ -22,6 +22,8 @@
 ## Cluster
 
 * [docker4mac-cd.sh](TODO): TODO
+* [minikube-cd.sh](TODO): TODO
+
 
 ```bash
 cd k8s-specs
@@ -195,8 +197,7 @@ helm dependency update helm
 ls -l helm/charts
 
 helm upgrade prod helm \
-    --namespace prod \
-    --set something=else
+    --namespace prod
 
 kubectl -n prod get pods
 

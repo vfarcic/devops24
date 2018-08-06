@@ -22,6 +22,7 @@
 
 - [ ] Service mesh (Istio, https://akomljen.com/kubernetes-service-mesh/, http://philcalcado.com/2017/08/03/pattern_service_mesh.html)
 - [ ] Serverless (KNative)
+- [ ] Build images (kaniko, buildah)
 - [ ] kubernetes Networking - different CNI plugin/provider (Flannel, Calico, etc)
 - [ ] JenkinsX
 - [ ] CodeShip
@@ -89,7 +90,6 @@
 - [ ] Machine learning (https://github.com/kubeflow)
 - [ ] ChatOps w/k8s
 - [ ] Run containers (Docker, containerD, rkt, cri-o)
-- [ ] Build images (kaniko, buildah)
 - [ ] [cert-manager](https://github.com/jetstack/cert-manager)
 - [ ] [Google Cloud Build](https://cloud.google.com/cloud-build/docs/)
 - [ ] [KNative](https://github.com/knative/)
