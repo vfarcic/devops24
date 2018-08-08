@@ -28,7 +28,29 @@ What is the final recommendation? **Use Docker For Mac/Windows to run your clust
 
 TODO: Write
 
-TODO: OpenShift has too many inconsistencies compared with the "official" API.
+### OpenShift
+
+RedHat’s OpenShift is one of the more veteran and comprehensive Kubernetes solutions, with a lot of development and community work from Red Hat thrown in for good measure. It’s a standalone Kubernetes distribution, adding dozens of tools for developers and operations aimed at making Kubernetes more productive.
+
+OpenShift is probably the most widely used Kubernetes platform on on-prem servers. RedHat's long track record with Kubernetes is a proof that they are experienced and committed to it. Many of the features currently available in OpenShift were taken as a blueprint for Kubernetes core.
+
+RedHat proved through its collaboration with Kubernetes community that they have the expertise required not only to assemble a Kubernetes distribution but also to influence Kubernetes road-map. Some of the OpenShift features (e.g., Routes) were created when similar functionalities did not exist in Kubernetes (e.g., Ingress).
+
+My main (personal) issue with OpenShift is that it does not follow standards. That is to be expected since some of the Kubernetes "standards" are based on OpenShift. However, insistence on using resource types that are not supported by Kubernetes core can lead to vendor lock-in. You will not be able to (easily) use Helm adopted by almost everyone else because OpenShift has its own standard. You won't be able to leverage pre-packaged applications because they are based on Ingress and not Routes. And so on and so forth. Once OpenShift is adopted, it might be very costly to move to a different Kuberentes platform or to leverage offerings from industry as a whole.
+
+On the other hand, OpenShift clearly rules among on-prem Kubernetes clusters. They were the first on the market and choosing OpenShift means following the path that many other companies already took. It is a very low-risk choice with a vendor that proved to be one the leaders in Kubernetes community.
+
+The fact that OpenShift has quite a few of its own resource types that are not compatible with Kubernetes core is the primary concern that prevents me from saying "use it, without a doubt."
+
+### Pivotal Container Service (PKS) And IBM Cloud Container Service
+
+I haven't had much direct experience with the two solutions so I can comment only on second-hand information I have. Both are too complex since they are not designed to be a Kubernetes solution. Kubernetes was added on top of existing services and offerings. In my (uneducated) opinion, using PKS or IBM Cloud makes sense for companies that already have a massive investment with the technologies used side by side with those solutions.
+
+### Rancher 2
+
+Rancher (since release 2) is probably the most commonly used free Kubernetes distribution. Unlike some others (e.g., OpenShift) it does not stray away from core Kubernetes thus making it compatible with community and industry standards. Its focus is more on cluster management (especially with multiple clusters) than Kubernetes internal workings.
+
+In my experience, Rancher is the best choice for the companies who do want an enterprise-ready Kubernetes cluster which maintains compatibility with Kuberenetes-core. The distribution is free even though support is provided for a fee.
 
 ## Comparing Kubernetes Platforms For Running Clusters In Cloud
 
@@ -37,6 +59,19 @@ TODO: Write
 ## Comparing Kubernetes Platforms For Running Managed Clusters
 
 TODO: Write
+
+## PKS (GCE)
+
+TODO: Write
+
+### Pros
+
+* Vanila Kubernetes
+* Documentation is easy to understand and is accurate (https://docs.pivotal.io/runtimes/pks/1-0/gcp-prepare-env.html)
+
+### Cons
+
+* Setup is not automated. Too many manual steps.
 
 ## Random Stuff
 
