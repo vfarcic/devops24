@@ -525,25 +525,37 @@ You'll notice that we are not using multi-stage builds. That makes me sad since 
 
 We'll switch from building Docker images in a separate VM outside the cluster to using Docker socket to build it in one of the Kubernetes worker nodes. That does reduce security (Docker on that node could be obducted) and it can cause potential problems with Kubernetes (we're using containers without it's knowledge). Yet, using the socket is somewhat easier, cleaner, and faster. Even though we explored this option through Shell commands, we did not use it in our Jenkins pipelines. So, I though that you should experience both ways of building images in a Jenkins pipeline and choose for yourself which method fits your use-case better. The goal is to find the balance and gain experience that will let you choose what works better for you. There will be quite a few changes further on that are aimed at giving you better insight into different ways of accomplishing the same goals. You will have to make the choice how to combine them into the solution that works the best in your organization.
 
+Going back to the reason for NOT using Docker's multi-stage builds... Given that we're about to use Docker in one of the worker nodes of the cluster, we depend on Docker version running inside that cluster. At the time of this writing (August 2018), some Kubernetes clusters still use more than a year old Docker. If my memory serves me, multi-stage builds were added in Docker *17.05*, and some Kubernetes flavours (even when on the latest version), still use Docker *17.03* or even older. Kops is a good example, even though it is not the only one. Release *1.9.x* (the latest stable at the time of this writing), uses Docker *17.03*. Since I'm committed making all the examples in this book working in many different Kubernetes flavours, I had to remove multi-stage builds. Check Docker version in your cluster and, if it's *17.05* or newer, I'd greatly recommend you continue using multi-stage builds. They are too good of a feature to ignore it, if not necessary.
+
 All in all, that *Dockerfile* assumes that we already run our tests and that we already built the binary. We'll see how to do that inside a Jenkins pipeline soon.
 
 Soon we'll explore the pipeline stored in Jenkinsfile in the repository we cloned. However, before we do that, we'll go through declarative pipeline syntax since that's the one we'll use in this chapter.
 
 ## Switching From Scripted To Declarative Pipeline
 
-TODO: What is declarative pipeline?
+Long long time ago, in a galaxy far far away, a group of Jenkins contributors decided to reinvent the way Jenkins jobs are defined and how they operate. OK, it wasn't that long ago, even though a couple of years in software terms is a lot.
 
-TODO: Explain the structure
+The new type of jobs became known as Jenkins pipeline. It was received well by the community and the adoption started almost instantly. Everything was great and the benefits of using Pipeline compared to FreeStyle jobs were evident from the start. However, it wasn't easy for everyone to adopt Pipeline. Those who were used to scripting, and especially those familiar with Groovy, had no difficulties to switch. But, there were many who used Jenkins without being coders. They did not find Pipeline to be as easy as we thought it would be. While I do believe that there is no place in software industry for those who do not know how to code, it was still evident that something needed to be done to simplify Pipeline syntax even more. So, a new flavour of Pipeline syntax was born. We renamed the existing Pipeline flavor to Scripted Pipeline and created a new one called Declarative Pipeline.
+
+Declarative Pipeline is a more simplified and opinionated syntax of top of Pipeline. It's goal is to provide easier way to define pipelines, to make them more readable, and to lower the entry bar. You can think of the Scripted Pipeline being initially aimed at power users and Declarative Pipeline for everyone else. In the meantime, Declarative Pipeline started getting more and more attention and today such a separation is not necessarily valid any more. In some ways, Declarative Pipeline is more advanced and is recommended for all users except when one need something that cannot (easily) be done without switching to Scripted.
+
+I> The recommendation is to always start with Declarative Pipeline and switch to Scripted only if you need to accomplish something that is not currently supported.
+
+Right now you might be asking yourself something along the lines "why did Viktor make us use Scripted Pipeline if Declarative is better?" The previous pipeline required two features that are not yet supported by Declarative. We wanted to use `podTemplate` for most of the process with occasional jump into agents based on VMs for building Docker images. That is not yet supported with Declarative Pipeline. However, since we will now switch to using Docker socket to build images inside the nodes of the cluster, that is not an issue any more. The second reason lies in inability to define Namespace inside `podTemplate`. That also is not an issue any more since we'll switch to the model of defining a separate Kubernetes cloud for each Namespace where builds should run. You'll see both changes in action soon when we start exploring the continuous delivery pipeline used for *go-demo-5*.
+
+Before we jump into defining the pipeline for *go-demo-5* application, we'll briefly explore the general structure of a Declarative pipeline.
+
+The code that follows represents a sceleton of a Declarative pipeline.
 
 ```groovy
 pipeline {
-  options {
-    ...
-  }
   agent {
     ...
   }
   environment {
+    ...
+  }
+  options {
     ...
   }
   parameters {
@@ -564,98 +576,216 @@ pipeline {
 }
 ```
 
+A Declarative Pipeline is always enclosed in a `pipeline` block. That allows Jenkins to distinguish Declarative from Scripted flavour. Inside it are defferent sections, each with a specific purpose.
+
+The `agent` section specifies where the entire Pipeline, or a specific stage, will execute in the Jenkins environment depending on where the agent section is placed. The section must be defined at the top-level inside the pipeline block, but stage-level usage is optional. We can define different types of agents inside this block. In our case, we'll use `kubernetes` type which translates to `podTemplate` we used before. The `agent` section is mandatory.
+
+The `post` section defines one or more additional steps that are run upon the completion of a Pipeline's or stage's run (depending on the location of the post section within the Pipeline). It supports any of of the following post-condition blocks: `always`, `changed`, `fixed`, `regression`, `aborted`, `failure`, `success`, `unstable`, and `cleanup`. These condition blocks allow the execution of steps inside each condition depending on the completion status of the Pipeline or stage.
+
+The `stages` block is where most of the action is happening. It contains a sequence of one or more `stage` directives inside of which are the `steps` which constitute the bulk of our pipeline.
+
+The `environment` directive specifies a sequence of key-value pairs which will be defined as environment variables for the all steps, or stage-specific steps, depending on where the environment directive is located within the Pipeline. This directive supports a special helper method `credentials()` which can be used to access pre-defined Credentials by their identifier in the Jenkins environment.
+
+The `options` directive allows configuring Pipeline-specific options from within the Pipeline itself. Pipeline provides a number of these options, such as `buildDiscarder`, but they may also be provided by plugins, such as `timestamps`.
+
+The `parameters` directive provides a list of parameters which a user should provide when triggering the Pipeline. The values for these user-specified parameters are made available to Pipeline steps via the params object.
+
+The `triggers` directive defines the automated ways in which the Pipeline should be re-triggered. In most cases, we should trigger a build through a Webhook. In such situations, `triggers` block does not provide any value.
+
+Finally, the last section is `tools`. It allows us to define tools to auto-install and put on the `PATH`. Since we're using containers, `tools` are pointless. The tools we need are already defined as container images and accessible through containers of the build Pod. Even if we'd use a VM for parts of our pipeline, like in the previous chapter, we should still bake the tools we need inside VM images and not vaste our time installing them at runtime.
+
+You can find much more info about declarative pipeline in [Pipeline Syntax](https://jenkins.io/doc/book/pipeline/syntax/) page. As a matter of fact, important parts of the descriptions you just read are from that page.
+
+You probably got bored to death with the previous explanations. If you didn't, the chances are that they were insufficient. We'll fix that by going through an example that will much better illustrate how Declarative Pipeline works. We'll use most of those blocks in the example that follows. The exceptions are `parameters` (we don't have a good use case for them), `triggers` (useless when we're using Webhooks), and `tools` (reminescent from some other era). Once we're finished exploring the pipeline of the *go-demo-5* project, you'll have enough experience to get you started with your own Declarative Pipelines, if you choose to use them.
+
+## Demistifying Declarative Pipeline Through A Practical Example
+
+Let's take a look at a *Jenkinsfile.orig* which we'll use as a base to generate *Jenkinsfile* that will contain the correct address of the cluster and GitHub user.
+
 ```bash
 cat Jenkinsfile.orig
 ```
 
+The output is too big for us to explore it in one go, so we'll comment on each section separatelly. The first in line is the `options` block.
+
 ```groovy
 ...
-  options {
-    buildDiscarder logRotator(numToKeepStr: '5')
-    disableConcurrentBuilds()
-  }
+options {
+  buildDiscarder logRotator(numToKeepStr: '5')
+  disableConcurrentBuilds()
+}
 ...
 ```
 
+The first option will result in only last five built being preserved in history. Most of the time there is no reason for us to keep all the builds we ever made. The last successful build of a branch is usually the only one that matters. We set them to five just to prove to you that I'm not cheap. By discarding the old builds, we're ensuring that Jenkins will perform faster.
+
+The second option disables concurrent builds. Each branch will have a separate job (just as in the previous chapter). If commits to different branches happen close to each other, Jenkins will process them in parallel by running builds for corresponding jobs. However, there is often no need for us to run multiple builds of the same job (branch) at the same time. With `disableConcurrentBuilds`, if we ever make multiple commits rapidly, they will be queued and executed sequentially.
+
+It's up to you to decide whether those options are useful. If they are, use them. If they aren't, discard them. My mission was to show you a few of the many `options` we can use. You, on the other hand, should open [Declarative Directive Generator](TODO) screen and explore the other available options. Bear in mind that the list of all the options depend on the installed plugins.
+
+The next block is `agent`.
+
 ```groovy
 ...
-  agent {
-    kubernetes {
-      cloud "go-demo-5-build"
-      label "go-demo-5-build"
-      serviceAccount "build"
-      yamlFile "KubernetesPod.yaml"
-    }      
-  }
+agent {
+  kubernetes {
+    cloud "go-demo-5-build"
+    label "go-demo-5-build"
+    serviceAccount "build"
+    yamlFile "KubernetesPod.yaml"
+  }      
+}
 ...
 ```
 
-We did not specify the default `kubernetes` `cloud`. Instead, we're using a new definition named `go-demo-5-build`. The benefit of that approach is that we can define part of the agent information outside Pipeline and help other teams worry less about the things they need need to put to their Jenkinsfile. As an example, you will not see a mention of a Namespace where the build should create a Pod that acts as Jenkins agent. That will be defined elsewhere and every build that uses `go-demo-5-build` will be run in that same Namespace.
+In our case, the `agent` block contains `kubernetes`. That is an indication that the pipeline should create a Pod based on Kubernetes Cloud configuration. That is further refined with the `cloud` entry which specifies that it must be the cloud config named `go-demo-5-build`. We'll create that cloud later. For now, we'll have to assume that it'll exist. The benefit of this approach is that we can define part of the agent information outside Pipeline and help other teams worry less about the things they need need to put to their Jenkinsfile. As an example, you will not see a mention of a Namespace where the build should create a Pod that acts as Jenkins agent. That will be defined elsewhere, and every build that uses `go-demo-5-build` will be run in that same Namespace.
 
-TODO: Declarative does not support Namespace.
+There is another, less obvious reason for using a `cloud` dedicated to the builds in `go-demo-5-build` Namespace. Declarative syntax does not allow us to specify Namespace. So, we'll have to have as many `cloud` configurations as there are Namespaces, or even more.
+
+The `label` defines the prefix that will be used to name the Pods that will be spin by the builds based on this pipeline.
+
+Next, we're defining `serviceAccount` as `build`. We already created that ServiceAccount inside the *go-demo-5-build* Namespace when we applied the configuration from *build.yml*. Now we're telling Jenkins that it should use it when creating Pod.
+
+Finally, we changed the way we define the Pod. Instead of embedding Pod definition inside *Jenkinsfile*, we're using an external file defined as *yamlFile*. My opinion on that feature is still divided. Having Pod definition in Jenkinsfile (as we did in the previous chapter) allows me inspect everything related to the job from a single location. On the other hand, moving Pod definition to `yamlFile` allows us to focus on the flow of the pipeline, and leave lenghty Pod definition outside. It's up to you to choose which approach you like more. We'll explore the content of the `KubernetesPod.yaml` a bit later.
+
+
+The next section in Jenkinsfile.orig is `environment`.
 
 ```groovy
 ...
-  environment {
-    image = "vfarcic/go-demo-5"
-    project = "go-demo-5"
-    domain = "acme.com"
-    cmAddr = "cm.acme.com"
+environment {
+  image = "vfarcic/go-demo-5"
+  project = "go-demo-5"
+  domain = "acme.com"
+  cmAddr = "cm.acme.com"
+}
+...
+```
+
+The `environment` block defines a few variables that we'll use in our steps. They are similar to those we used in before and they should be self-explanatory. Later on, we'll have to change `vfarcic` to your Docker Hub user and `acme.com` to the address of your cluster.
+
+You should note that Declarative Pipeline allows us to use the variables defined in `environment` block both as "normal" (e.g., `${VARIABLE_NAME}`) and environment variables `${env.VARIABLE_NAME}`.
+
+Now we reached the "meat" of the pipeline. The `stages` block contains three `stage` sub-blocks.
+
+```groovy
+...
+stages {
+  stage("build") {
+    steps {
+      ...
+    }
   }
-  stages {
-    stage("build") {
-      steps {
-        container("golang") {
-          script {
-            currentBuild.displayName = new SimpleDateFormat("yy.MM.dd").format(new Date()) + "-${env.BUILD_NUMBER}"
-          }
-          k8sBuildGolang("go-demo")
-        }
-        container("docker") {
-          k8sBuildImageBeta(image, false)
-        }
-      }
+  stage("func-test") {
+    steps {
+      ...
     }
-    stage("func-test") {
-      steps {
-        container("helm") {
-          k8sUpgradeBeta(project, domain, "--set replicaCount=2 --set dbReplicaCount=1")
-        }
-        container("kubectl") {
-          k8sRolloutBeta(project)
-        }
-        container("golang") {
-          k8sFuncTestGolang(project, domain)
-        }
-      }
-      post {
-        always {
-          container("helm") {
-            k8sDeleteBeta(project)
-          }
-        }
-      }
+  }
+  stage("release") {
+    steps {
+      ...
     }
-    stage("release") {
-      when {
-          branch "master"
+  }
+}
+...
+```
+
+Just as in the continuous deployment pipeline, we're having `build`, `func-test`, and `release` stages. However, the `deploy` stage is missing. This time, we are NOT going to deploy a new release to production automatically. We'll need a manual intervention to do that. One possible way to accomplish that would be to add the `deploy` block to the pipeline and an additional `input` step in front of it. It would pause the execution of the pipeline until we choose to click the button to proceed with deployment to production. However, we will not take that approach. Instead, we'll opt for GitOps principle which we'll discuss later. For now, just remember that our pipeline's goal is to make a relase, not to deploy it to production.
+
+Let us briefly go through each of the stages of the pipeline. The first one is the `build` stage.
+
+```groovy
+...
+stage("build") {
+  steps {
+    container("golang") {
+      script {
+        currentBuild.displayName = new SimpleDateFormat("yy.MM.dd").format(new Date()) + "-${env.BUILD_NUMBER}"
       }
-      steps {
-        container("docker") {
-          k8sPushImage(image, false)
-        }
-        container("helm") {
-          k8sPushHelm(project, "", cmAddr, true, true)
-        }
+      k8sBuildGolang("go-demo")
+    }
+    container("docker") {
+      k8sBuildImageBeta(image, false)
+    }
+  }
+}
+...
+```
+
+The first set of steps of the `build` stage starts in the `golang` container. The first action is to customize the name of the build by changing the value of the `displayName`. However, that is not allows in Declarative Pipeline. Luckily, there is a way to bypass that limitation by defining the `script` block. Inside it can be any set of pipeline instructions we'd normally define in a Scripted Pipeline. A `script` block is a nifty way to temporarily switch from Declarative to Scripted Pipeline which allows much more freedom and is not bound by Declarative's strict format rules.
+
+There was no special reason for using `golang` container to set the `displayName`. We could have done it in any of the other containers available in our agent defined through `yamlFile`. The only reason why we choose `golang` over any other lies in the next step.
+
+Since, this time, our Dockerfile does not use multi-stage builds and, therefore, does not run unit tests nor it builds the binary needed for the final image, we have to run those steps separately. Given that the application is written in Go, we need its compiler available in `golang` container. The actual steps are defined as [k8sBuildGolang.groovy](https://github.com/vfarcic/jenkins-shared-libraries/blob/master/vars/k8sBuildGolang.groovy) inside the same repository we used in the previous chapter. Feel free to explore it and you'll see that it contains the same commands we used before inside the first stage of our multi-stage build defined in *go-demo-3 Dockerfile*.
+
+Once the unit tests are executed and the binary is built, we're switching to the `docker` container to build the image. This one, as the most of the other steps, are based on the same shared libraries we used before. Since you're already familiar with them, I'll comment only if there is a substantial change in the way we utilize those libraries or if we add a new one we haven't used before. If you already forgot how those libraries work, please consult their code (`*.groovy`) or their corresponding helper files (`*.txt`) from located in the *vars* dir of the *jenkins-shared-libraries* repository you already forked.
+
+Let's move into the next stage.
+
+```groovy
+...
+stage("func-test") {
+  steps {
+    container("helm") {
+      k8sUpgradeBeta(project, domain, "--set replicaCount=2 --set dbReplicaCount=1")
+    }
+    container("kubectl") {
+      k8sRolloutBeta(project)
+    }
+    container("golang") {
+      k8sFuncTestGolang(project, domain)
+    }
+  }
+  post {
+    always {
+      container("helm") {
+        k8sDeleteBeta(project)
       }
     }
   }
 }
+...
 ```
+
+The steps of the `func-test` stage are the same as those we used in the continuous deployment pipeline. The only difference is in the format of the blocks that surround them. We're jumping from one container to another and executing the same shared libraries as before.
+
+The real difference is in the `post` section of the stage. It contains an `always` block that guarantees that the steps inside it will execute no matter the outcome of the steps in this stage. In our case, the `post` section has only one step that invokes that `k8sDeleteBeta` library which deletes the installation of the release under test.
+
+As you can see, the `func-test` stage we just explored is functionally the same as the one we used in the previous chapter when we defined the continuous deployment pipeline. However, I'd argue that the `post` section available in Declarative Pipeline is much more elegant and easier to understand than `try/catch/finally` block we used inside the Scripted Pipeline. That would be even more evident if we'd use a more complex type of `post` criteria.
+
+Its time to move into the next stage.
+
+```groovy
+...
+stage("release") {
+  when {
+      branch "master"
+  }
+  steps {
+    container("docker") {
+      k8sPushImage(image, false)
+    }
+    container("helm") {
+      k8sPushHelm(project, "", cmAddr, true, true)
+    }
+  }
+}
+...
+```
+The `release` stage, just as its counterpart from the previous chapter, features the same step that tags and pushe the production release to Docker Hub (`k8sPushImage`) as well as the one that packages and pushes the Helm Chart to ChartMuseum (`k8sPushHelm`). The only difference is that the latter library invocation now uses two additional arguments. The third one, when set to `true`, replaces the `image.tag` value to the tag of the image built in the previous image. The fourth argument, also when set to `true`, fails the build if the version of the Chart is unchanged or, in other words, if it already exists in ChartMuseum. When combining those two we are guaranteing that the `image.tag` value in the Chart is the same as the image we built, and that the version of the Chart is unique. The latter forces us to update the version manually. If we'd work on continuous deployment, manual update (or any other manual action), would be inacceptable. But, continuous delivery does involve a human manual decision when and what to deploy to production. We're just ensuring that the human action was indeed performed. Please open the source code of [k8sPushHelm.groovy](https://github.com/vfarcic/jenkins-shared-libraries/blob/master/vars/k8sPushHelm.groovy) to check the code behind that library and compare it with the statements you just read.
+
+You'll notice that there is a `when` statement above the steps. Generally speaking, it is used to limit the executions withint a stage only to those cases that match the condition. In our case, that condition states that the stage should be executed only if the build is using a commit from the `master` branch. There are other conditions we could have used but, for our use-case, that one is enough. You might want to explore other types of conditions 
+by going through the [when statement documentation](https://jenkins.io/doc/book/pipeline/syntax/#when).
+
+You'll notice that we did not define `git` or `checkout scm` step anywhere in our script. There's no need for that with Declarative Pipeline. It is intelligent enough to know that we want to clone the code of the commit that initiated a build (through Webhook, if we'd have it). When a build starts, cloning the code will be one of its first actions.
+
+Now that we went through the content of the *Jenkinsfile.orig* file, we should go back to the referenced `KubernetesPod.yaml` that defines the Pod that will be used as Jenkins agent.
 
 ```bash
 cat KubernetesPod.yaml
 ```
+
+The output is as follows.
 
 ```yaml
 apiVersion: v1
@@ -688,6 +818,12 @@ spec:
       type: Socket
 ```
 
+That Pod definition is almos the same as the one we used inside *Jenkinsfile* in the *go-demo-3* repository. Apart from residing in a separate file, the only difference is in an additional container named `docker`. In this scenario, we are not using external VMs to build Docker images. Instead, we have an additional container through which we can execute Docker-related steps. Since we want to execute Docker commands on the node, and avoid running Docker-in-Docker, we mounted `/var/run/docker.sock` as a Volume.
+
+## Creating And Running A Continuous Delivery Job
+
+That's it. We explored (soon to be) *Jenkinsfile* that contains our continuous delivery pipeline and *KubernetesPod.yaml* that contains the Pod definition that will be used to create Jenkins agents. There are a few other things we need to do but, before we discuss them, we'll change the address and Docker Hub user in *Jenkinsfile.orig*, store the output as *Jenkinsfile*, and push the changes to the forked GitHub
+
 ```bash
 cat Jenkinsfile.orig \
     | sed -e "s@acme.com@$ADDR@g" \
@@ -699,29 +835,66 @@ git add .
 git commit -m "Jenkinsfile"
 
 git push
-
-open "http://$JENKINS_ADDR/configure"
-
-# Add a new cloud > Kubernetes
-# Name = go-demo-5-build
-# Kubernetes URL = https://kubernetes.default
-# Kubernetes Namespace = go-demo-5-build
-# Jenkins URL = http://prod-jenkins.prod:8080
-# Jenkins tunnel = prod-jenkins-agent.prod:50000
-# Save
 ```
+
+Since we are into running Git commands, we might just as well merge your *jenkins-shared-libraries* fork with the `upstream/master`. That will ensure that you are having the latest version that includes potential changes I might have made since the time you forked the repository.
+
+```bash
+cd ..
+
+git clone https://github.com/$GH_USER/jenkins-shared-libraries.git
+
+cd jenkins-shared-libraries
+
+git remote add upstream \
+    https://github.com/vfarcic/jenkins-shared-libraries.git
+
+git fetch upstream
+
+git checkout master
+
+git merge upstream/master
+
+cd ../go-demo-5
+```
+
+We're almost ready to create a Jenkins pipeline for *go-demo-5*. The only thing missing is to create a new Kubernetes Cloud configuration.
+
+For now, we have only one Kubernetes Cloud configured in Jenkins. It's name is *kubernetes*. However, the pipeline we just explored uses a cloud named `go-demo-5-build`. So, we should create one before we create jobs tied to the *go-demo-5* repository.
+
+```bash
+open "http://$JENKINS_ADDR/configure"
+```
+
+Please scroll to the bottom of the page, expand the *Add a new cloud* list, and select *Kubernetes*. A new set of fields will appear.
+
+Type *go-demo-5-build* as the name. It matches the name specified as `cloud` entry inside `kubernetes` block of our pipeline.
+
+Next, type *https://kubernetes.default* as *Kubernetes URL*, and *go-demo-5-build* as the *Kubernetes Namespace*.
+
+Just as with the other Kubernetes Cloud that was already defined in our Jenkins instance, the value of the *Jenkins URL* should be *http://prod-jenkins.prod:8080*, and the *Jenkins tunnel* should be set to *prod-jenkins-agent.prod:50000*.
+
+Don't forget to click the *Save* button to persist the changes.
+
+Right now, we have two Kubernetes Clouds configured in our Jenkins instance. On is called *kubernetes* and it uses *prod* Namespace, while the other (the new one) is called *go-demo-5-build* and can be used for all the builds that should be performed in the *go-demo-5-build* Namespace.
+
+Even though we have two Kubernetes Clouds, their configurations are almost the same. Besides having different names, the only substantial difference is in the Namespace they use. I wanted to keep it simple and demonstrate that multiple clouds are possible, and often useful. In the "real world" situations, you'll probably use more fields and differentiate them even further. As an example, we could have defined the default set of containers that will be used with those clouds.
 
 ![Figure 7-TODO: Jenkins Kubernetes Cloud settings for go-demo-5-build](images/ch08/jenkins-k8s-cloud-go-demo-5.png)
 
+Now we're ready to create a job that will be tied to the *go-demo-5* repository and validate whether the pipeline defined in the *Jenkinsfile* works as expcted.
+
+We'll create our job from the BlueOcean home screen.
+
 ```bash
 open "http://$JENKINS_ADDR/blue/organizations/jenkins/"
+```
 
-# Click the *Create a New Pipeline* button
-# Select *GitHub*
-# Type *Your GitHub access token* and click the *Connect* button
-# Select the organization
-# Select *go-demo-5* repository
-# Click the *Create Pipelin* button
+Please click the *Create a New Pipeline* button and select *GitHub* as the repository type. Type *Your GitHub access token* and click the *Connect* button. A moment later, you'll see the list of organizations that token belongs to. Select the one where you forked the applications. The list of repositories will apprear. Select *go-demo-5* and click the *Create Pipeline* button.
+
+Jenkins will create jobs for each branch of the *go-demo-5* repository. There is only one (*master*), so there will be one job in total. We already explored in the previous chapter how Jenkins handles multiple repositories by creating a job for each so I thought that there is no need to demonstrate the same feature again. Right now, *master* job/branch should be more then enough.
+
+TODO: Continue
 
 # Wait until the build is finished
 
@@ -842,6 +1015,8 @@ dbPersistence:
 ---
 This is just a silly demo.
 ```
+
+## TODO: Some title
 
 ```bash
 cd ../k8s-prod
@@ -1179,6 +1354,8 @@ Events:
   Normal  ScalingReplicaSet  2m    deployment-controller  Scaled up replica set prod-go-demo-5-66c9d649bd to 3
 ```
 
+## TODO: Some title
+
 ```bash
 open "http://$JENKINS_ADDR/blue/organizations/jenkins/go-demo-5/branches"
 
@@ -1203,7 +1380,11 @@ open "http://$JENKINS_ADDR/blue/organizations/jenkins/go-demo-5/branches"
 # Click the play button from the right side of the *master* row.
 
 # Wait until the build is finished
+```
 
+## TODO: Some title
+
+```bash
 cd ../k8s-prod
 
 cat Jenkinsfile.orig
@@ -1318,3 +1499,5 @@ Connection: keep-alive
 
 hello, world!
 ```
+
+## What Now?
