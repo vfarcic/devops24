@@ -774,7 +774,9 @@ stage("release") {
 ```
 The `release` stage, just as its counterpart from the previous chapter, features the same step that tags and pushe the production release to Docker Hub (`k8sPushImage`) as well as the one that packages and pushes the Helm Chart to ChartMuseum (`k8sPushHelm`). The only difference is that the latter library invocation now uses two additional arguments. The third one, when set to `true`, replaces the `image.tag` value to the tag of the image built in the previous image. The fourth argument, also when set to `true`, fails the build if the version of the Chart is unchanged or, in other words, if it already exists in ChartMuseum. When combining those two we are guaranteing that the `image.tag` value in the Chart is the same as the image we built, and that the version of the Chart is unique. The latter forces us to update the version manually. If we'd work on continuous deployment, manual update (or any other manual action), would be inacceptable. But, continuous delivery does involve a human manual decision when and what to deploy to production. We're just ensuring that the human action was indeed performed. Please open the source code of [k8sPushHelm.groovy](https://github.com/vfarcic/jenkins-shared-libraries/blob/master/vars/k8sPushHelm.groovy) to check the code behind that library and compare it with the statements you just read.
 
-You'll notice that there is a `when` statement above the steps. Generally speaking, it is used to limit the executions withint a stage only to those cases that match the condition. In our case, that condition states that the stage should be executed only if the build is using a commit from the `master` branch. There are other conditions we could have used but, for our use-case, that one is enough. You might want to explore other types of conditions 
+You'll notice that there is a `when` statement above the steps. Generally speaking, it is used to limit the executions withint a stage only to those cases that match the condition. In our case, that condition states that the stage should be executed only if the build is using a commit from the `master` branch. It is equivalent to the `if ("${BRANCH_NAME}" == "master")` block we used in the continuous deployment pipeline we assembled in the previous chapter. There are other conditions we could have used but, for our use-case, that one is enough.
+
+I> You might want to explore other types of `when` conditions 
 by going through the [when statement documentation](https://jenkins.io/doc/book/pipeline/syntax/#when).
 
 You'll notice that we did not define `git` or `checkout scm` step anywhere in our script. There's no need for that with Declarative Pipeline. It is intelligent enough to know that we want to clone the code of the commit that initiated a build (through Webhook, if we'd have it). When a build starts, cloning the code will be one of its first actions.
@@ -894,14 +896,17 @@ Please click the *Create a New Pipeline* button and select *GitHub* as the repos
 
 Jenkins will create jobs for each branch of the *go-demo-5* repository. There is only one (*master*), so there will be one job in total. We already explored in the previous chapter how Jenkins handles multiple repositories by creating a job for each so I thought that there is no need to demonstrate the same feature again. Right now, *master* job/branch should be more then enough.
 
-TODO: Continue
-
-# Wait until the build is finished
+PLease wait until the build is finished.
 
 # TODO: Screenshot
 
+Since the build was executed against the *master* branch, the `when` condition inside the `release` stage evaluated to `true` so the production ready image was pushed to Docker Hub and the Helm Chart with the updated tag was pushed to ChartMuseum. We'll check the latter by retrieving the list of all the Charts.
+
+```bash
 curl "http://cm.$ADDR/index.yaml"
 ```
+
+The output is as follows.
 
 ```yaml
 apiVersion: v1
@@ -930,14 +935,24 @@ entries:
 generated: "2018-08-08T21:03:01Z"
 ```
 
+We can see that we have only one Chart (so far). It is the *go-demo-5* Chart. The important thing to note is the version of the Chart. In that output it's `0.0.1`. However, I might have bumped it later on so your version might be different. We'll need that version soon, so let's put it into an environment variable.
+
 ```bash
 VERSION=[...]
+```
 
+Please make sure to change `[...]` with the version you obtained earlier from the `index.yaml`.
+
+Among other things, the build modified the Chart before pushing it to ChartMuseum. It changed the image tag to the new release. We'll add ChartMuseum as a repository in our local Helm client so that we can inspect the Chart and confirm that `image.tag` value is indeed correct.
+
+```bash
 helm repo add chartmuseum \
     http://cm.$ADDR
 
 helm repo list
 ```
+
+The output of the latter command is as follows.
 
 ```
 NAME            URL
@@ -946,83 +961,69 @@ local           http://127.0.0.1:8879/charts
 chartmuseum     http://cm.18.219.191.38.nip.io
 ```
 
+You might have additional repositories configured in your local Helm client. That's not of importance. What matters right now is that the output showed `chartmuseum` as one of the repositorise.
+
+Now that we added the new repository, we should update local cache.
+
 ```bash
 helm repo update
 ```
 
-```
-Hang tight while we grab the latest from your chart repositories...
-...Skip local chart repository
-...Successfully got an update from the "chartmuseum" chart repository
-...Successfully got an update from the "stable" chart repository
-Update Complete. ⎈ Happy Helming!⎈
-```
+Finally, we can inspect the Chart Jenkins pushed to ChartMuseum.
 
 ```bash
 helm inspect chartmuseum/go-demo-5 \
     --version $VERSION
 ```
 
-```yaml
-apiVersion: v1
-description: A silly demo based on API written in Go and MongoDB
-home: http://www.devopstoolkitseries.com/
-keywords:
-- api
-- backend
-- go
-- database
-- mongodb
-maintainers:
-- email: viktor@farcic.com
-  name: Viktor Farcic
-name: go-demo-5
-sources:
-- https://github.com/vfarcic/go-demo-5
-version: 0.0.1
+The output, limited to relevant parts, is as follows.
 
----
-replicaCount: 3
-dbReplicaCount: 3
+```yaml
+...
+version: 0.0.1
+...
 image:
   tag: 18.08.08-3
-  dbTag: 3.3
-ingress:
-  enabled: true
-  host: acme.com
-service:
-  type: ClusterIP
-rbac:
-  enabled: true
-resources:
-  limits:
-    cpu: 0.2
-    memory: 20Mi
-  requests:
-    cpu: 0.1
-    memory: 10Mi
-dbResources:
-  limits:
-    memory: 200Mi
-    cpu: 0.2
-  requests:
-    memory: 100Mi
-    cpu: 0.1
-dbPersistence:
-  accessMode: ReadWriteOnce
-  size: 2Gi
-
----
-This is just a silly demo.
+...
 ```
 
-## TODO: Some title
+We can see that the build modified the `image.tag` before it packaged the Chart and pushed it to ChartMuseum.
+
+The first build of our continuous delivery pipeline was successful. However, the whole process is still not finished. We are yet to design the process that will allow us to choose which release to deploy to production. Even though our goal is to let Jenkins handle deployment to production, we'll leave it aside for a while and first explore how we could do it manually from a terminal. Did I mention that we'll introduce GitOps to the process?
+
+## What Is GitOps?
+
+*Git is the only source of truth.* If you understand that sentence, you understand GitOps. Every time we want to apply a change, we need to push a commit to Git. Want to change the configuration of your servers? Commit a change to Git, and let an automated process propagate it to servers. Want to upgrade ChartMuseum? Change *requirements.yaml*, and push the change to the *k8s-prod* repository, and let an automated process do the rest. Want to review a change before applying it? Make a pull request. Want to rollback a relese? You probably get the point and I can save you from listing hundreds of other "want to" questions.
+
+Did we do GitOps in the previous chapter? Was our continuous deployment process following GitOps? The answer to both questions is *no*. We did keep the code, configurations, and Kubernetes definitions in Git. Most of it, at least. However, we were updating production releases with new image tags without committing those changes to Git. Our complete source of truth was the cluster, not Git. It contained most of the truth, not all of it.
+
+Does this mean that we should fully embrace GitOps? I don't think so. There are things that would be impractical to do by committing them to Git. Take installations of applications under test as an example. We need to install a test release inside a test environment (Namespace), run some automated tests, and remove the applications once we're finished. If we'd fully embrace GitOps, we'd need to push a definition of the application under test to a Git repository and probably initiate a different pipeline that would install it. After that, we'd run some tests and remove the information we just pushed to Git so that yet another process can remove it from the cluster. Using GitOps with temporary installations would only increase the complexity of the process and slow it down without any tangible benefit. Why would we store something in Git only to remove it a few minutes later?
+
+There are other use-cases where I think GitOps is not a good git. Take auto-scaling as an example. We might want to use Prometheus to fire alerts which will result in increasing and decreasing the number of replicas of our applications depending on, let's say, response times. If those changes are infrequent (e.g., once a month or even once a week), storing them in Git and firing Webhooks that will do the scaling makes sense. But, if scaling is more frequent, the information in Git would vary so much thst it would only result in more confusion.
+
+The same can be said to auto-scaling of infrastructure. Should we ignore the fact that GKE (and most other Kubernetes clusters) can automatically increase and decrease the number of nodes of the cluster depending on resource usage and how many pending Pods we have? We probably shouldn't.
+
+Those examples should not discourage you from applying GitOps logic. Instead, they should demonstrate that we should not see the world as black-and-white. The fact that I think that we should not embrace GitOps 100% does not mean that we should not embrace it at all. We should always try to strike balance between different practices and create a combination that best fits our scenarios.
+
+In our case, we'll use GitOps to an extend, even though we might not follow the mantra to the fullest.
+
+Now, let's try to upgrade our production environment by adding *go-demo-5* release to it.
+
+## Upgrading Production Environment Using GitOps Practices
+
+Right now, our production environment contains Jenkins and ChartMuseum. On the other hand, we create a new production-ready release of *go-demo-5*. Now we should let our business, marketing, or some other department make a decision whether they'd like to deploy the new release to production and when should that happen. We'll imagine that they gave us green-light to install the *go-demo-5* release and that it should be done now. Our users are ready for it.
+
+The first time, we'll deploy the new release manually, as a way to confirm that our deployment process works as expected. Later on, we'll try to automate the process through Jenkins.
+
+Our whole production environment is stored in the *k8s-prod* repository. The applications that constitute it are defined in *requirements.yaml* file. Let's take another look at it.
 
 ```bash
 cd ../k8s-prod
 
 cat helm/requirements.yaml
 ```
+
+The output is as follows.
 
 ```yaml
 dependencies:
@@ -1034,6 +1035,8 @@ dependencies:
   version: 0.16.6
 ```
 
+We already discussed those requirements and used them to install Jenkins and ChartMuseum from the `@stable` repository. Since we do not want to bump versions of the two, we'll leave them intact, and add *go-demo-5* to the mix.
+
 ```bash
 echo "- name: go-demo-5
   repository: \"@chartmuseum\"
@@ -1042,6 +1045,8 @@ echo "- name: go-demo-5
 
 cat helm/requirements.yaml
 ```
+
+The output of the latter command is as follows.
 
 ```yaml
 dependencies:
@@ -1056,6 +1061,10 @@ dependencies:
   version: 0.0.1
 ```
 
+Our requirements increased from two to three dependencies.
+
+Normally, that would be all and we would upgrade the Chart. However, we still need to change the `host` value. In the "real world" situation, you'd have it pre-defined since hosts rarely change. But, in our case, I could not know your host in advance so we'll need to overwrite the `ingress.host` value of `go-demo-5`.
+
 ```bash
 echo "go-demo-5:
   ingress:
@@ -1065,86 +1074,18 @@ echo "go-demo-5:
 cat helm/values.yaml
 ```
 
-```yaml
-chartmuseum:
-  env:
-    open:
-      DISABLE_API: false
-      AUTH_ANONYMOUS_GET: true
-    secret:
-      BASIC_AUTH_USER: admin # Change me!
-      BASIC_AUTH_PASS: admin # Change me!
-  resources:
-    limits:
-      cpu: 100m
-      memory: 128Mi
-    requests:
-      cpu: 80m
-      memory: 64Mi
-  persistence:
-    enabled: true
-  ingress:
-    enabled: true
-    annotations:
-      kubernetes.io/ingress.class: "nginx"
-      ingress.kubernetes.io/ssl-redirect: "false"
-      nginx.ingress.kubernetes.io/ssl-redirect: "false"
-    hosts:
-      cm.18.219.191.38.nip.io: # Change me!
-      - /
+The latter command outputs the final version of the values. The section related to `go-demo-5` should be similar to the one that follows.
 
-jenkins:
-  Master:
-    ImageTag: "2.129-alpine"
-    Cpu: "500m"
-    Memory: "500Mi"
-    ServiceType: ClusterIP
-    ServiceAnnotations:
-      service.beta.kubernetes.io/aws-load-balancer-backend-protocol: http
-    GlobalLibraries: true
-    InstallPlugins:
-    - durable-task:1.22
-    - workflow-durable-task-step:2.19
-    - blueocean:1.7.1
-    - credentials:2.1.18
-    - ec2:1.39
-    - git:3.9.1
-    - git-client:2.7.3
-    - github:1.29.2
-    - kubernetes:1.12.0
-    - pipeline-utility-steps:2.1.0
-    - pipeline-model-definition:1.3.1
-    - script-security:1.44
-    - slack:2.3
-    - thinBackup:1.9
-    - workflow-aggregator:2.5
-    - ssh-slaves:1.26
-    - ssh-agent:1.15
-    - jdk-tool:1.1
-    - command-launcher:1.2
-    - github-oauth:0.29
-    - google-compute-engine:1.0.4
-    - pegdown-formatter:1.3
-    Ingress:
-      Annotations:
-        kubernetes.io/ingress.class: "nginx"
-        nginx.ingress.kubernetes.io/ssl-redirect: "false"
-        nginx.ingress.kubernetes.io/proxy-body-size: 50m
-        nginx.ingress.kubernetes.io/proxy-request-buffering: "off"
-        ingress.kubernetes.io/ssl-redirect: "false"
-        ingress.kubernetes.io/proxy-body-size: 50m
-        ingress.kubernetes.io/proxy-request-buffering: "off"
-    HostName: jenkins.18.219.191.38.nip.io # Change me!
-    CustomConfigMap: true
-    CredentialsXmlSecret: jenkins-credentials
-    SecretsFilesSecret: jenkins-secrets
-    DockerVM: false
-  rbac:
-    install: true
+```yaml
+...
 go-demo-5:
   ingress:
     host: go-demo-5.18.219.191.38.nip.io
 ```
+
+We already discussed that we'll document production environment in Git and, therefore, adhere to GitOps principles.
+
+Normally, we'd push the changes we made to a different branch or to a forked repo, and we'd make a pull request. Someone would review it and accept the changes or provide notes with potential improvements. I'm sure you already know how pull requests work, the value behind code reviews, and all the other good things we're doing with code. So, we'll skip all that and push directly to the *master* branch. Just remember that we're not going to skip pull request and the rest because we should, but because I'm trying to skip the things you already know and jump straight to the point.
 
 ```bash
 git add .
@@ -1152,17 +1093,18 @@ git add .
 git commit -m "Added go-demo-5"
 
 git push
+```
 
+As you already know, we need to update the dependencies so that Helm downloads new dependencies.
+
+```bash
 helm dependency update helm
 ```
 
+The last lines of the output are as follows.
+
 ```
-Hang tight while we grab the latest from your chart repositories...
-...Unable to get an update from the "local" chart repository (http://127.0.0.1:8879/charts):
-        Get http://127.0.0.1:8879/charts/index.yaml: dial tcp 127.0.0.1:8879: connect: connection refused
-...Successfully got an update from the "chartmuseum" chart repository
-...Successfully got an update from the "stable" chart repository
-Update Complete. ⎈Happy Helming!⎈
+...
 Saving 3 charts
 Downloading chartmuseum from repo https://kubernetes-charts.storage.googleapis.com
 Downloading jenkins from repo https://kubernetes-charts.storage.googleapis.com
@@ -1170,9 +1112,13 @@ Downloading go-demo-5 from repo http://cm.18.219.191.38.nip.io
 Deleting outdated charts
 ```
 
+We can see that, this time, Helm downloaded three Charts, including `go-demo-5` we just added as a dependency in `requirements.yaml`. We can confirm that by listing the files in the `helm/charts` directory.
+
 ```bash
 ls -1 helm/charts
 ```
+
+The output is as follows.
 
 ```
 chartmuseum-1.6.0.tgz
@@ -1180,92 +1126,24 @@ go-demo-5-0.0.1.tgz
 jenkins-0.16.6.tgz
 ```
 
+The *go-demo-5* package is there and we are ready to `update` our production environment.
+
 ```bash
 helm upgrade prod helm \
     --namespace prod
 ```
 
+The output, limited to the Pods section, is as follows.
+
 ```
-Release "prod" has been upgraded. Happy Helming!
-LAST DEPLOYED: Wed Aug  8 23:10:45 2018
-NAMESPACE: prod
-STATUS: DEPLOYED
 
-RESOURCES:
-==> v1/Service
-NAME                TYPE       CLUSTER-IP      EXTERNAL-IP  PORT(S)    AGE
-prod-chartmuseum    ClusterIP  100.66.187.127  <none>       8080/TCP   4h
-prod-go-demo-5      ClusterIP  100.64.173.243  <none>       8080/TCP   1s
-prod-go-demo-5-db   ClusterIP  None            <none>       27017/TCP  1s
-prod-jenkins-agent  ClusterIP  100.66.213.155  <none>       50000/TCP  4h
-prod-jenkins        ClusterIP  100.67.196.236  <none>       8080/TCP   4h
-
-==> v1/Secret
-NAME              TYPE    DATA  AGE
-prod-chartmuseum  Opaque  2     4h
-prod-jenkins      Opaque  2     4h
-
-==> v1beta1/ClusterRoleBinding
-NAME                       AGE
-prod-jenkins-role-binding  4h
-
-==> v1beta1/RoleBinding
-NAME               AGE
-prod-go-demo-5-db  1s
-build              4h
-build              4h
-
-==> v1beta1/Role
-NAME               AGE
-prod-go-demo-5-db  1s
-
-==> v1beta1/Deployment
-NAME              DESIRED  CURRENT  UP-TO-DATE  AVAILABLE  AGE
-prod-chartmuseum  1        1        1           1          4h
-prod-jenkins      1        1        1           1          4h
-
-==> v1beta2/Deployment
-prod-go-demo-5  3  3  3  0  1s
-
-==> v1beta2/StatefulSet
-NAME               DESIRED  CURRENT  AGE
-prod-go-demo-5-db  3        1        1s
-
-==> v1beta1/Ingress
-NAME              HOSTS                           ADDRESS           PORTS  AGE
-prod-chartmuseum  cm.18.219.191.38.nip.io         a097d24929b28...  80     4h
-prod-go-demo-5    go-demo-5.18.219.191.38.nip.io  80                1s
-prod-jenkins      jenkins.18.219.191.38.nip.io    a097d24929b28...  80  4h
-
-==> v1/ConfigMap
-NAME                DATA  AGE
-prod-jenkins        4     4h
-prod-jenkins-tests  1     4h
-
-==> v1/PersistentVolumeClaim
-NAME              STATUS  VOLUME                                    CAPACITY  ACCESS MODES  STORAGECLASS  AGE
-prod-chartmuseum  Bound   pvc-5f483fc7-9b29-11e8-a994-0a37c44add8a  8Gi       RWO           gp2           4h
-prod-jenkins      Bound   pvc-5f49d107-9b29-11e8-a994-0a37c44add8a  8Gi       RWO           gp2           4h
-
-==> v1/ServiceAccount
-NAME               SECRETS  AGE
-prod-go-demo-5-db  1        1s
-prod-jenkins       1        4h
-build              1        4h
-
-==> v1/Pod(related)
-NAME                               READY  STATUS             RESTARTS  AGE
-prod-chartmuseum-68bc575fb7-dn6h5  1/1    Running            0         4h
-prod-go-demo-5-66c9d649bd-kq45m    0/1    ContainerCreating  0         1s
-prod-go-demo-5-66c9d649bd-lgjb7    0/1    ContainerCreating  0         1s
-prod-go-demo-5-66c9d649bd-pwnjg    0/1    ContainerCreating  0         1s
-prod-jenkins-676cc64756-bj45v      1/1    Running            0         4h
-prod-go-demo-5-db-0                0/2    Pending            0         1s
-```
+Let's take a look at the Pods running inside the `prod` Namespace.
 
 ```bash
 kubectl -n prod get pods
 ```
+
+The output is as follows.
 
 ```
 NAME                                READY     STATUS              RESTARTS   AGE
@@ -1278,226 +1156,233 @@ prod-go-demo-5-db-1                 0/2       ContainerCreating   0          15s
 prod-jenkins-676cc64756-bj45v       1/1       Running             0          4h
 ```
 
+Judging by the `AGE`, we can see that ChartMuseum and Jenkins were left intact. That makes sense since we did not change any of their properties. The new Pods are those related to *go-demo-5*. The output will differ depending on when we executed `get pod`. In my case, we can see that three replicas of the *go-demo-5* API are running and that we are in the process of deploying second database Pod. Soon all three DB replicas will be running and our mission will be accomplished.
+
+To be on the safe side, we'll confirm that the newly deployed *go-demo-5* application is indeed accessible.
+
 ```bash
 kubectl -n prod rollout status \
     deployment prod-go-demo-5
-```
 
-```
-deployment "prod-go-demo-5" successfully rolled out
-```
-
-```bash
 curl -i "http://go-demo-5.$ADDR/demo/hello"
 ```
 
-```
-HTTP/1.1 200 OK
-Server: nginx/1.13.9
-Date: Wed, 08 Aug 2018 21:12:31 GMT
-Content-Type: text/plain; charset=utf-8
-Content-Length: 14
-Connection: keep-alive
+We waited until `rollout status` confirms that the application is deployed and sent a request to it. The output of the latter command should show the status code `200 OK` and the familiar message `hello, world!`.
 
-hello, world!
-```
+As the last validation, we'll describe the application and confirm that the image is indeed correct (and not `latest`).
 
 ```bash
 kubectl -n prod \
     describe deploy prod-go-demo-5
 ```
 
+The output, limited to the relevant parts, is as follows.
+
 ```yaml
-Name:                   prod-go-demo-5
-Namespace:              prod
-CreationTimestamp:      Wed, 08 Aug 2018 23:10:45 +0200
-Labels:                 app=go-demo-5
-                        chart=go-demo-5-0.0.1
-                        heritage=Tiller
-                        release=prod
-Annotations:            deployment.kubernetes.io/revision=1
-Selector:               app=go-demo-5,release=prod
-Replicas:               3 desired | 3 updated | 3 total | 3 available | 0 unavailable
-StrategyType:           RollingUpdate
-MinReadySeconds:        0
-RollingUpdateStrategy:  25% max unavailable, 25% max surge
+...
 Pod Template:
-  Labels:  app=go-demo-5
-           release=prod
+  ...
   Containers:
    api:
-    Image:      vfarcic/go-demo-5:18.08.08-3
-    Port:       <none>
-    Host Port:  <none>
-    Limits:
-      cpu:     200m
-      memory:  20Mi
-    Requests:
-      cpu:      100m
-      memory:   10Mi
-    Liveness:   http-get http://:8080/demo/hello delay=0s timeout=1s period=10s #success=1 #failure=3
-    Readiness:  http-get http://:8080/demo/hello delay=0s timeout=1s period=1s #success=1 #failure=3
-    Environment:
-      DB:    prod-go-demo-5-db
-    Mounts:  <none>
-  Volumes:   <none>
-Conditions:
-  Type           Status  Reason
-  ----           ------  ------
-  Available      True    MinimumReplicasAvailable
-  Progressing    True    NewReplicaSetAvailable
-OldReplicaSets:  <none>
-NewReplicaSet:   prod-go-demo-5-66c9d649bd (3/3 replicas created)
-Events:
-  Type    Reason             Age   From                   Message
-  ----    ------             ----  ----                   -------
-  Normal  ScalingReplicaSet  2m    deployment-controller  Scaled up replica set prod-go-demo-5-66c9d649bd to 3
+    Image: vfarcic/go-demo-5:18.08.08-3
+    ...
 ```
 
-## TODO: Some title
+Let's see whether we can convert deployment to production into a Jenkins job.
+
+## Creating A Jenkins Job That Upgrades The Whole Production Environment
+
+Before we upgrade the production environment, we'll create one more release of *go-demo-5* so that we have something new to deploy.
 
 ```bash
 open "http://$JENKINS_ADDR/blue/organizations/jenkins/go-demo-5/branches"
+```
 
-# Click the play button from the right side of the *master* row.
+We opened the *branches* screen of the *go-demo-5* job.
 
-# Wait until the build is finished
+Please click the play button from the right side of the *master* row and wait until it's finished.
 
-# TODO: Screenshot
+Lo and behold! Our build failed! If you explored the job in detail, you should know why that happened. If you're unsure, please click on the failed step and you'll see the *TODO* message.
 
+TODO: Error message in the previous paragraph
+
+TODO: Screenshot
+
+Our job does not allow us to push a commit to the *master* branch without bumping the version of the *go-demo-5* Chart. That way, we guarantee that every production-ready release is properly versioned. Let's fix that.
+
+```bash
 cd ../go-demo-5
+```
 
-# Increment the version of *helm/go-demo-5/Chart.yaml*
+Please open *helm/go-demo-5/Chart.yaml* in your favourite editor and increment the `version`. If, for example, the current version is `0.0.1`, change it to `0.0.1`, if it's `0.0.2`, change it to `0.0.3`, and so on. You get the point. Just increase it.
 
+Next, we'll push the change to the *master* branch.
+
+```bash
 git add .
 
 git commit -m "Version bump"
 
 git push
-
-open "http://$JENKINS_ADDR/blue/organizations/jenkins/go-demo-5/branches"
-
-# Click the play button from the right side of the *master* row.
-
-# Wait until the build is finished
 ```
 
-## TODO: Some title
+Normally, you'd push the change to a branch, make a pull request, and let someone review it. Such a pull request would execute a Jenkins build that would give the reviewer the information about the quality of the changes. If the build was successful and the review did not reveal any deficiencies, we would merge the pull request.
+
+We skipped all that, and pushed directly to the *master* branch only to speed things up.
+
+Now let's go back to Jenkins and run another build
+
+```bash
+open "http://$JENKINS_ADDR/blue/organizations/jenkins/go-demo-5/branches"
+```
+
+Please click the play button from the right side of the *master* row and wait until the new build is finished. This time, it should be sucessful and we'll have a new *go-demo-5* release waiting to be deployed to the production environment.
+
+## Automating Upgrade Of The Production Environment
+
+Now that we have a new release waiting, we would forego through the same process as before. Someone would make a decision whether the release should be deployed to production or left rotting until the new one. If the decision is made that our users should benefit from the features available in that relese, we'd need to update a few files in our *k8s-prod* repository.
 
 ```bash
 cd ../k8s-prod
+```
 
+The first file we'll update is *helm/requirements.yaml*. Please open it in your favourite editor and change the *go-demo-5* version to match the version of the Chart we pushed a few moments ago.
+
+We should also increase the version of the *prod-env* Chart as a whole. Open *helm/Chart.yaml* and bump the version.
+
+Let's take a look at *Jenkinsfile.orig* from the repository.
+
+```bash
 cat Jenkinsfile.orig
+```
 
+The output is as follows.
+
+```groovy
+import java.text.SimpleDateFormat
+
+pipeline {
+  options {
+    buildDiscarder logRotator(numToKeepStr: '5')
+    disableConcurrentBuilds()
+  }
+  agent {
+    kubernetes {
+      cloud "kubernetes"
+      label "prod"
+      serviceAccount "build"
+      yamlFile "KubernetesPod.yaml"
+    }      
+  }
+  environment {
+    cmAddr = "cm.acme.com"
+  }
+  stages {
+    stage("deploy") {
+      when {
+        branch "master"
+      }
+      steps {
+        container("helm") {
+          sh "helm repo add chartmuseum http://${cmAddr}"
+          sh "helm repo update"
+          sh "helm dependency update helm"
+          sh "helm upgrade -i prod helm --namespace prod --force"
+        }
+      }
+    }
+    stage("test") {
+      when {
+        branch "master"
+      }
+      steps {
+        echo "Testing..."
+      }
+      post {
+        failure {
+          container("helm") {
+            sh "helm rollback prod 0"
+          }
+        }
+      }
+    }
+  }
+}
+```
+
+This time we're using the `kubernetes` Cloud configured to spin up Pods in the `prod` Namespace. The `build` ServiceAccount already has the permissions to access Tiller in `kube-system` thus allowing us to install applications anywhere inside the cluster. We won't need to go that far. Full permissions for inside the `prod` Namespace are more than enough.
+
+Just as with the *Jenkinsfile* inside the *go-demo-5* repository, the definition of the agent Pod is inside the `KubernetesPod.yaml` file.
+
+The `environment` block contains `cmAddr` set to `cm.acme.com`. That's why we're exploring *Jenkinsfile.orig*. We'll need create our own *Jenkinsfile* that will contain the correct address.
+
+We have only two stages; `deploy` and `test`. Both of them have the `when` block that limits the execution of the steps only to builds initiated through a commit to the `branch "master"`.
+
+The `deploy` stage run in the `helm` container. The steps inside it are performing the same actions we did manually a while ago. They add `chartmuseum` to the list of repositories, update the repos, update the dependencies, and, finally, `upgrade` the Chart. Since we already executed all those steps from our terminal, it should be pretty clear what they do.
+
+The `test` stage has a simple `echo` step. I'll be honest with you. I did not write tests we'd need, and the `echo` is only a placeholder. You should know how to write your own tests for the applications you're developing and there's probably no need for you to see yet another set of tests written in Go.
+
+The important part of the stage is the `post` section that'll rollback the `upgrade` if one of the tests fail. This is the part where we're ignoring GitOps principles. The chances that those tests will fail are very low. The new release was already tests and containers guarantee that our applications will behave the same in any environment. The tests we're running in this pipeline are more like sanity checks, than some kind of a deep validation. Even if tests do fail, we'd need to change the version of the Chart to the previous value, and push it back to the repository. That would trigger yet another build that would perform another upgrade, only this time to the previous release. Instead, we're rolling back directly inside the pipeline assuming that someone will fix the issue soonafter and initiate another upgrade that will contain the correction.
+
+As you can see, we're only partially applying GitOps principles. In my opinion, they make sense in some cases, and do not in others. It's up to you to decide whether you'll go towards full GitOps, or, like me, adopt it only partially.
+
+Now, let's create *Jenkinsfile* with the correct address, and push it.
+
+```bash
 cat Jenkinsfile.orig \
     | sed -e "s@acme.com@$ADDR@g" \
     | tee Jenkinsfile
+```
 
-# Increment go-demo-5 version in helm/requirements.yaml
+With all the files updated, we can proceed and push the changes to GitHub. Just as before, we're taking a shortcut by skipping the processes of making a pull request, reviewing it and approving it, and any other steps would perform in between.
 
-# Increment version in helm/Chart.yaml
-
+```bash
 git add .
 
 git commit -m "Jenkinsfile"
 
 git push
-
-open "http://$JENKINS_ADDR/blue/pipelines"
-
-# Click *New Pipeline"
-# Select *GitHub*
-# Select the organization
-# Select *k8s-prod* repository
-# Click the *Create Pipelin* button
-
-# Wait until the new build is finished
 ```
 
+The only thing left is to create a new Jenkins job and hope that everything works correctly.
+
+```bash
+open "http://$JENKINS_ADDR/blue/pipelines"
+```
+
+Please click the *New Pipeline* button, and select *GitHub* and the organization. Next, we'll choose *k8s-prod* repository and click the *Create Pipelin* button.
+
+The new job was created and all we have to do is wait for a few moments until it's finished
+
 ![Figure 7-TODO: k8s-prod build screen](images/ch08/jenkins-k8s-prod-build.png)
+
+Let's see the `history` of the Chart.
 
 ```bash
 helm history prod
 ```
 
-```
-REVISION        UPDATED                         STATUS          CHART           DESCRIPTION
-1               Wed Aug  8 18:37:42 2018        SUPERSEDED      prod-env-0.0.1  Install complete
-2               Wed Aug  8 23:10:45 2018        SUPERSEDED      prod-env-0.0.1  Upgrade complete
-3               Wed Aug  8 23:47:35 2018        DEPLOYED        prod-env-0.0.2  Upgrade complete
-```
-
-```bash
-kubectl -n prod \
-    describe deploy prod-go-demo-5
-```
-
-```yaml
-Name:                   prod-go-demo-5
-Namespace:              prod
-CreationTimestamp:      Wed, 08 Aug 2018 23:10:45 +0200
-Labels:                 app=go-demo-5
-                        chart=go-demo-5-0.0.2
-                        heritage=Tiller
-                        release=prod
-Annotations:            deployment.kubernetes.io/revision=2
-Selector:               app=go-demo-5,release=prod
-Replicas:               3 desired | 3 updated | 3 total | 3 available | 0 unavailable
-StrategyType:           RollingUpdate
-MinReadySeconds:        0
-RollingUpdateStrategy:  25% max unavailable, 25% max surge
-Pod Template:
-  Labels:  app=go-demo-5
-           release=prod
-  Containers:
-   api:
-    Image:      vfarcic/go-demo-5:18.08.08-5
-    Port:       <none>
-    Host Port:  <none>
-    Limits:
-      cpu:     200m
-      memory:  20Mi
-    Requests:
-      cpu:      100m
-      memory:   10Mi
-    Liveness:   http-get http://:8080/demo/hello delay=0s timeout=1s period=10s #success=1 #failure=3
-    Readiness:  http-get http://:8080/demo/hello delay=0s timeout=1s period=1s #success=1 #failure=3
-    Environment:
-      DB:    prod-go-demo-5-db
-    Mounts:  <none>
-  Volumes:   <none>
-Conditions:
-  Type           Status  Reason
-  ----           ------  ------
-  Available      True    MinimumReplicasAvailable
-  Progressing    True    NewReplicaSetAvailable
-OldReplicaSets:  <none>
-NewReplicaSet:   prod-go-demo-5-666b96c46 (3/3 replicas created)
-Events:
-  Type    Reason             Age   From                   Message
-  ----    ------             ----  ----                   -------
-  Normal  ScalingReplicaSet  40m   deployment-controller  Scaled up replica set prod-go-demo-5-66c9d649bd to 3
-  Normal  ScalingReplicaSet  3m    deployment-controller  Scaled up replica set prod-go-demo-5-666b96c46 to 1
-  Normal  ScalingReplicaSet  3m    deployment-controller  Scaled down replica set prod-go-demo-5-66c9d649bd to 2
-  Normal  ScalingReplicaSet  3m    deployment-controller  Scaled up replica set prod-go-demo-5-666b96c46 to 2
-  Normal  ScalingReplicaSet  3m    deployment-controller  Scaled down replica set prod-go-demo-5-66c9d649bd to 1
-  Normal  ScalingReplicaSet  3m    deployment-controller  Scaled up replica set prod-go-demo-5-666b96c46 to 3
-  Normal  ScalingReplicaSet  3m    deployment-controller  Scaled down replica set prod-go-demo-5-66c9d649bd to 0
-```
-
-```bash
-curl -i "http://go-demo-5.$ADDR/demo/hello"
-```
+The output is as follows.
 
 ```
-HTTP/1.1 200 OK
-Server: nginx/1.13.9
-Date: Wed, 08 Aug 2018 21:51:57 GMT
-Content-Type: text/plain; charset=utf-8
-Content-Length: 14
-Connection: keep-alive
-
-hello, world!
+REVISION UPDATED      STATUS     CHART          DESCRIPTION
+1        Wed Aug  ... SUPERSEDED prod-env-0.0.1 Install complete
+2        Wed Aug  ... SUPERSEDED prod-env-0.0.1 Upgrade complete
+3        Wed Aug  ... DEPLOYED   prod-env-0.0.2 Upgrade complete
 ```
+
+We can see from the `CHART` that the currently deployed release is `0.0.2` (or whichever version you defined last).
+
+Our system is working! We have a fully operational continuous delivery pipeline.
+
+## High Level Overwrite Of Continuous Delivery Pipeline
+
+TODO: Write
+
+## CD vs CDP
+
+TODO: Write
 
 ## What Now?
+
+TODO: Write
