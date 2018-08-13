@@ -87,7 +87,7 @@ All in all, the stages are as follows.
 
 Here's the plan. In the build stage, we'll build a Docker image and push it to a registry (in our case Docker Hub). However, since building untested artifacts should be stopped, we are going to run static tests before the actual build. Once our Docker image is pushed, we'll deploy the application and run tests against it. If everything works as expected, we'll make a new release and deploy it to production. To be on the safe side, we'll run another round of tests to validate that the deployment was indeed successful in production. Finally, we'll clean up the system by removing everything except the production release.
 
-![Figure 3-1: The stages of a continuous deployment pipeline](images/ch03/manual-cd-stages.png)
+![Figure 3-1: The stages of a continuous deployment pipeline](images/ch03/manual-cdp-stages.png)
 
 We'll discuss the steps of each of those stages later on. For now, we need a cluster we'll use for the hands-on exercises that'll help us get a better understanding of the pipeline we'll build later. If we are successful with the manually executed steps, writing pipeline script should be relatively simple.
 
@@ -495,7 +495,7 @@ docker image push \
 
 The image is in the registry and ready for further deployments and testing. Mission accomplished. We're doing continuous integration manually. If we'd place those few commands into a CI/CD tool, we would have the first part of the process up and running.
 
-![Figure 3-2: The build stage of a continuous deployment pipeline](images/ch03/manual-cd-steps-build.png)
+![Figure 3-2: The build stage of a continuous deployment pipeline](images/ch03/manual-cdp-steps-build.png)
 
 We are still facing a few problems. Docker running in a Kubernetes cluster might be too old. It might not support all the features we need. As an example, most of the Kubernetes distributions before 1.10 supported Docker versions older than 17.05. If that's not enough, consider the possibility that you might not even use Docker in a Kubernetes cluster. It is very likely that ContainerD will be the preferable container engine in the future, and that is only one of many choices we can select. The point is that container engine in a Kubernetes cluster should be in charge of running container, and not much more. There should be no need for the nodes in a Kubernetes cluster to be able to build images.
 
@@ -720,7 +720,7 @@ W> The Route we created through `build-oc.yml` is still not deleted. For the sak
 
 We exited the `golang` container and entered into `kubectl` to delete the test release.
 
-![Figure 3-3: The functional testing stage of a continuous deployment pipeline](images/ch03/manual-cd-steps-func.png)
+![Figure 3-3: The functional testing stage of a continuous deployment pipeline](images/ch03/manual-cdp-steps-func.png)
 
 Let's take a look at what's left in the Namespace.
 
@@ -788,7 +788,7 @@ The `1.0-beta` is a clear indication that the image might not have been tested a
 
 We should always be explicit with versions we are deploying to production, so the `1.0` tag is what we'll use. That will help us control what we have and debug problems if they occur. However, others might not want to use explicit versions. A developer might want to deploy the last stable version of an application created by a different team. In those cases, developers might not care which version is in production. In such a case, deploying `latest` is probably a good idea, assuming that we take good care that it (almost) always works.
 
-![Figure 3-4: The release stage of a continuous deployment pipeline](images/ch03/manual-cd-steps-release.png)
+![Figure 3-4: The release stage of a continuous deployment pipeline](images/ch03/manual-cdp-steps-release.png)
 
 We're making significant progress. Now that we have a new release, we can proceed and execute rolling updates against production.
 
@@ -861,7 +861,7 @@ ADDR=$(kubectl -n go-demo-3 \
 echo $ADDR | tee /workspace/prod-addr
 ```
 
-![Figure 3-5: The deploy stage of a continuous deployment pipeline](images/ch03/manual-cd-steps-deploy.png)
+![Figure 3-5: The deploy stage of a continuous deployment pipeline](images/ch03/manual-cdp-steps-deploy.png)
 
 To be on the safe side, we'll run another round of validation, which we'll call *production tests*. We don't need to be in the `kubectl` container for that, so let's exit.
 
@@ -910,7 +910,7 @@ W> ## A note to GKE users
 W>
 W> If your tests failed, the cause is probably due to a long time GKE needs to create a load balancer. Please wait for a few minutes and re-execute them.
 
-![Figure 3-6: The production testing stage of a continuous deployment pipeline](images/ch03/manual-cd-steps-prod.png)
+![Figure 3-6: The production testing stage of a continuous deployment pipeline](images/ch03/manual-cdp-steps-prod.png)
 
 Production tests were successful, and we can conclude that the deployment was successful as well.
 
@@ -935,7 +935,7 @@ The output is as follows.
 pod "cd" deleted
 ```
 
-![Figure 3-7: The cleanup stage of a continuous deployment pipeline](images/ch03/manual-cd-steps-cleanup.png)
+![Figure 3-7: The cleanup stage of a continuous deployment pipeline](images/ch03/manual-cdp-steps-cleanup.png)
 
 That's it. Our continuous pipeline is finished. Or, to be more precise, we defined all the steps of the pipeline. We are yet to automate everything.
 

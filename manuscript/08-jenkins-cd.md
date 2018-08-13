@@ -6,7 +6,8 @@
 - [X] Code review kops
 - [ ] Code review minishift
 - [ ] Code review GKE
-- [ ] Write
+- [ ] Code review EKS
+- [X] Write
 - [ ] Text review
 - [ ] Diagrams
 - [ ] Gist
@@ -35,17 +36,21 @@ That's it for the prep-talk. You know what continuous delivery is, and you know 
 
 ## Cluster
 
-TODO: Write
+Unlike previous chapters, you cannot use an existing cluster this time. The reason behind that request lies in reduced requirements. This time, the cluster should **NOT have ChartMuseum**. You'll see why soon. What we need are the same hardware specs, with NGINX Ingress and Tiller running inside the cluster, and with the environment variable `LB_IP` that holds the address of the IP through which we can access the external load balancer or with the IP of the VM, in case of single VM local clusters like minikube, minishift, and Docker For Mac or Windows.
 
-* [docker4mac-cd.sh](TODO): TODO
-* [minikube-cd.sh](TODO): TODO
-* [kops-cd.sh](TODO): TODO
+* [docker4mac-cd.sh](https://gist.github.com/d07bcbc7c88e8bd104fedde63aee8374): **Docker for Mac** with 3 CPUs, 4 GB RAM, with **nginx Ingress**, with **tiller**, and with `LB_IP` variable set to the IP of the cluster.
+* [minikube-cd.sh](https://gist.github.com/06bb38787932520906ede2d4c72c2bd8): **minikube** with 3 CPUs, 4 GB RAM, with `ingress`, `storage-provisioner`, and `default-storageclass` addons enabled, with **tiller**, and with `LB_IP` variable set to the VM created by minikube.
+* [kops-cd.sh](https://gist.github.com/d96c27204ff4b3ad3f4ae80ca3adb891): **kops in AWS** with 3 t2.small masters and 2 t2.medium nodes spread in three availability zones, with **nginx Ingress**, with **tiller**, and with `LB_IP` variable set to the IP retrieved by pinging ELB's hostname. The Gist assumes that the prerequisites are set through [Appendix B](#appendix-b).
+
+We're almost ready. The only thing missing, in terms of prerequisites, is to ensure that your local copy of the *vfarcic/k8s-specs* repository is up-to-date.
 
 ```bash
 cd k8s-specs
 
 git pull
 ```
+
+Off we go.
 
 ## Defining The Whole Production Environment
 
@@ -343,6 +348,12 @@ jenkins-0.16.6.tgz
 
 Now that the requirements are downloaded and saved to the `charts` directory, we can proceed and install our full production environment. It consists of only two applications. We'll increase that number soon and I expect that you'll add other applications you need to your "real" environment if you choose to use this approach.
 
+W> ## A note to minishift users
+W>
+W> Helm will try to install Jenkins dependency Chart with the process in a container running as user `0`. By default, that is not allowed in OpenShift. We'll skip discussing the best approach to correct the issue, and I'll assume you already know how to set the permissions on the per-Pod basis. Instead, we'll do the most straightforward fix by executing the command that follows that will allow the creation of restricted Pods to run as any user.
+W>
+W> `oc patch scc restricted -p '{"runAsUser":{"type": "RunAsAny"}}'`
+
 ```bash
 helm install helm \
     -n prod \
@@ -358,6 +369,14 @@ NAME                               READY  STATUS   RESTARTS  AGE
 prod-chartmuseum-68bc575fb7-jgs98  0/1    Pending  0         1s
 prod-jenkins-6dbc74554d-gbzp4      0/1    Pending  0         1s
 ```
+
+W> ## A note to minishift users
+W>
+W> OpenShift requires Routes to make services accessible outside the cluster. To make things more complicated, they are not part of "standard Kubernetes" so we'll need to create one using `oc`. Please execute the command that follows.
+W>
+W> `oc -n prod create route edge --service prod-jenkins --insecure-policy Allow --hostname jenkins.$ADDR`
+W>
+W> That command created an `edge` Router tied to the `prod-jenkins` Service. Since we do not have SSL certificates for HTTPS communication, we also specified that it is OK to use insecure policy which will allow us to access Jenkins through plain HTTP. The last argument defined the address through which we'd like to access Jenkins UI.
 
 We can see that Helm sent requests to Kube API to create all the resources defined in our Chart. As a result, among other resources, we got the Pods which run containers with Jenkins and ChartMuseum.
 
@@ -400,7 +419,13 @@ kubectl -n prod \
 
 The output should state that the `deployment "prod-chartmuseum"` was `successfully rolled out`.
 
-We won't do a real testing of the two applications, but only a superficial one that will give us a piece of mind.
+We won't do a real testing of the two applications, but only a superficial ones that will give us a piece of mind. We'll start with ChartMuseum.
+
+W> ## A note to minishift users
+W>
+W> OpenShift ignores Ingress resources so we'll have to create a Route to accomplish the same effect. Please execute the command that follows.
+W> 
+W> `oc -n prod create route edge --service prod-chartmuseum --hostname cm.$ADDR --insecure-policy Allow`
 
 ```bash
 curl "http://cm.$ADDR/health"
@@ -417,6 +442,14 @@ kubectl -n prod \
 ```
 
 Once the `deployment "prod-jenkins"` is `successfully rolled out`, we can open it in browser as a very light validation.
+
+W> ## A note to minishift users
+W>
+W> OpenShift requires Routes to make services accessible outside the cluster. To make things more complicated, they are not part of "standard Kubernetes" so we'll need to create one using `oc`. Please execute the command that follows.
+W>
+W> `oc -n prod create route edge --service prod-jenkins --insecure-policy Allow --hostname jenkins.$ADDR`
+W>
+W> That command created an `edge` Router tied to the `prod-jenkins` Service. Since we do not have SSL certificates for HTTPS communication, we also specified that it is OK to use insecure policy which will allow us to access Jenkins through plain HTTP. The last argument defined the address through which we'd like to access Jenkins UI.
 
 ```bash
 JENKINS_ADDR="jenkins.$ADDR"
@@ -621,7 +654,7 @@ The first option will result in only last five built being preserved in history.
 
 The second option disables concurrent builds. Each branch will have a separate job (just as in the previous chapter). If commits to different branches happen close to each other, Jenkins will process them in parallel by running builds for corresponding jobs. However, there is often no need for us to run multiple builds of the same job (branch) at the same time. With `disableConcurrentBuilds`, if we ever make multiple commits rapidly, they will be queued and executed sequentially.
 
-It's up to you to decide whether those options are useful. If they are, use them. If they aren't, discard them. My mission was to show you a few of the many `options` we can use. You, on the other hand, should open [Declarative Directive Generator](TODO) screen and explore the other available options. Bear in mind that the list of all the options depend on the installed plugins.
+It's up to you to decide whether those options are useful. If they are, use them. If they aren't, discard them. My mission was to show you a few of the many `options` we can use.
 
 The next block is `agent`.
 
@@ -647,7 +680,6 @@ The `label` defines the prefix that will be used to name the Pods that will be s
 Next, we're defining `serviceAccount` as `build`. We already created that ServiceAccount inside the *go-demo-5-build* Namespace when we applied the configuration from *build.yml*. Now we're telling Jenkins that it should use it when creating Pod.
 
 Finally, we changed the way we define the Pod. Instead of embedding Pod definition inside *Jenkinsfile*, we're using an external file defined as *yamlFile*. My opinion on that feature is still divided. Having Pod definition in Jenkinsfile (as we did in the previous chapter) allows me inspect everything related to the job from a single location. On the other hand, moving Pod definition to `yamlFile` allows us to focus on the flow of the pipeline, and leave lenghty Pod definition outside. It's up to you to choose which approach you like more. We'll explore the content of the `KubernetesPod.yaml` a bit later.
-
 
 The next section in Jenkinsfile.orig is `environment`.
 
@@ -822,9 +854,20 @@ spec:
 
 That Pod definition is almos the same as the one we used inside *Jenkinsfile* in the *go-demo-3* repository. Apart from residing in a separate file, the only difference is in an additional container named `docker`. In this scenario, we are not using external VMs to build Docker images. Instead, we have an additional container through which we can execute Docker-related steps. Since we want to execute Docker commands on the node, and avoid running Docker-in-Docker, we mounted `/var/run/docker.sock` as a Volume.
 
+W> ## A note to minishift users
+W>
+W> We need to relax security so that Pods are allowed to use `hostPath` volume plug-in.
+W>
+W> `oc adm policy add-scc-to-user hostmount-anyuid -z build -n go-demo-5-build`
+
 ## Creating And Running A Continuous Delivery Job
 
 That's it. We explored (soon to be) *Jenkinsfile* that contains our continuous delivery pipeline and *KubernetesPod.yaml* that contains the Pod definition that will be used to create Jenkins agents. There are a few other things we need to do but, before we discuss them, we'll change the address and Docker Hub user in *Jenkinsfile.orig*, store the output as *Jenkinsfile*, and push the changes to the forked GitHub
+
+W> ## A note to minishift users
+W>
+W> We'll use a slightly modified version of Jenkins file. Just as in the previous chapter, we'll add the `ocCreateEdgeRouteBuild` step that will accomplish the same results as Ingress controller
+W> Please use `Jenkinsfile.oc` instead of `Jenkinsfile.orig` in the command that follows.
 
 ```bash
 cat Jenkinsfile.orig \
@@ -882,7 +925,7 @@ Right now, we have two Kubernetes Clouds configured in our Jenkins instance. On 
 
 Even though we have two Kubernetes Clouds, their configurations are almost the same. Besides having different names, the only substantial difference is in the Namespace they use. I wanted to keep it simple and demonstrate that multiple clouds are possible, and often useful. In the "real world" situations, you'll probably use more fields and differentiate them even further. As an example, we could have defined the default set of containers that will be used with those clouds.
 
-![Figure 7-TODO: Jenkins Kubernetes Cloud settings for go-demo-5-build](images/ch08/jenkins-k8s-cloud-go-demo-5.png)
+![Figure 8-TODO: Jenkins Kubernetes Cloud settings for go-demo-5-build](images/ch08/jenkins-k8s-cloud-go-demo-5.png)
 
 Now we're ready to create a job that will be tied to the *go-demo-5* repository and validate whether the pipeline defined in the *Jenkinsfile* works as expcted.
 
@@ -896,7 +939,7 @@ Please click the *Create a New Pipeline* button and select *GitHub* as the repos
 
 Jenkins will create jobs for each branch of the *go-demo-5* repository. There is only one (*master*), so there will be one job in total. We already explored in the previous chapter how Jenkins handles multiple repositories by creating a job for each so I thought that there is no need to demonstrate the same feature again. Right now, *master* job/branch should be more then enough.
 
-PLease wait until the build is finished.
+Please wait until the build is finished.
 
 # TODO: Screenshot
 
@@ -1354,7 +1397,7 @@ Please click the *New Pipeline* button, and select *GitHub* and the organization
 
 The new job was created and all we have to do is wait for a few moments until it's finished
 
-![Figure 7-TODO: k8s-prod build screen](images/ch08/jenkins-k8s-prod-build.png)
+![Figure 8-TODO: k8s-prod build screen](images/ch08/jenkins-k8s-prod-build.png)
 
 Let's see the `history` of the Chart.
 
@@ -1377,12 +1420,50 @@ Our system is working! We have a fully operational continuous delivery pipeline.
 
 ## High Level Overwrite Of Continuous Delivery Pipeline
 
-TODO: Write
+Let's step back and paint a high level picture of the continuous delivery pipeline we created. To be more precise, we'll draw a diagram instead of painting anything.
 
-## CD vs CDP
+But, before we dive into a continuous delivery diagram, we'll refresh our memory with the one we used before for describing continuous deployment.
 
-TODO: Write
+![Figure 8-TODO: Continuous deployment process](images/ch08/cdp-stages-full.png)
+
+The continuous deployment pipeline contains all the steps from pushing a commit to deploying and testing a release in production.
+
+Continuous delivery removes one of the stages from the continuous delivery pipeline. We do NOT want to deploy a new release automatically. Instead, we want humans to decide whether a release should be upgraded in production. If it should, we need to decide when will that happen. Those (human) decisions are, in our case, happening as Git operations. We'll comment on them soon. For now, the important note is that the *deploy* stage is now removed from pipelines residing in application repositories.
+
+![Figure 8-TODO: Continuous deployment process](images/ch08/cd-stages.png)
+
+The fact that now our application pipeline (e.g., *go-demo-5*) does not perform deployment does not mean that it is not automated. The decisions which versions to use and when to initiate the upgrade process is manual, but everything else proceeding those actions is automated.
+
+In our case, there is a separate repository (*k8s-prod*) that contains a full definition what constitutes production environment. Whenever we make a decision to install a new application or to upgrade an existing one, we need to update files and push them to the repository. Whether that push is performed directly to the *master* branch or to a separate branch, is of no importance to the process that relies solely on the *master* branch. If you choose to use separate branches (as you should) you can do pull requests, code reviews, and all the other things we normally do with code. But, as I already mentioned, those actions are irrelevant from automation perspective. The *master* branch is the one that matters. Once a commit reaches it, it initiates a Webhook request that notifies Jenkins that there is a change and, from there on, we run a build that upgrades the production environment and executes light-weight tests with sanity checks.
+
+![Figure 8-TODO: Continuous deployment process](images/ch08/deployment-stage.png)
+
+How does continuous delivery of applications combine with unified deployment to the production environment?
+
+Let's imagine that we have four applications in total. We'll call them *app 1*, *app 2*, *app 3*, and *app 4*. Those applications are developed independently of each other. Whenever we push a commit to the *master* branch of one of those applications, corresponding continuous delivery pipeline is initiated and, if all the steps are successful, results in a new production-ready release. Pipelines are initiated when code is pushed to other branches as well, but in those cases production-ready releases are NOT created, so we'll ignore them in this story.
+
+We are accumilating production-ready releases in those applications and, at some point, someone makes a decision to upgrade the production environment. Those upgrades might involve an update of a single application, or it might entail update of a few. It all depends on architecture of our applications (sometimes they are not independent), business decisions, and quite a few other criteria. No matter how we made the decision which applications to update and which releases to use, we need to make appropriate changes in the repository that serves as the source of truth of the production environment.
+
+Let's say that we decided to upgrade app 1 to the release 2 and app 4 to release 4, to install the release 3 of app 2 for the first time, and to leave app 3 intact. In such a situation, we'd bump versions of app 1 and 4 in `requirements.yaml`. We'd add a new entry for app 2 since that's the first time we're installing that application. Finally, we'd leave app 3 in `requirements.yaml` as-is since we are not planning to upgrade it.
+
+Once we're finished with modifications to `requirements.yaml`, all that's left is to bump the version in `Chart.yaml` and push the changes directly to master, or though a pull request. No matter the route, once the change reaches the *master* branch, it fires a Webhook which, in turn, initiates a new build of the Jenkins job related to the repository. If all of the steps are successful, the Chart representing the production environment is upgraded and, with it, all the applications specified in `requirements.yaml` are upgraded as well. To be more precise, not all the dependencies are upgraded, but only those we modified. All in all, the production environment will converge to the desided stage after which we'll execute the last round of tests. If something fails, we roll back. Otherwise, another iteration of production deployments is finished, until the next time we repeat the same process.
+
+![Figure 8-TODO: Continuous deployment process](images/ch08/cdp-high-level.png)
+
+## To Continuous Deploy Or To Continuous Deliver?
+
+Should we use continuous deployment (CDP) or continuous delivery (CD) processes? That's a hard question to answer which largely depends on your internal processes. There are a few questions though that might gives us a guidance.
+
+1. Are your applications truly independent and can be deployed without changing anything else in your cluster?
+2. Do you have such a high level of trust in your automated tests that you are confident that there's no need for manual actions?
+3. Are the teams working on applications authorized to make decisions what to deploy to production and when?
+4. Are those teams self-sufficient and do not depend on other teams?
+5. Do you really want to upgrade production with every commit to the *master* branch?
+
+If you answered with *no* to at least one of those questions, you cannot do continuous deployment. You should aim for continuous delivery, or not even that. Continuous delivery is almost as hard to practice as continuous deployment. The chances are that you cannot get any time soon. If you can't, that's still not the end of the world. The lessons from this chapter can be easily modified to serve other processes. Guess what? If you answered with *no* to the second question (the one about tests), you cannot do either of those two processes. It's not that one requires less confidence in tests than the other. The level of trust is the same. We do not use continuous delivery because we trust our tests less, but because we choose not to deploy every commit to production. Our business might not be ready to deploy every production-ready release. Or, maybe, we need to wait for a marketing campaign to start (I'm ignoring the fact that we'd solve that with feature toggles). There might be many reasons to use continuous delivery instead of deployment, but none of them is technical. Both processes produce production-ready releases, and only one of them deploys it to production automatically.
+
+Now, if you do NOT trust your tests, you need to fall back to continuous integration. Luckily for you, the pipeline can be very similar. The major difference is that you should create one more repository (call it *k8s-test*) and have a similar Jenkinsfile inside it. When you think you're ready, you'll bump the versions in that repo and let Jenkins upgrade the test environment. From there on, you can let the army of manual testers do their work. They will surely find more problems than you're willing to fix but, once they stop finding those that impede you from upgrading the production, you can bump those versions in the repository that describes your production environment. Apart from different Namespaces and, maybe, reduced number of replicas and Ingress hosts, the two repositories should contain the same Chart with similar dependencies, and changes to their *master* branch, would result in very similar automated processes.
 
 ## What Now?
 
-TODO: Write
+We are finished with exploration of continuous delivery processes. Destroy the cluster if you created it only for the purpose of this chapter. Have a break. You deserve it.

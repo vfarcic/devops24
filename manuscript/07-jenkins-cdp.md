@@ -28,7 +28,7 @@ We already discussed what a continuous deployment pipeline looks like. In case y
 
 Now that we established a set of straightforward ground rules, we can move on and describe the pipeline we should develop. We are going to build something. Since building without running unit and other types of static tests should be declared officially illegal and punishable with public shame, we'll include those in our **build stage**. Then we're going execute the steps of the **functional testing stage** that will run all sorts of tests that require a live application. Therefore, we'll need to deploy a test release during this stage. Once we're confident that our application behaves as expected, we're going to make a **production release**, followed with the **deploy stage** that will not only upgrade the production release but also run another round of tests to validate whether everything works as expected.
 
-![Figure 7-1: The stages of a continuous deployment pipeline](images/ch07/cd-stages.png)
+![Figure 7-1: The stages of a continuous deployment pipeline](images/ch07/cdp-stages.png)
 
 You might not agree with the names of the stages. That's OK. It does not matter much how you name things, nor how you group steps. What matters is that the pipeline has everything we need to feel confident that a release is safely deployed to production. Steps matter, stages are only labels.
 
@@ -40,7 +40,7 @@ Let's create a cluster.
 
 ## Creating A Cluster
 
-We'll start the practical section of the chapter by going to the fork of the *vfarcic/k8s-specs* repository and by making sure that we have the latest revision.
+We'll start the practical section of the chapter by going to the *vfarcic/k8s-specs* repository and by making sure that we have the latest revision.
 
 I> All the commands from this chapter are available in the [07-jenkins-cdp.sh](https://gist.github.com/d0cbca319360eb000098383a09fd65f7) Gist.
 
@@ -258,7 +258,7 @@ Finally, we couldn't push to a registry without authentication, so we'll have to
 
 There are a few things that we are NOT going to do, even though you probably should when applying the lessons learned your "real" projects. We do NOT have static analysis. We are NOT generating code coverage, we are NOT creating reports, and we are not sending the result to analysis tools like [SonarQube](https://www.sonarqube.org/). More importantly, we are NOT running any security scanning. There are many other things we could do in this chapter, but we are not. The reason is simple. There is an almost infinite number of tools we could uses and steps we could execute. They depend on programming languages, internal processes, and what so not. Our goal is to understand the logic and, later on, to adapt the examples to your own needs. With that in mind, we'll stick only to the bare minimum, not only in this stage but also in those that follow. It is up to you to extend them to fit your specific needs.
 
-![Figure 7-2: The essential steps of the build stage](images/ch07/cd-stages-build.png)
+![Figure 7-2: The essential steps of the build stage](images/ch07/cdp-stages-build.png)
 
 Let's define the steps of the build stage as a Jenkins job.
 
@@ -369,7 +369,7 @@ I> When running multiple sets of different tests, consider using `parallel` cons
 
 Finally, we'll have to `delete` the Chart we installed. After all, it's pointless to waste resources by running an application longer than we need it. In our scenario, as soon as the execution of the tests is finished, we'll remove the application under test. However, there is a twist. Jenkins, like most other CI/CD tools, will stop the execution of the first error. Since there is no guarantee that none of the steps in this stage will fail, we'll have to envelop all the inside a big `try`/`catch`/`finally` statement.
 
-![Figure 7-4: The essential steps of the functional stage](images/ch07/cd-stages-func.png)
+![Figure 7-4: The essential steps of the functional stage](images/ch07/cdp-stages-func.png)
 
 Before we move on and write a new version of the pipeline, we'll need an address that we'll use as Ingress host of our application under tests.
 
@@ -581,7 +581,7 @@ One thing worth noting is that we will not use ChartMuseum for deploying applica
 
 Just as with the previous stages, we are focused only on the essential steps which you should extend to suit your specific needs. Examples that might serve as inspiration for the missing steps are those that would create a release in GitHub, GitLab, or Bitbucket. Also, it might be useful to build Docker images with manifest files in case you're planning on deploying them to different operating system families (e.g., ARM, Windows, etc.). Another thing that would be interesting to add is an automated way to create and publish release notes. Don't get your hopes too high because we'll skip those and quite a few other use-cases in an attempt to keep the pipeline simple, and yet fully functional.
 
-![Figure 7-6: The essential steps of the release stage](images/ch07/cd-stages-release.png)
+![Figure 7-6: The essential steps of the release stage](images/ch07/cdp-stages-release.png)
 
 Before we move on, we'll need to create a new set of credentials in Jenkins to store ChartMuseum's username and password.
 
@@ -742,7 +742,7 @@ The purpose of the *deploy stage* is to install the new release to production an
 
 If something goes wrong, we need to be able to act swiftly and roll back the release. I'll skip the discussion about the inability to roll back when changing database schemas and a few other cases. Instead, for the sake of simplicity, I'll assume that we'll roll back always if any of the steps in this stage fail.
 
-![Figure 7-10: The essential steps of the deploy stage](images/ch07/cd-stages-deploy.png)
+![Figure 7-10: The essential steps of the deploy stage](images/ch07/cdp-stages-deploy.png)
 
 Let's go back to *go-demo-3* configuration screen and update the pipeline.
 
