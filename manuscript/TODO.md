@@ -20,6 +20,7 @@
 
 ## The DevOps 2.X Toolkit
 
+- [ ] Write Scaling (horizontal-pod-autoscaler.md, https://github.com/getamis/vishwakarma/tree/master/aws/elastikube, https://itnext.io/opportunistically-mining-cryptocurrencies-in-kubernetes-94934d095c4d)
 - [ ] Service mesh (Istio, https://akomljen.com/kubernetes-service-mesh/, http://philcalcado.com/2017/08/03/pattern_service_mesh.html)
 - [ ] Serverless (KNative)
 - [ ] Build images (kaniko, buildah)
@@ -36,7 +37,6 @@
 - [ ] logging (ELK + FluentD, PaperTrail)
 - [ ] Write persistent-volume.md (EBS, EFS, Rook, GlusterFS, Ceph, NFS)
 - [ ] Write `kubectl completion bash`, and `kubectx` appendix
-- [ ] Write horizontal-pod-autoscaler.md (https://itnext.io/opportunistically-mining-cryptocurrencies-in-kubernetes-94934d095c4d)
 - [ ] Write kubeadm.md
 - [ ] Write daemon-set.md
 - [ ] Write garbage-collection.md

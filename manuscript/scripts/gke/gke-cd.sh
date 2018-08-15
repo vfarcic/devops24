@@ -9,13 +9,17 @@ ZONE=$(gcloud compute zones list \
     | awk '{print $1}' \
     | tail -n 1)
 
+echo $ZONE
+
 ZONES=$(gcloud compute zones list \
     --filter "region:(us-east1)" \
     | tail -n +2 \
     | awk '{print $1}' \
     | tr '\n' ',')
 
-MACHINE_TYPE=n1-highcpu-2
+echo $ZONES
+
+MACHINE_TYPE=n1-highcpu-4
 
 gcloud container clusters \
     create devops24 \

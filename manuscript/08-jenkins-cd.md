@@ -4,13 +4,13 @@
 - [X] Code review Docker for Mac/Windows
 - [X] Code review minikube
 - [X] Code review kops
-- [ ] Code review minishift
-- [ ] Code review GKE
-- [ ] Code review EKS
+- [X] Code review minishift
+- [X] Code review GKE
+- [X] Code review EKS
 - [X] Write
 - [ ] Text review
 - [ ] Diagrams
-- [ ] Gist
+- [X] Gist
 - [ ] Review the title
 - [ ] Proofread
 - [ ] Add to slides
@@ -20,29 +20,25 @@
 
 # Continuous Delivery With Jenkins And Git Operations
 
-Continuous delivery is a step down from continuous deployment. Instead of deploying every commit to the master branch to production, we are choosing which build should be promoted. Continuous delivery has that single manual step that forces us (humans) to choose which release should be upgraded in production.
+T> Continuous delivery is a step down from continuous deployment. Instead of deploying every commit from the master branch to production, we are choosing which builds should be promoted. Continuous delivery has that single manual step that forces us (humans) to choose which release should be upgraded in production.
 
-Given that we already explored continuous deployment, you might be wondering why are we even talking at this point about continuous delivery. There are a few reasons for that. First of all, I am conscious that many of you will not or can not implement continuous deployment. Your tests might not be as reliable as you'd need them to be. Your processes might not allow full automation. You might have to follow regulations that prevent you from reaching nirvana. There could be many other reasons and the point is that not everyone can apply continuous deployment. Even among those that can get there, there are certainly some that do not want that as the destination. All in all, we'll explore continuous delivery as alternative to continuous deployment.
+Given that we already explored continuous deployment, you might be wondering why are we even talking at this point about continuous delivery. There are a few reasons for that. First of all, I am conscious that many of you will not or can not implement continuous deployment. Your tests might not be as reliable as you'd need them to be. Your processes might not allow full automation. You might have to follow regulations that prevent you from reaching nirvana. There could be many other reasons. The point is that not everyone can apply continuous deployment. Even among those that can get there, there are certainly some that do not want that as the destination. So, we'll explore continuous delivery as alternative to continuous deployment.
 
 There are other reasons for writing this chapter. So far, I showed you one possible implementation of the continuous deployment pipeline. We could modify the existing pipeline by adding an `input` step before making the release and upgrading production. That would add *proceed* and *cancel* buttons that we could use to choose whether to upgrade the production release or not. This chapter would be the shortest chapter ever and that would be boring. Where's the fun in doing a small variation of the same?
 
-We'll use this chapter to explore a few alternative approaches to creating a continuous delivery pipeline. Just as the pipeline from the previous chapter could be easily converted from continuous deployment to continuous delivery process, what we're going to do next could also go both ways. So, even though our objective is to write a continuous delivery pipeline, it could easily apply to continuous deployment as well.
+We'll use this chapter to explore a few alternative approaches to writing Jenkins pipeline. Just as the pipeline from the previous chapter could be easily converted from continuous deployment to continuous delivery process, what we're going to do next could also go both ways. So, even though our objective is to write a continuous delivery pipeline, the lessons from this chapter could be easily applied to continuous deployment as well.
 
 We'll use this opportunity to explore declarative pipeline as an alternative to scripted. We'll switch from using a separate VM for building docker image to using the Docker socket to build it in one of the nodes of the cluster. We'll explore how we can define our whole productions environment in a different way. We'll even introduce GitOps.
 
-The real goal is to give you valid alternatives to the approaches we used so far thus allowing you to make better decisions when implementing lessons-learned in your organization. My hope is that by the end of this chapter you will be able to cherry-pick things that suits you the best and assemble your own process.
+The real goal is to give you valid alternatives to the approaches we used so far, thus allowing you to make better decisions when implementing lessons-learned in your organization. My hope is that by the end of this chapter you will be able to cherry-pick things that suit you the best and assemble your own process.
 
 That's it for the prep-talk. You know what continuous delivery is, and you know how to use Kubernetes. Let's define some pipelines.
 
 ## Cluster
 
-Unlike previous chapters, you cannot use an existing cluster this time. The reason behind that request lies in reduced requirements. This time, the cluster should **NOT have ChartMuseum**. You'll see why soon. What we need are the same hardware specs, with NGINX Ingress and Tiller running inside the cluster, and with the environment variable `LB_IP` that holds the address of the IP through which we can access the external load balancer or with the IP of the VM, in case of single VM local clusters like minikube, minishift, and Docker For Mac or Windows.
+Just as before, we'll start the practical part by making sure that we have the latest version of the *k8s-specs* repository.
 
-* [docker4mac-cd.sh](https://gist.github.com/d07bcbc7c88e8bd104fedde63aee8374): **Docker for Mac** with 3 CPUs, 4 GB RAM, with **nginx Ingress**, with **tiller**, and with `LB_IP` variable set to the IP of the cluster.
-* [minikube-cd.sh](https://gist.github.com/06bb38787932520906ede2d4c72c2bd8): **minikube** with 3 CPUs, 4 GB RAM, with `ingress`, `storage-provisioner`, and `default-storageclass` addons enabled, with **tiller**, and with `LB_IP` variable set to the VM created by minikube.
-* [kops-cd.sh](https://gist.github.com/d96c27204ff4b3ad3f4ae80ca3adb891): **kops in AWS** with 3 t2.small masters and 2 t2.medium nodes spread in three availability zones, with **nginx Ingress**, with **tiller**, and with `LB_IP` variable set to the IP retrieved by pinging ELB's hostname. The Gist assumes that the prerequisites are set through [Appendix B](#appendix-b).
-
-We're almost ready. The only thing missing, in terms of prerequisites, is to ensure that your local copy of the *vfarcic/k8s-specs* repository is up-to-date.
+I> All the commands from this chapter are available in the [08-jenkins-cd.sh](https://gist.github.com/cb0ececf6600745daeac8cc3ae400a86) Gist.
 
 ```bash
 cd k8s-specs
@@ -50,25 +46,36 @@ cd k8s-specs
 git pull
 ```
 
-Off we go.
+Unlike the previous chapters, you cannot use an existing cluster this time. The reason behind that lies in reduced requirements. This time, the cluster should **NOT have ChartMuseum**. Soon you'll see why. What we need are the same hardware specs (excluding GKE), with NGINX Ingress and Tiller running inside the cluster, and with the environment variable `LB_IP` that holds the address of the IP through which we can access the external load balancer, or with the IP of the VM in case of single VM local clusters like minikube, minishift, and Docker For Mac or Windows.
+
+For **GKE** we'll need to slightly increase memory so we'll use **n1-highcpu-4** instance types instead of *n1-highcpu-2* we used so far.
+
+* [docker4mac-cd.sh](https://gist.github.com/d07bcbc7c88e8bd104fedde63aee8374): **Docker for Mac** with 3 CPUs, 4 GB RAM, with **nginx Ingress**, with **tiller**, and with `LB_IP` variable set to the IP of the cluster.
+* [minikube-cd.sh](https://gist.github.com/06bb38787932520906ede2d4c72c2bd8): **minikube** with 3 CPUs, 4 GB RAM, with `ingress`, `storage-provisioner`, and `default-storageclass` addons enabled, with **tiller**, and with `LB_IP` variable set to the VM created by minikube.
+* [kops-cd.sh](https://gist.github.com/d96c27204ff4b3ad3f4ae80ca3adb891): **kops in AWS** with 3 t2.small masters and 2 t2.medium nodes spread in three availability zones, with **nginx Ingress**, with **tiller**, and with `LB_IP` variable set to the IP retrieved by pinging ELB's hostname. The Gist assumes that the prerequisites are set through [Appendix B](#appendix-b).
+* [minishift-cd.sh](https://gist.github.com/94cfcb3f9e6df965ec233bbb5bf54110): **minishift** with 4 CPUs, 4 GB RAM, with version 1.16+, with **tiller**, and and with `LB_IP` variable set to the VM created by minishift.
+* [gke-cd.sh](https://gist.github.com/1b126df156abc91d51286c603b8f8718): **Google Kubernetes Engine (GKE)** with 3 n1-highcpu-4 (4 CPUs, 3.6 GB RAM) nodes (one in each zone), with **nginx Ingress** controller running on top of the "standard" one that comes with GKE, with **tiller**, and with `LB_IP` variable set to the IP of the external load balancer created when installing nginx Ingress. We'll use nginx Ingress for compatibility with other platforms. Feel free to modify the YAML files and Helm Charts if you prefer NOT to install nginx Ingress.
+* [eks-cd.sh](https://gist.github.com/2af71594d5da3ca550de9dca0f23a2c5): **Elastic Kubernetes Service (EKS)** with 2 t2.medium nodes, with **nginx Ingress** controller, with a **default StorageClass**, with **tiller**, and with `LB_IP` variable set tot he IP retrieved by pinging ELB's hostname.
+
+Here we go.
 
 ## Defining The Whole Production Environment
 
-All the chapters until this one followed the same pattern. We'd learn about a new tool and, from there on, we'd streamline its installation through Gists in all subsequent chapters. As an example, we introduced ChartMuseum a few chapters ago. We learned how to install it and there was no point reiterating the same set of steps in the chapters that followed. Instead, we had the steps in Gists. Knowing that, you might be wondering why we did not follow the same pattern now. Why was ChartMuseum excluded from the Gists? Why isn't Jenkins there as well? Are we going to install ChartMuseum and Jenkins with a different configuration now? We're not. Both will have the same configuration but will be installed in a slightly different way.
+All the chapters until this one followed the same pattern. We'd learn about a new tool and, from there on, we'd streamline its installation through Gists in all subsequent chapters. As an example, we introduced ChartMuseum a few chapters ago, we learned how to install it, and, from there on, there was no point reiterating the same set of steps in the chapters that followed. Instead, we had the installation steps in Gists. Knowing that, you might be wondering why we did not follow the same pattern now. Why was ChartMuseum excluded from the Gists we're using in this chapter? Why isn't Jenkins there as well? Are we going to install ChartMuseum and Jenkins with a different configuration? We're not. Both will have the same configuration but they will be installed in a slightly different way.
 
-We already saw the benefits provided by Helm. Among other features, it provides templating mechanism that allows us to customize our Kubernetes definitions. We used `requirements.yaml` file to create our own Jenkins distribution. Helm requirements are a nifty feature initially designed to provide means to define dependencies of our application. As an example, if we'd create an application that uses Redis DB, our application would be defined in templates and Reddis as a requirement. After all, if the community already has a Chart for Redis, why would we reinvent the wheel by creating our own definitions. Instead, we'd put it as an entry in `requirements.yaml`. Even though our motivation was slighly different, we did just that with Jenkins. As you might have guessed, content of `requirements.yaml` is not limited to a single entry. We can define as many dependencies as we need.
+We already saw the benefits provided by Helm. Among other things, it features a templating mechanism that allows us to customize our Kubernetes definitions. We used `requirements.yaml` file to create our own Jenkins distribution. Helm requirements are a nifty feature initially designed to provide means to define dependencies of our application. As an example, if we'd create an application that uses Redis DB, our application would be defined in templates and Reddis would be a dependency defined in `requirement.yaml`. After all, if the community already has a Chart for Redis, why would we reinvent the wheel by creating our own definitions? Instead, we'd put it as an entry in `requirements.yaml`. Even though our motivation was slighly different, we did just that with Jenkins. As you might have guessed, content of `requirements.yaml` is not limited to a single entry. We can define as many dependencies as we need.
 
-The Helm requirements feature opens new possibilities. We could, for example, create a Chart that would define Namespaces, RoleBindings, and all the other infrastructure-level things that our production environment needs. Such a Chart could treat all production releases as requirements. If we could do something like that, we could store everything related to production in a single repository. That would simplify the initial installation as well as upgrades of the production applications. Such an approach does not need to be limited to production. There could be another repository for other environments. Testing would be a good example if we still rely on manual tasks in that area.
+We could, for example, create a Chart that would define Namespaces, RoleBindings, and all the other infrastructure-level things that our production environment needs. Such a Chart could treat all production releases as dependencies. If we could do something like that, we could store everything related to production in a single repository. That would simplify the initial installation as well as upgrades of the production applications. Such an approach does not need to be limited to production. There could be another repository for other environments. Testing would be a good example if we still rely on manual tasks in that area.
 
-Since we'd keep those Charts in repository, changes to what constitures production could be code reviewed and, if necessary, approved before they're merged to the master branch. There are certainly other benefits of having a whole environment in a Git repository. I'll leave it to your imagination to figure them out.
+Since we'd keep those Charts in Git repositories, changes to what constitutes production could be reviewed and, if necessary, approved before they're merged to the master branch. There are certainly other benefits of having a whole environment in a Git repository. I'll leave it to your imagination to figure them out.
 
-The beauty of Helm requirements is that they still allow us to keep the definition of an application in the same repository as the code. If we take our *go-demo* application as an example, the Chart that defines the application can and should continue residing in its repository. However, a different repository could define all the applications running in the production environment as requirements, including *go-demo*. That way, we'll accomplish two things. Everything related to an application, including its Chart would be in the same repository without breaking the everything-in-git rule. So far, our continuous deployment pipeline (the one we defined in the previous chapter) breaks that rule. Jenkins was upgrading production release without storing that information in Git. We had undocumented deployments. Since releases under test are temporary and live only for the duration of those automated tests, production releases last longer and should be documented, even if thair life-span is potentially short (until the next commit).
+The beauty of Helm requirements is that they still allow us to keep the definition of an application in the same repository as the code. If we take our *go-demo* application as an example, the Chart that defines the application can and should continue residing in its repository. However, a different repository could define all the applications running in the production environment as dependencies, including *go-demo*. That way, we'll accomplish two things. Everything related to an application, including its Chart would be in the same repository without breaking the everything-in-git rule. So far, our continuous deployment pipeline (the one we defined in the previous chapter) breaks that rule. Jenkins was upgrading production releases without storing that information in Git. We had undocumented deployments. While releases under test are temporary and live only for the duration of those automated tests, production releases last longer and should be documented, even if thair life-span is potentially short (until the next commit).
 
 All in all, our next task is to have the whole production environment in a single repository, without duplicating the information already available in repositories where we keep the code and definitions of our applications.
 
-I already created a repository [vfarcic/k8s-prod](https://github.com/vfarcic/k8s-prod) that defines a production environment. Since we'll have to make some changes to a few files, our first task is to fork it. Otherwise, I'd need to give you my GitHub credentials so that you can push those changes to my repo. As you can probably imagine, that is not going to happen.
+I already created a repository [vfarcic/k8s-prod](https://github.com/vfarcic/k8s-prod) that defines a production environment. Since we'll have to make some changes to a few files, our first task is to fork it. Otherwise, I'd need to give you my GitHub credentials so that you could push those changes to my repo. As you can probably guess, that is not going to happen.
 
-Please open [vfarcic/k8s-prod](https://github.com/vfarcic/k8s-prod) in a browser and fork the repository. I'm sure you already know how to do that. If you don't, all you have to do is to click on the *Fork* button located in the top-right corner and follow the wizard.
+Please open [vfarcic/k8s-prod](https://github.com/vfarcic/k8s-prod) in a browser and fork the repository. I'm sure you already know how to do that. If you don't, all you have to do is to click on the *Fork* button located in the top-right corner, and follow the wizard instructions.
 
 Next, we'll clone the forked repository before we explore some of its files.
 
@@ -106,15 +113,20 @@ maintainers:
 
 The `Chart.yaml` file is very uneventful, so we'll skip explaining it. The only thing that truly matters is the `version`.
 
-I> You might see a different `version` than the one from the above output. Don't panic! I probably bumped it in one of my tests.
+W> You might see a different `version` than the one from the output above. Don't panic! I probably bumped it in one of my tests.
 
 Let's take a look at the `requirements.yaml`.
 
 ```bash
+cp helm/requirements-orig.yaml \
+    helm/requirements.yaml
+
 cat helm/requirements.yaml
 ```
 
-The output is as follows.
+We copied the original requirements as a precaution since I might have changed `requirements.yaml` during one of my experiments.
+
+The output of the latter command is as follows.
 
 ```yaml
 dependencies:
@@ -126,9 +138,11 @@ dependencies:
   version: 0.16.6
 ```
 
-We can see that the requirements for our production environments are `chartmuseum` and `jenkins`, both located in the `stable` repository (official Helm repo).
+We can see that the requirements for our production environments are `chartmuseum` and `jenkins`. Both are located in the `stable` repository (the official Helm repo).
 
-Offcourse, just stating the requirements is not enough. Our applications almost always require customized versions of both public and private Charts. We already know from the previous chapters that we can leverage `values.yaml` file to customize Charts. The repository already has one, so let's take a quick look.
+Offcourse, just stating the requirements is not enough. Our applications almost always require customized versions of both public and private Charts.
+
+We already know from the previous chapters that we can leverage `values.yaml` file to customize Charts. The repository already has one, so let's take a quick look.
 
 ```bash
 cat helm/values-orig.yaml
@@ -213,7 +227,7 @@ jenkins:
     install: true
 ```
 
-We can see that the values are split into two groups; `chartmuseum` and `jenkins`. Other than that, they are almost the same as the values we used in previous chapters. The only important difference is that both are now defined in the same file and will be used as values for the requirements.
+We can see that the values are split into two groups; `chartmuseum` and `jenkins`. Other than that, they are almost the same as the values we used in the previous chapters. The only important difference is that both are now defined in the same file, and that they will be used as values for the requirements.
 
 I> I hope that you noticed that the file is named `values-orig.yaml` instead of `values.yaml`. I could not predict in advance what will be the address through which you can access the cluster. We'll combine that file with a bit of `sed` magic to generate `values.yaml` that contains the correct address.
 
@@ -230,7 +244,7 @@ config.tpl
 ns.yaml
 ```
 
-The `config.tpl` file is the same Jenkins configuration template we used before, so there should be no need explaining it. We'll skip it and jump into `ns.yaml`.
+The `config.tpl` file is the same Jenkins configuration template we used before, so there should be no need explaining it. We'll skip it and jump straight into `ns.yaml`.
 
 ```bash
 cat helm/templates/ns.yaml
@@ -275,11 +289,11 @@ subjects:
   namespace: {{ .Release.Namespace }}
 ```
 
-That definition holds no mysteries. It is a very similar one as those we used before. The first two entries provide permissions Jenkins builds need for running in the same Namespace while the third is meant to allow builds to interact with tiller running `kube-system`. You can see that through the `namespace` set to `kube-system` and the reference to the `ServiceAccount` in the Namespace where we'll install this Chart.
+That definition holds no mysteries. It is a very similar one as those we used before. The first two entries provide permissions Jenkins builds need for running in the same Namespace, while the third is meant to allow builds to interact with tiller running `kube-system`. You can see that through the `namespace` entry that is set to `kube-system`, and through the reference to the `ServiceAccount` in the Namespace where we'll install this Chart.
 
-All in all, this chart is a combination of custom templates meant to provide permissions and a set of requirements that will install the applications our production environment needs. For now, those requirements are only two applications (ChartMuseum and Jenkins) and we are likely going to expand it later on with additional ones.
+All in all, this chart is a combination of custom templates meant to provide permissions and a set of requirements that will install the applications our production environment needs. For now, those requirements are only two applications (ChartMuseum and Jenkins) and we are likely going to expand it later with additional ones.
 
-I already mentioned that `values-orig.yaml` is too generic and that we should update it with the cluster address before we convert it into `values.yaml` the Chart expects to have. That's our next mission.
+I already mentioned that `values-orig.yaml` is too generic and that we should update it with the cluster address before we convert it into `values.yaml`. That's our next mission.
 
 ```bash
 ADDR=$LB_IP.nip.io
@@ -313,13 +327,13 @@ git commit -m "Address"
 git push
 ```
 
-All the requirements need to be downloaded to the `charts` directory before they are installed. We'll do that through `helm dependency update` command.
+All Helm dependencies need to be downloaded to the `charts` directory before they are installed. We'll do that through the `helm dependency update` command.
 
 ```bash
 helm dependency update helm
 ```
 
-The relevant parts of the output is as follows.
+The relevant par of the output is as follows.
 
 ```
 ...
@@ -331,9 +345,9 @@ Deleting outdated charts
 
 Don't worry if some of the repositories are not reachable. You might see messages stating that Helm was `unable to get an update` from `local` or `chartmuseum` repositories. Local Helm configuration probably has those (and maybe other) references from previous exercises.
 
-The last lines of the output are important. We can see that Helm saved two Charts (`chartmuseum` and `jenkins`). Those are the Charts we specified in `requirements.yaml`.
+The last lines of the output are important. We can see that Helm saved two Charts (`chartmuseum` and `jenkins`). Those are the Charts we specified as dependencies in `requirements.yaml`.
 
-We can confirm that by listing the files in the `charts` directory.
+We can confirm that the dependencies were indeed downloaded by listing the files in the `charts` directory.
 
 ```bash
 ls -1 helm/charts
@@ -346,7 +360,7 @@ chartmuseum-1.6.0.tgz
 jenkins-0.16.6.tgz
 ```
 
-Now that the requirements are downloaded and saved to the `charts` directory, we can proceed and install our full production environment. It consists of only two applications. We'll increase that number soon and I expect that you'll add other applications you need to your "real" environment if you choose to use this approach.
+Now that the dependencies are downloaded and saved to the `charts` directory, we can proceed and install our full production environment. It consists of only two applications. We'll increase that number soon and I expect that you'll add other applications you need to your "real" environment if you choose to use this approach.
 
 W> ## A note to minishift users
 W>
@@ -368,15 +382,8 @@ The output, limited to the Pods, is as follows.
 NAME                               READY  STATUS   RESTARTS  AGE
 prod-chartmuseum-68bc575fb7-jgs98  0/1    Pending  0         1s
 prod-jenkins-6dbc74554d-gbzp4      0/1    Pending  0         1s
+...
 ```
-
-W> ## A note to minishift users
-W>
-W> OpenShift requires Routes to make services accessible outside the cluster. To make things more complicated, they are not part of "standard Kubernetes" so we'll need to create one using `oc`. Please execute the command that follows.
-W>
-W> `oc -n prod create route edge --service prod-jenkins --insecure-policy Allow --hostname jenkins.$ADDR`
-W>
-W> That command created an `edge` Router tied to the `prod-jenkins` Service. Since we do not have SSL certificates for HTTPS communication, we also specified that it is OK to use insecure policy which will allow us to access Jenkins through plain HTTP. The last argument defined the address through which we'd like to access Jenkins UI.
 
 We can see that Helm sent requests to Kube API to create all the resources defined in our Chart. As a result, among other resources, we got the Pods which run containers with Jenkins and ChartMuseum.
 
@@ -394,7 +401,7 @@ kubectl -n prod \
     --from-file ../k8s-specs/cluster/jenkins/secrets
 ```
 
-Let's list the Charts running inside the cluster and thus confirm that `prod-env` was indeed deployed.
+Let's list the Charts running inside the cluster and thus confirm that `prod` was indeed deployed.
 
 ```bash
 helm ls
@@ -407,7 +414,7 @@ NAME REVISION UPDATED        STATUS   CHART          NAMESPACE
 prod 1        Tue Aug  7 ... DEPLOYED prod-env-0.0.1 prod
 ```
 
-Now that we saw that the Chart was indeed deployed, the only thing left is to confirm that the two applications are indeed running correctly.
+Now that we saw that the Chart was installed, the only thing left is to confirm that the two applications are indeed running correctly. We won't do a real testing of the two applications, but only superficial ones that will give us a piece of mind. We'll start with ChartMuseum.
 
 First, we'll wait for ChartMuseum to roll out (if it didn't already).
 
@@ -418,8 +425,6 @@ kubectl -n prod \
 ```
 
 The output should state that the `deployment "prod-chartmuseum"` was `successfully rolled out`.
-
-We won't do a real testing of the two applications, but only a superficial ones that will give us a piece of mind. We'll start with ChartMuseum.
 
 W> ## A note to minishift users
 W>
@@ -468,31 +473,31 @@ JENKINS_PASS=$(kubectl -n prod \
 echo $JENKINS_PASS
 ```
 
-Please go back to Jenkins UI in your favourite browser and login using *admin* as the username and the output of `JENKINS_PASS` as password. If, later on, your Jenkins session expires and you need to log in again, all you have to do is output `JENKINS_PASS` variable to find out the password.
+Please go back to Jenkins UI in your favourite browser and login using *admin* as the username and the output of `JENKINS_PASS` as the password. If, later on, your Jenkins session expires and you need to log in again, all you have to do is output `JENKINS_PASS` variable to find the password.
 
 Now that we have the base production environment, we can turn our attention towards defining a continuous delivery pipeline.
 
-### What Is A Continuous Delivery Pipeline?
+### What Is Continuous Delivery Pipeline?
 
-Now that we have a cluster and the third-party applications running in a production environment, we can turn our attention towards defining a contrinuous delivery pipeline.
+Now that we have a cluster and the third-party applications running in the production environment, we can turn our attention towards defining a continuous delivery pipeline.
 
-Before we proceed, I'll recap the definitions of continuous deployment and continuous delivery.
+Before we proceed, we'll recap the definitions of continuous deployment and continuous delivery.
 
-Continuous deployment is a fully automated process that executes a set of steps aimed at converting each commit to the master branch into a fully tested release deployed to production.
+I> Continuous deployment is a fully automated process that executes a set of steps with the goal of converting each commit to the master branch into a fully tested release deployed to production.
 
-Continuous delivery is almost a fully automated process that executed a set of steps aimed at converting each commit to the master branch a fully tested release that is NOT deployed to production. Instead, we (humans) retain the ability to choose which of the production ready releases will be deployed to production and when is that deployment going to happen.
+I> Continuous delivery is almost a fully automated process that executes a set of steps with the goal of converting each commit to the master branch into a fully tested release that is ready to be deployed to production. We (humans) retain the ability to choose which of the production-ready releases will be deployed to production and when is that deployment going to happen.
 
-When compared to continuous deployment, continuous delivery is split into two automated processes with a manual action in between. The first processes ensures that a commit is built, tested, and converted into a release. The second is in charge of performing the actual deployment to production and executing a set of tests that validate the deployment.
+When compared to continuous deployment, continuous delivery is split into two automated processes with a manual action in between. The first processes ensures that a commit is built, tested, and converted into a release. The second is in charge of performing the actual deployment to production and executing a set of tests that validate that deployment.
 
-In other words, the only important difference between the two processes is that continuous delivery has a manual action that allows us to choose whether we want to proceed with the deployment to production. That choice is not based on technical knowledge since we already validated that a release is production ready. Instead, it is a business or marketing decision when to deliver a set of features to our users.
+In other words, the only important difference between the two processes is that continuous delivery has a manual action that allows us to choose whether we want to proceed with the deployment to production. That choice is not based on technical knowledge since we already validated that a release is production ready. Instead, it is a business or a marketing decision what to deliver to our users and when should that happen.
 
-Since this is not the first time we are discussing continuous deployment and continuous delivery, there's probably no need to dive deeper into the processes. Instead, we'll dive straight into one possible implementation of continuous delivery.
+Since this is not the first time we are discussing continuous deployment and continuous delivery, there's probably no need to dive deeper into the processes. Instead, we'll jump straight into one possible implementation of a continuous delivery pipeline.
 
-If we compare the process that follows with the one from the previous chapter, some of the steps will be different. That is not to say that those described here are not well suited in a continuous deployment pipeline. Quite the contrary. The steps are interchangeable. My main goal is not only to present a possible implementation of a continuous delivery pipeline but also to showcase a different approach that case, with small adjustments, be applied to any type of a pipeline.
+If we compare the process that follows with the one from the previous chapter, some of the steps will be different. That is not to say that those described here are not well suited in a continuous deployment pipeline. Quite the contrary. The steps are interchangeable. My main goal is not only to present a possible implementation of a continuous delivery pipeline but also to showcase a different approach that, with small adjustments, can be applied to any type of a pipeline.
 
 ## Exploring Application's Repository And Preparing The Environment
 
-Before I wrote this chapter, I forked the [vfarcic/go-demo-3](https://github.com/vfarcic/go-demo-3) repository into [vfarcic/go-demo-5](https://github.com/vfarcic/go-demo-5). Even though the code of the application is still the same, I thought it would be easier to apply and demonstrate the changes in a new repository instead of creating a new branch or do some other workaround that would allow us to have both processes in the same repository. All in all, *go-demo-5* is a copy of *go-demo-3* on top of which I made some changes which I'll comment soon.
+Before I wrote this chapter, I forked the [vfarcic/go-demo-3](https://github.com/vfarcic/go-demo-3) repository into [vfarcic/go-demo-5](https://github.com/vfarcic/go-demo-5). Even though most the code of the application is still the same, I thought it would be easier to apply and demonstrate the changes in a new repository instead of creating a new branch or doing some other workaround that would allow us to have both processes in the same repository. All in all, *go-demo-5* is a copy of *go-demo-3* on top of which I made some changes which we'll comment soon.
 
 Since we'll need to change a few configuration files and push them back to the repository, you should fork [vfarcic/go-demo-5](https://github.com/vfarcic/go-demo-5), just as you forked [vfarcic/k8s-prod](https://github.com/vfarcic/k8s-prod).
 
@@ -509,12 +514,12 @@ cd go-demo-5
 
 The Chart located in `helm` directory is the same as the one we used in *go-demo-3* so we'll skip commenting it. Instead, we'll replace my GitHub user (`vfarcic`) with yours.
 
-Before you execute the commands that follow, make sure you replace `[...]` with your GitHub user.
+Before you execute the commands that follow, make sure you replace `[...]` with your Docker Hub user.
 
 ```bash
 DH_USER=[...]
 
-cat helm/go-demo-5/deployment.yaml.orig \
+cat helm/go-demo-5/deployment-orig.yaml \
     | sed -e "s@vfarcic@$DH_USER@g" \
     | tee helm/go-demo-5/templates/deployment.yaml
 ```
@@ -554,31 +559,33 @@ COPY go-demo /usr/local/bin/go-demo
 RUN chmod +x /usr/local/bin/go-demo
 ```
 
-You'll notice that we are not using multi-stage builds. That makes me sad since I think that is one of the greatest additions to Docker's build process. The ability to run unit tests and build a binary served us well so far. The process was streamlined in through a single `docker image build` command, documented in a single *Dockerfile* file, and we did not have to sacrifice the size of the final image. So, why did I choose not to use it now?
+You'll notice that we are not using multi-stage builds. That makes me sad since I think that is one of the greatest additions to Docker's build process. The ability to run unit tests and build a binary served us well so far. The process was streamlined through a single `docker image build` command, it was documented in a single *Dockerfile* file, and we did not have to sacrifice the size of the final image. So, why did I choose not to use it now?
 
-We'll switch from building Docker images in a separate VM outside the cluster to using Docker socket to build it in one of the Kubernetes worker nodes. That does reduce security (Docker on that node could be obducted) and it can cause potential problems with Kubernetes (we're using containers without it's knowledge). Yet, using the socket is somewhat easier, cleaner, and faster. Even though we explored this option through Shell commands, we did not use it in our Jenkins pipelines. So, I though that you should experience both ways of building images in a Jenkins pipeline and choose for yourself which method fits your use-case better. The goal is to find the balance and gain experience that will let you choose what works better for you. There will be quite a few changes further on that are aimed at giving you better insight into different ways of accomplishing the same goals. You will have to make the choice how to combine them into the solution that works the best in your organization.
+We'll switch from building Docker images in a separate VM outside the cluster to using Docker socket to build it in one of the Kubernetes worker nodes. That does reduce security (Docker on that node could be obducted) and it can cause potential problems with Kubernetes (we're using containers without its knowledge). Yet, using the socket is somewhat easier, cleaner, and faster. Even though we explored this option through Shell commands, we did not use it in our Jenkins pipelines. So, I though that you should experience both ways of building images in a Jenkins pipeline and choose for yourself which method fits your use-case better. The goal is to find the balance and gain experience that will let you choose what works for you. There will be quite a few other changes further on. They all aim at giving you better insight into different ways of accomplishing the same goals. You will have to make the choice how to combine them into the solution that works the best in your organization.
 
-Going back to the reason for NOT using Docker's multi-stage builds... Given that we're about to use Docker in one of the worker nodes of the cluster, we depend on Docker version running inside that cluster. At the time of this writing (August 2018), some Kubernetes clusters still use more than a year old Docker. If my memory serves me, multi-stage builds were added in Docker *17.05*, and some Kubernetes flavours (even when on the latest version), still use Docker *17.03* or even older. Kops is a good example, even though it is not the only one. Release *1.9.x* (the latest stable at the time of this writing), uses Docker *17.03*. Since I'm committed making all the examples in this book working in many different Kubernetes flavours, I had to remove multi-stage builds. Check Docker version in your cluster and, if it's *17.05* or newer, I'd greatly recommend you continue using multi-stage builds. They are too good of a feature to ignore it, if not necessary.
+Going back to the reason for NOT using Docker's multi-stage builds... Given that we're about to use Docker in one of the worker nodes of the cluster, we depend on Docker version running inside that cluster. At the time of this writing (August 2018), some Kubernetes clusters still use more than a year old Docker. If my memory serves me, multi-stage builds were added in Docker *17.05*, and some Kubernetes flavours (even when on the latest version), still use Docker *17.03* or even older. Kops is a good example, even though it is not the only one. Release *1.9.x* (the latest stable at the time of this writing), uses Docker *17.03*. Since I'm committed to making all the examples in this book working in many different Kubernetes flavours, I had to remove multi-stage builds.
 
-All in all, that *Dockerfile* assumes that we already run our tests and that we already built the binary. We'll see how to do that inside a Jenkins pipeline soon.
+Check Docker version in your cluster and, if it's *17.05* or newer, I'd greatly recommend you continue using multi-stage builds. They are too good of a feature to ignore it, if not necessary.
 
-Soon we'll explore the pipeline stored in Jenkinsfile in the repository we cloned. However, before we do that, we'll go through declarative pipeline syntax since that's the one we'll use in this chapter.
+All in all, the *Dockerfile* assumes that we already executed our tests and that we built the binary. We'll see how to do that inside a Jenkins pipeline soon.
+
+We'll explore the pipeline stored in Jenkinsfile in the repository we cloned. However, before we do that, we'll go through declarative pipeline syntax since that's the one we'll use in this chapter.
 
 ## Switching From Scripted To Declarative Pipeline
 
-Long long time ago, in a galaxy far far away, a group of Jenkins contributors decided to reinvent the way Jenkins jobs are defined and how they operate. OK, it wasn't that long ago, even though a couple of years in software terms is a lot.
+*Long long time ago, in a galaxy far far away, a group of Jenkins contributors decided to reinvent the way Jenkins jobs are defined and how they operate.* (A couple of years in software terms is a lot, and Jenkins contributors are indeed spread throughout the galaxy).
 
 The new type of jobs became known as Jenkins pipeline. It was received well by the community and the adoption started almost instantly. Everything was great and the benefits of using Pipeline compared to FreeStyle jobs were evident from the start. However, it wasn't easy for everyone to adopt Pipeline. Those who were used to scripting, and especially those familiar with Groovy, had no difficulties to switch. But, there were many who used Jenkins without being coders. They did not find Pipeline to be as easy as we thought it would be. While I do believe that there is no place in software industry for those who do not know how to code, it was still evident that something needed to be done to simplify Pipeline syntax even more. So, a new flavour of Pipeline syntax was born. We renamed the existing Pipeline flavor to Scripted Pipeline and created a new one called Declarative Pipeline.
 
-Declarative Pipeline is a more simplified and opinionated syntax of top of Pipeline. It's goal is to provide easier way to define pipelines, to make them more readable, and to lower the entry bar. You can think of the Scripted Pipeline being initially aimed at power users and Declarative Pipeline for everyone else. In the meantime, Declarative Pipeline started getting more and more attention and today such a separation is not necessarily valid any more. In some ways, Declarative Pipeline is more advanced and is recommended for all users except when one need something that cannot (easily) be done without switching to Scripted.
+Declarative Pipeline is a more simplified and more opinionated syntax of top of Pipeline. Its goal is to provide easier way to define pipelines, to make them more readable, and to lower the entry bar. You can think of the Scripted Pipeline being initially aimed at power users and Declarative Pipeline for everyone else. In the meantime, Declarative Pipeline started getting more and more attention and today such a separation is not necessarily valid any more. In some ways, Declarative Pipeline is more advanced and it is recommended for all users except when one needs something that cannot be (easily) done without switching to Scripted.
 
-I> The recommendation is to always start with Declarative Pipeline and switch to Scripted only if you need to accomplish something that is not currently supported.
+I> The recommendation is to always start with Declarative Pipeline and switch to Scripted only if you need to accomplish something that is not currently supported. Even then, you might be trying to do something you shouldn't.
 
 Right now you might be asking yourself something along the lines "why did Viktor make us use Scripted Pipeline if Declarative is better?" The previous pipeline required two features that are not yet supported by Declarative. We wanted to use `podTemplate` for most of the process with occasional jump into agents based on VMs for building Docker images. That is not yet supported with Declarative Pipeline. However, since we will now switch to using Docker socket to build images inside the nodes of the cluster, that is not an issue any more. The second reason lies in inability to define Namespace inside `podTemplate`. That also is not an issue any more since we'll switch to the model of defining a separate Kubernetes cloud for each Namespace where builds should run. You'll see both changes in action soon when we start exploring the continuous delivery pipeline used for *go-demo-5*.
 
-Before we jump into defining the pipeline for *go-demo-5* application, we'll briefly explore the general structure of a Declarative pipeline.
+Before we jump into defining the pipeline for the *go-demo-5* application, we'll briefly explore the general structure of a Declarative pipeline.
 
-The code that follows represents a sceleton of a Declarative pipeline.
+The snippet that follows represents a sceleton of a Declarative pipeline.
 
 ```groovy
 pipeline {
@@ -609,13 +616,13 @@ pipeline {
 }
 ```
 
-A Declarative Pipeline is always enclosed in a `pipeline` block. That allows Jenkins to distinguish Declarative from Scripted flavour. Inside it are defferent sections, each with a specific purpose.
+A Declarative Pipeline is always enclosed in a `pipeline` block. That allows Jenkins to distinguish th Declarative from the Scripted flavour. Inside it are defferent sections, each with a specific purpose.
 
 The `agent` section specifies where the entire Pipeline, or a specific stage, will execute in the Jenkins environment depending on where the agent section is placed. The section must be defined at the top-level inside the pipeline block, but stage-level usage is optional. We can define different types of agents inside this block. In our case, we'll use `kubernetes` type which translates to `podTemplate` we used before. The `agent` section is mandatory.
 
-The `post` section defines one or more additional steps that are run upon the completion of a Pipeline's or stage's run (depending on the location of the post section within the Pipeline). It supports any of of the following post-condition blocks: `always`, `changed`, `fixed`, `regression`, `aborted`, `failure`, `success`, `unstable`, and `cleanup`. These condition blocks allow the execution of steps inside each condition depending on the completion status of the Pipeline or stage.
+The `post` section defines one or more additional steps that are run upon the completion of a Pipeline's or stage's run (depending on the location of the `post` section within the Pipeline). It supports any of of the following post-condition blocks: `always`, `changed`, `fixed`, `regression`, `aborted`, `failure`, `success`, `unstable`, and `cleanup`. These condition blocks allow the execution of steps inside each condition depending on the completion status of the Pipeline or stage.
 
-The `stages` block is where most of the action is happening. It contains a sequence of one or more `stage` directives inside of which are the `steps` which constitute the bulk of our pipeline.
+The `stages` block is where most of the action is happening. It contains a sequence of one or more `stage` directives inside of which are the `steps` which constitute the bulk of our pipeline. The `stages` section is mandatory.
 
 The `environment` directive specifies a sequence of key-value pairs which will be defined as environment variables for the all steps, or stage-specific steps, depending on where the environment directive is located within the Pipeline. This directive supports a special helper method `credentials()` which can be used to access pre-defined Credentials by their identifier in the Jenkins environment.
 
@@ -623,17 +630,17 @@ The `options` directive allows configuring Pipeline-specific options from within
 
 The `parameters` directive provides a list of parameters which a user should provide when triggering the Pipeline. The values for these user-specified parameters are made available to Pipeline steps via the params object.
 
-The `triggers` directive defines the automated ways in which the Pipeline should be re-triggered. In most cases, we should trigger a build through a Webhook. In such situations, `triggers` block does not provide any value.
+The `triggers` directive defines automated ways in which the Pipeline should be re-triggered. In most cases, we should trigger a build through a Webhook. In such situations, `triggers` block does not provide any value.
 
-Finally, the last section is `tools`. It allows us to define tools to auto-install and put on the `PATH`. Since we're using containers, `tools` are pointless. The tools we need are already defined as container images and accessible through containers of the build Pod. Even if we'd use a VM for parts of our pipeline, like in the previous chapter, we should still bake the tools we need inside VM images and not vaste our time installing them at runtime.
+Finally, the last section is `tools`. It allows us to define tools to auto-install and put on the `PATH`. Since we're using containers, `tools` are pointless. The tools we need are already defined as container images and accessible through containers of the build Pod. Even if we'd use a VM for parts of our pipeline, like in the previous chapter, we should still bake the tools we need inside VM images instead of vasting our time installing them at runtime.
 
-You can find much more info about declarative pipeline in [Pipeline Syntax](https://jenkins.io/doc/book/pipeline/syntax/) page. As a matter of fact, important parts of the descriptions you just read are from that page.
+You can find much more info about declarative pipeline in [Pipeline Syntax](https://jenkins.io/doc/book/pipeline/syntax/) page. As a matter of fact, parts of the descriptions you just read are from that page.
 
-You probably got bored to death with the previous explanations. If you didn't, the chances are that they were insufficient. We'll fix that by going through an example that will much better illustrate how Declarative Pipeline works. We'll use most of those blocks in the example that follows. The exceptions are `parameters` (we don't have a good use case for them), `triggers` (useless when we're using Webhooks), and `tools` (reminescent from some other era). Once we're finished exploring the pipeline of the *go-demo-5* project, you'll have enough experience to get you started with your own Declarative Pipelines, if you choose to use them.
+You probably got bored to death with the previous explanations. If you didn't, the chances are that they were insufficient. We'll fix that by going through an example that will much better illustrate how Declarative Pipeline works. We'll use most of those blocks in the example that follows. The exceptions are `parameters` (we don't have a good use case for them), `triggers` (useless when we're using Webhooks), and `tools` (silly feature in the era of containers and tools for building VM images). Once we're finished exploring the pipeline of the *go-demo-5* project, you'll have enough experience to get you started with your own Declarative Pipelines, if you choose to use them.
 
 ## Demistifying Declarative Pipeline Through A Practical Example
 
-Let's take a look at a *Jenkinsfile.orig* which we'll use as a base to generate *Jenkinsfile* that will contain the correct address of the cluster and GitHub user.
+Let's take a look at a *Jenkinsfile.orig* which we'll use as a base to generate *Jenkinsfile* that will contain the correct address of the cluster and the GitHub user.
 
 ```bash
 cat Jenkinsfile.orig
@@ -650,9 +657,9 @@ options {
 ...
 ```
 
-The first option will result in only last five built being preserved in history. Most of the time there is no reason for us to keep all the builds we ever made. The last successful build of a branch is usually the only one that matters. We set them to five just to prove to you that I'm not cheap. By discarding the old builds, we're ensuring that Jenkins will perform faster.
+The first option will result in only last five builds being preserved in history. Most of the time there is no reason for us to keep all the builds we ever made. The last successful build of a branch is often the only one that matters. We set them to five just to prove that I'm not cheap. By discarding the old builds, we're ensuring that Jenkins will perform faster. Please note that the last successful build is kept even if, in this case, more than five last builds failed.
 
-The second option disables concurrent builds. Each branch will have a separate job (just as in the previous chapter). If commits to different branches happen close to each other, Jenkins will process them in parallel by running builds for corresponding jobs. However, there is often no need for us to run multiple builds of the same job (branch) at the same time. With `disableConcurrentBuilds`, if we ever make multiple commits rapidly, they will be queued and executed sequentially.
+The second option disables concurrent builds. Each branch will have a separate job (just as in the previous chapter). If commits to different branches happen close to each other, Jenkins will process them in parallel by running builds for corresponding jobs. However, there is often no need for us to run multiple builds of the same job (branch) at the same time. In some cases, that can even produce negative effects. With `disableConcurrentBuilds`, if we ever make multiple commits rapidly, they will be queued and executed sequentially.
 
 It's up to you to decide whether those options are useful. If they are, use them. If they aren't, discard them. My mission was to show you a few of the many `options` we can use.
 
@@ -671,15 +678,17 @@ agent {
 ...
 ```
 
-In our case, the `agent` block contains `kubernetes`. That is an indication that the pipeline should create a Pod based on Kubernetes Cloud configuration. That is further refined with the `cloud` entry which specifies that it must be the cloud config named `go-demo-5-build`. We'll create that cloud later. For now, we'll have to assume that it'll exist. The benefit of this approach is that we can define part of the agent information outside Pipeline and help other teams worry less about the things they need need to put to their Jenkinsfile. As an example, you will not see a mention of a Namespace where the build should create a Pod that acts as Jenkins agent. That will be defined elsewhere, and every build that uses `go-demo-5-build` will be run in that same Namespace.
+In our case, the `agent` block contains a `kubernetes` block. That is an indication that the pipeline should create a Pod based on Kubernetes Cloud configuration. That is further refined with the `cloud` entry which specifies that it must be the cloud config named `go-demo-5-build`. We'll create that cloud later. For now, we'll have to assume that it'll exist.
 
-There is another, less obvious reason for using a `cloud` dedicated to the builds in `go-demo-5-build` Namespace. Declarative syntax does not allow us to specify Namespace. So, we'll have to have as many `cloud` configurations as there are Namespaces, or even more.
+The benefit of that approach is that we can define only part of the agent information outside Pipeline and help other teams worry less about the things they need need to put to their Jenkinsfile. As an example, you will not see a mention of a Namespace where the build should create a Pod that acts as a Jenkins agent. That will be defined elsewhere, and every build that uses `go-demo-5-build` will be run in that same Namespace.
+
+There is another, less obvious reason for using a `cloud` dedicated to the builds in `go-demo-5-build` Namespace. Declarative syntax does not allow us to specify Namespace. So, we'll have to have as many `cloud` configurations as there are Namespaces, or more.
 
 The `label` defines the prefix that will be used to name the Pods that will be spin by the builds based on this pipeline.
 
 Next, we're defining `serviceAccount` as `build`. We already created that ServiceAccount inside the *go-demo-5-build* Namespace when we applied the configuration from *build.yml*. Now we're telling Jenkins that it should use it when creating Pod.
 
-Finally, we changed the way we define the Pod. Instead of embedding Pod definition inside *Jenkinsfile*, we're using an external file defined as *yamlFile*. My opinion on that feature is still divided. Having Pod definition in Jenkinsfile (as we did in the previous chapter) allows me inspect everything related to the job from a single location. On the other hand, moving Pod definition to `yamlFile` allows us to focus on the flow of the pipeline, and leave lenghty Pod definition outside. It's up to you to choose which approach you like more. We'll explore the content of the `KubernetesPod.yaml` a bit later.
+Finally, we changed the way we define a Pod that will act as Jenkins agent. Instead of embedding Pod definition inside *Jenkinsfile*, we're using an external file defined as *yamlFile*. My opinion on that feature is still divided. Having Pod definition in Jenkinsfile (as we did in the previous chapter) allows us inspect everything related to the job from a single location. On the other hand, moving Pod definition to `yamlFile` allows us to focus on the flow of the pipeline, and leave lenghty Pod definition outside. It's up to you to choose which approach you like more. We'll explore the content of the `KubernetesPod.yaml` a bit later.
 
 The next section in Jenkinsfile.orig is `environment`.
 
@@ -696,9 +705,9 @@ environment {
 
 The `environment` block defines a few variables that we'll use in our steps. They are similar to those we used in before and they should be self-explanatory. Later on, we'll have to change `vfarcic` to your Docker Hub user and `acme.com` to the address of your cluster.
 
-You should note that Declarative Pipeline allows us to use the variables defined in `environment` block both as "normal" (e.g., `${VARIABLE_NAME}`) and environment variables `${env.VARIABLE_NAME}`.
+You should note that Declarative Pipeline allows us to use the variables defined in `environment` block both as "normal" (e.g., `${VARIABLE_NAME}`) and as environment variables `${env.VARIABLE_NAME}`.
 
-Now we reached the "meat" of the pipeline. The `stages` block contains three `stage` sub-blocks.
+Now we reached the "meat" of the pipeline. The `stages` block contains three `stage` sub-blocks, with `steps` inside each.
 
 ```groovy
 ...
@@ -744,13 +753,13 @@ stage("build") {
 ...
 ```
 
-The first set of steps of the `build` stage starts in the `golang` container. The first action is to customize the name of the build by changing the value of the `displayName`. However, that is not allows in Declarative Pipeline. Luckily, there is a way to bypass that limitation by defining the `script` block. Inside it can be any set of pipeline instructions we'd normally define in a Scripted Pipeline. A `script` block is a nifty way to temporarily switch from Declarative to Scripted Pipeline which allows much more freedom and is not bound by Declarative's strict format rules.
+The first set of steps of the `build` stage starts in the `golang` container. The first action is to customize the name of the build by changing the value of the `displayName`. However, that is not allowed in Declarative Pipeline. Luckily, there is a way to bypass that limitation by defining the `script` block. Inside it can be any set of pipeline instructions we'd normally define in a Scripted Pipeline. A `script` block is a nifty way to temporarily switch from Declarative to Scripted Pipeline which allows much more freedom and is not bound by Declarative's strict format rules.
 
-There was no special reason for using `golang` container to set the `displayName`. We could have done it in any of the other containers available in our agent defined through `yamlFile`. The only reason why we choose `golang` over any other lies in the next step.
+There was no special reason for using `golang` container to set the `displayName`. We could have done it in any of the other containers available in our agent defined through `yamlFile`. The only reason why we chose `golang` over any other lies in the next step.
 
-Since, this time, our Dockerfile does not use multi-stage builds and, therefore, does not run unit tests nor it builds the binary needed for the final image, we have to run those steps separately. Given that the application is written in Go, we need its compiler available in `golang` container. The actual steps are defined as [k8sBuildGolang.groovy](https://github.com/vfarcic/jenkins-shared-libraries/blob/master/vars/k8sBuildGolang.groovy) inside the same repository we used in the previous chapter. Feel free to explore it and you'll see that it contains the same commands we used before inside the first stage of our multi-stage build defined in *go-demo-3 Dockerfile*.
+Since, this time, our Dockerfile does not use multi-stage builds and, therefore, does not run unit tests nor it builds the binary needed for the final image, we have to run those steps separately. Given that the application is written in Go, we need its compiler available in the `golang` container. The actual steps are defined as [k8sBuildGolang.groovy](https://github.com/vfarcic/jenkins-shared-libraries/blob/master/vars/k8sBuildGolang.groovy) inside the same repository we used in the previous chapter. Feel free to explore it and you'll see that it contains the same commands we used before inside the first stage of our multi-stage build defined in *go-demo-3 Dockerfile*.
 
-Once the unit tests are executed and the binary is built, we're switching to the `docker` container to build the image. This one, as the most of the other steps, are based on the same shared libraries we used before. Since you're already familiar with them, I'll comment only if there is a substantial change in the way we utilize those libraries or if we add a new one we haven't used before. If you already forgot how those libraries work, please consult their code (`*.groovy`) or their corresponding helper files (`*.txt`) from located in the *vars* dir of the *jenkins-shared-libraries* repository you already forked.
+Once the unit tests are executed and the binary is built, we're switching to the `docker` container to build the image. This one is based on the same shared libraries we used before, just as the most of the other steps in this pipeline. Since you're already familiar with them, I'll comment only if there is a substantial change in the way we utilize those libraries, or if we add a new one that we haven't used before. If you already forgot how those libraries work, please consult their code (`*.groovy`) or their corresponding helper files (`*.txt`) located in the *vars* dir of the *jenkins-shared-libraries* repository you already forked.
 
 Let's move into the next stage.
 
@@ -783,7 +792,7 @@ The steps of the `func-test` stage are the same as those we used in the continuo
 
 The real difference is in the `post` section of the stage. It contains an `always` block that guarantees that the steps inside it will execute no matter the outcome of the steps in this stage. In our case, the `post` section has only one step that invokes that `k8sDeleteBeta` library which deletes the installation of the release under test.
 
-As you can see, the `func-test` stage we just explored is functionally the same as the one we used in the previous chapter when we defined the continuous deployment pipeline. However, I'd argue that the `post` section available in Declarative Pipeline is much more elegant and easier to understand than `try/catch/finally` block we used inside the Scripted Pipeline. That would be even more evident if we'd use a more complex type of `post` criteria.
+As you can see, the `func-test` stage we just explored is functionally the same as the one we used in the previous chapter when we defined the continuous deployment pipeline. However, I'd argue that the `post` section available in Declarative Pipeline is much more elegant and easier to understand than `try/catch/finally` blocks we used inside the Scripted Pipeline. That would be even more evident if we'd use a more complex type of `post` criteria, but we don't have a good use-case for them.
 
 Its time to move into the next stage.
 
@@ -804,16 +813,16 @@ stage("release") {
 }
 ...
 ```
-The `release` stage, just as its counterpart from the previous chapter, features the same step that tags and pushe the production release to Docker Hub (`k8sPushImage`) as well as the one that packages and pushes the Helm Chart to ChartMuseum (`k8sPushHelm`). The only difference is that the latter library invocation now uses two additional arguments. The third one, when set to `true`, replaces the `image.tag` value to the tag of the image built in the previous image. The fourth argument, also when set to `true`, fails the build if the version of the Chart is unchanged or, in other words, if it already exists in ChartMuseum. When combining those two we are guaranteing that the `image.tag` value in the Chart is the same as the image we built, and that the version of the Chart is unique. The latter forces us to update the version manually. If we'd work on continuous deployment, manual update (or any other manual action), would be inacceptable. But, continuous delivery does involve a human manual decision when and what to deploy to production. We're just ensuring that the human action was indeed performed. Please open the source code of [k8sPushHelm.groovy](https://github.com/vfarcic/jenkins-shared-libraries/blob/master/vars/k8sPushHelm.groovy) to check the code behind that library and compare it with the statements you just read.
+The `release` stage, just as its counterpart from the previous chapter, features the same step that tags and pushes the production release to Docker Hub (`k8sPushImage`) as well as the one that packages and pushes the Helm Chart to ChartMuseum (`k8sPushHelm`). The only difference is that the latter library invocation now uses two additional arguments. The third one, when set to `true`, replaces the `image.tag` value to the tag of the image built in the previous step. The fourth argument, also when set to `true`, fails the build if the version of the Chart is unchanged or, in other words, if it already exists in ChartMuseum. When combining those two, we are guaranteing that the `image.tag` value in the Chart is the same as the image we built, and that the version of the Chart is unique. The latter forces us to update the version manually. If we'd work on continuous deployment, manual update (or any other manual action), would be inacceptable. But, continuous delivery does involve a human decision when and what to deploy to production. We're just ensuring that the human action of changing the version of the Chart was indeed performed. Please open the source code of [k8sPushHelm.groovy](https://github.com/vfarcic/jenkins-shared-libraries/blob/master/vars/k8sPushHelm.groovy) to check the code behind that library and compare it with the statements you just read.
 
-You'll notice that there is a `when` statement above the steps. Generally speaking, it is used to limit the executions withint a stage only to those cases that match the condition. In our case, that condition states that the stage should be executed only if the build is using a commit from the `master` branch. It is equivalent to the `if ("${BRANCH_NAME}" == "master")` block we used in the continuous deployment pipeline we assembled in the previous chapter. There are other conditions we could have used but, for our use-case, that one is enough.
+You'll notice that there is a `when` statement above the steps. Generally speaking, it is used to limit the executions withint a stage only to those cases that match the condition. In our case, that condition states that the stage should be executed only if the build is using a commit from the `master` branch. It is equivalent to the `if ("${BRANCH_NAME}" == "master")` block we used in the continuous deployment pipeline in the previous chapter. There are other conditions we could have used but, for our use-case, that one is enough.
 
 I> You might want to explore other types of `when` conditions 
 by going through the [when statement documentation](https://jenkins.io/doc/book/pipeline/syntax/#when).
 
-You'll notice that we did not define `git` or `checkout scm` step anywhere in our script. There's no need for that with Declarative Pipeline. It is intelligent enough to know that we want to clone the code of the commit that initiated a build (through Webhook, if we'd have it). When a build starts, cloning the code will be one of its first actions.
+You'll notice that we did not define `git` or `checkout scm` step anywhere in our pipeline script. There's no need for that with Declarative Pipeline. It is intelligent enough to know that we want to clone the code of the commit that initiated a build (through a Webhook, if we'd have it). When a build starts, cloning the code will be one of its first actions.
 
-Now that we went through the content of the *Jenkinsfile.orig* file, we should go back to the referenced `KubernetesPod.yaml` that defines the Pod that will be used as Jenkins agent.
+Now that we went through the content of the *Jenkinsfile.orig* file, we should go back to the referenced `KubernetesPod.yaml` file that defines the Pod that will be used as a Jenkins agent.
 
 ```bash
 cat KubernetesPod.yaml
@@ -852,21 +861,21 @@ spec:
       type: Socket
 ```
 
-That Pod definition is almos the same as the one we used inside *Jenkinsfile* in the *go-demo-3* repository. Apart from residing in a separate file, the only difference is in an additional container named `docker`. In this scenario, we are not using external VMs to build Docker images. Instead, we have an additional container through which we can execute Docker-related steps. Since we want to execute Docker commands on the node, and avoid running Docker-in-Docker, we mounted `/var/run/docker.sock` as a Volume.
+That Pod definition is almost the same as the one we used inside *Jenkinsfile* in the *go-demo-3* repository. Apart from residing in a separate file, the only difference is in an additional container named `docker`. In this scenario, we are not using external VMs to build Docker images. Instead, we have an additional container through which we can execute Docker-related steps. Since we want to execute Docker commands on the node, and avoid running Docker-in-Docker, we mounted `/var/run/docker.sock` as a Volume.
 
 W> ## A note to minishift users
 W>
-W> We need to relax security so that Pods are allowed to use `hostPath` volume plug-in.
+W> We need to relax security so that Pods are allowed to use `hostPath` volume plug-in. Please execute the command that follows.
 W>
 W> `oc adm policy add-scc-to-user hostmount-anyuid -z build -n go-demo-5-build`
 
 ## Creating And Running A Continuous Delivery Job
 
-That's it. We explored (soon to be) *Jenkinsfile* that contains our continuous delivery pipeline and *KubernetesPod.yaml* that contains the Pod definition that will be used to create Jenkins agents. There are a few other things we need to do but, before we discuss them, we'll change the address and Docker Hub user in *Jenkinsfile.orig*, store the output as *Jenkinsfile*, and push the changes to the forked GitHub
+That's it. We explored (soon to be) *Jenkinsfile* that contains our continuous delivery pipeline and *KubernetesPod.yaml* that contains the Pod definition that will be used to create Jenkins agents. There are a few other things we need to do but, before we discuss them, we'll change the address and the Docker Hub user in *Jenkinsfile.orig*, store the output as *Jenkinsfile*, and push the changes to the forked GitHub repository.
 
 W> ## A note to minishift users
 W>
-W> We'll use a slightly modified version of Jenkins file. Just as in the previous chapter, we'll add the `ocCreateEdgeRouteBuild` step that will accomplish the same results as Ingress controller
+W> We'll use a slightly modified version of Jenkins file. Just as in the previous chapter, we'll add the `ocCreateEdgeRouteBuild` step that will accomplish the same results as if we'd have NGINX Ingress controller.
 W> Please use `Jenkinsfile.oc` instead of `Jenkinsfile.orig` in the command that follows.
 
 ```bash
@@ -905,7 +914,7 @@ cd ../go-demo-5
 
 We're almost ready to create a Jenkins pipeline for *go-demo-5*. The only thing missing is to create a new Kubernetes Cloud configuration.
 
-For now, we have only one Kubernetes Cloud configured in Jenkins. It's name is *kubernetes*. However, the pipeline we just explored uses a cloud named `go-demo-5-build`. So, we should create one before we create jobs tied to the *go-demo-5* repository.
+For now, we have only one Kubernetes Cloud configured in Jenkins. It's name is *kubernetes*. However, the pipeline we just explored uses a cloud named `go-demo-5-build`. So, we should create a new one before we create jobs tied to the *go-demo-5* repository.
 
 ```bash
 open "http://$JENKINS_ADDR/configure"
@@ -913,15 +922,15 @@ open "http://$JENKINS_ADDR/configure"
 
 Please scroll to the bottom of the page, expand the *Add a new cloud* list, and select *Kubernetes*. A new set of fields will appear.
 
-Type *go-demo-5-build* as the name. It matches the name specified as `cloud` entry inside `kubernetes` block of our pipeline.
+Type *go-demo-5-build* as the name. It matches the `cloud` entry inside `kubernetes` block of our pipeline.
 
-Next, type *https://kubernetes.default* as *Kubernetes URL*, and *go-demo-5-build* as the *Kubernetes Namespace*.
+Next, type *go-demo-5-build* as the *Kubernetes Namespace*.
 
 Just as with the other Kubernetes Cloud that was already defined in our Jenkins instance, the value of the *Jenkins URL* should be *http://prod-jenkins.prod:8080*, and the *Jenkins tunnel* should be set to *prod-jenkins-agent.prod:50000*.
 
 Don't forget to click the *Save* button to persist the changes.
 
-Right now, we have two Kubernetes Clouds configured in our Jenkins instance. On is called *kubernetes* and it uses *prod* Namespace, while the other (the new one) is called *go-demo-5-build* and can be used for all the builds that should be performed in the *go-demo-5-build* Namespace.
+Right now, we have two Kubernetes Clouds configured in our Jenkins instance. One is called *kubernetes* and it uses the *prod* Namespace, while the other (the new one) is called *go-demo-5-build* and it can be used for all the builds that should be performed in the *go-demo-5-build* Namespace.
 
 Even though we have two Kubernetes Clouds, their configurations are almost the same. Besides having different names, the only substantial difference is in the Namespace they use. I wanted to keep it simple and demonstrate that multiple clouds are possible, and often useful. In the "real world" situations, you'll probably use more fields and differentiate them even further. As an example, we could have defined the default set of containers that will be used with those clouds.
 
@@ -937,11 +946,11 @@ open "http://$JENKINS_ADDR/blue/organizations/jenkins/"
 
 Please click the *Create a New Pipeline* button and select *GitHub* as the repository type. Type *Your GitHub access token* and click the *Connect* button. A moment later, you'll see the list of organizations that token belongs to. Select the one where you forked the applications. The list of repositories will apprear. Select *go-demo-5* and click the *Create Pipeline* button.
 
-Jenkins will create jobs for each branch of the *go-demo-5* repository. There is only one (*master*), so there will be one job in total. We already explored in the previous chapter how Jenkins handles multiple repositories by creating a job for each so I thought that there is no need to demonstrate the same feature again. Right now, *master* job/branch should be more then enough.
+Jenkins will create jobs for each branch of the *go-demo-5* repository. There is only one (*master*), so there will be one job in total. We already explored in the previous chapter how Jenkins handles multiple repositories by creating a job for each, so I thought that there is no need to demonstrate the same feature again. Right now, *master* job/branch should be more then enough.
 
 Please wait until the build is finished.
 
-# TODO: Screenshot
+![Figure 8-TODO: Continuous delivery Jenkins pipeline](images/ch08/go-demo-5-build.png)
 
 Since the build was executed against the *master* branch, the `when` condition inside the `release` stage evaluated to `true` so the production ready image was pushed to Docker Hub and the Helm Chart with the updated tag was pushed to ChartMuseum. We'll check the latter by retrieving the list of all the Charts.
 
@@ -978,13 +987,13 @@ entries:
 generated: "2018-08-08T21:03:01Z"
 ```
 
-We can see that we have only one Chart (so far). It is the *go-demo-5* Chart. The important thing to note is the version of the Chart. In that output it's `0.0.1`. However, I might have bumped it later on so your version might be different. We'll need that version soon, so let's put it into an environment variable.
+We can see that we have only one Chart (so far). It is the *go-demo-5* Chart. The important thing to note is the version of the Chart. In that output it's `0.0.1`. However, I might have bumped it later since I wrote this textt, so your version might be different. We'll need that version soon, so let's put it into an environment variable.
 
 ```bash
 VERSION=[...]
 ```
 
-Please make sure to change `[...]` with the version you obtained earlier from the `index.yaml`.
+Please make sure to change `[...]` with the version you obtained earlier from `index.yaml`.
 
 Among other things, the build modified the Chart before pushing it to ChartMuseum. It changed the image tag to the new release. We'll add ChartMuseum as a repository in our local Helm client so that we can inspect the Chart and confirm that `image.tag` value is indeed correct.
 
@@ -1032,9 +1041,13 @@ image:
 
 We can see that the build modified the `image.tag` before it packaged the Chart and pushed it to ChartMuseum.
 
-The first build of our continuous delivery pipeline was successful. However, the whole process is still not finished. We are yet to design the process that will allow us to choose which release to deploy to production. Even though our goal is to let Jenkins handle deployment to production, we'll leave it aside for a while and first explore how we could do it manually from a terminal. Did I mention that we'll introduce GitOps to the process?
+The first build of our continuous delivery pipeline was successful. However, the whole process is still not finished. We are yet to design the process that will allow us to choose which release to deploy to production. Even though our goal is to let Jenkins handle deployments to production, we'll leave it aside for a while and first explore how we could do it manually from a terminal.
+
+Did I mention that we'll introduce GitOps to the process?
 
 ## What Is GitOps?
+
+TODO: Continue
 
 *Git is the only source of truth.* If you understand that sentence, you understand GitOps. Every time we want to apply a change, we need to push a commit to Git. Want to change the configuration of your servers? Commit a change to Git, and let an automated process propagate it to servers. Want to upgrade ChartMuseum? Change *requirements.yaml*, and push the change to the *k8s-prod* repository, and let an automated process do the rest. Want to review a change before applying it? Make a pull request. Want to rollback a relese? You probably get the point and I can save you from listing hundreds of other "want to" questions.
 
@@ -1176,10 +1189,6 @@ helm upgrade prod helm \
     --namespace prod
 ```
 
-The output, limited to the Pods section, is as follows.
-
-```
-
 Let's take a look at the Pods running inside the `prod` Namespace.
 
 ```bash
@@ -1200,6 +1209,12 @@ prod-jenkins-676cc64756-bj45v       1/1       Running             0          4h
 ```
 
 Judging by the `AGE`, we can see that ChartMuseum and Jenkins were left intact. That makes sense since we did not change any of their properties. The new Pods are those related to *go-demo-5*. The output will differ depending on when we executed `get pod`. In my case, we can see that three replicas of the *go-demo-5* API are running and that we are in the process of deploying second database Pod. Soon all three DB replicas will be running and our mission will be accomplished.
+
+W> ## A note to minishift users
+W>
+W> OpenShift ignores Ingress resources so we'll have to create a Route to accomplish the same effect. Please execute the command that follows.
+W> 
+W> `oc -n prod create route edge --service prod-go-demo-5 --hostname go-demo-5.$ADDR --insecure-policy Allow`
 
 To be on the safe side, we'll confirm that the newly deployed *go-demo-5* application is indeed accessible.
 
@@ -1245,11 +1260,9 @@ We opened the *branches* screen of the *go-demo-5* job.
 
 Please click the play button from the right side of the *master* row and wait until it's finished.
 
-Lo and behold! Our build failed! If you explored the job in detail, you should know why that happened. If you're unsure, please click on the failed step and you'll see the *TODO* message.
+Lo and behold! Our build failed! If you explore the job in detail, you will know why it's broken. If you're unsure, please click on the failed step and you'll see the *Did you forget to increment the Chart version?* message.
 
-TODO: Error message in the previous paragraph
-
-TODO: Screenshot
+![Figure 8-TODO: go-demo-5 failed build](images/ch08/go-demo-5-failed-build.png)
 
 Our job does not allow us to push a commit to the *master* branch without bumping the version of the *go-demo-5* Chart. That way, we guarantee that every production-ready release is properly versioned. Let's fix that.
 
@@ -1257,7 +1270,7 @@ Our job does not allow us to push a commit to the *master* branch without bumpin
 cd ../go-demo-5
 ```
 
-Please open *helm/go-demo-5/Chart.yaml* in your favourite editor and increment the `version`. If, for example, the current version is `0.0.1`, change it to `0.0.1`, if it's `0.0.2`, change it to `0.0.3`, and so on. You get the point. Just increase it.
+Please open *helm/go-demo-5/Chart.yaml* in your favourite editor and increment the `version`. If, for example, the current version is `0.0.1`, change it to `0.0.1`, if it's `0.0.2`, change it to `0.0.3`, and so on. You get the point. Just increase the version.
 
 Next, we'll push the change to the *master* branch.
 
@@ -1367,6 +1380,10 @@ The `test` stage has a simple `echo` step. I'll be honest with you. I did not wr
 
 The important part of the stage is the `post` section that'll rollback the `upgrade` if one of the tests fail. This is the part where we're ignoring GitOps principles. The chances that those tests will fail are very low. The new release was already tests and containers guarantee that our applications will behave the same in any environment. The tests we're running in this pipeline are more like sanity checks, than some kind of a deep validation. Even if tests do fail, we'd need to change the version of the Chart to the previous value, and push it back to the repository. That would trigger yet another build that would perform another upgrade, only this time to the previous release. Instead, we're rolling back directly inside the pipeline assuming that someone will fix the issue soonafter and initiate another upgrade that will contain the correction.
 
+W> ## A note to minishift users
+W>
+W> We already created a Route as a substitute for Ingress. Since, from now on, we're only updating the *go-demo-5* application while preserving the related Service, there's no need to add the `oc create route` command to the pipeline.
+
 As you can see, we're only partially applying GitOps principles. In my opinion, they make sense in some cases, and do not in others. It's up to you to decide whether you'll go towards full GitOps, or, like me, adopt it only partially.
 
 Now, let's create *Jenkinsfile* with the correct address, and push it.
@@ -1450,7 +1467,7 @@ Once we're finished with modifications to `requirements.yaml`, all that's left i
 
 ![Figure 8-TODO: Continuous deployment process](images/ch08/cdp-high-level.png)
 
-## To Continuous Deploy Or To Continuous Deliver?
+## To Continuously Deploy Or To Continuously Deliver?
 
 Should we use continuous deployment (CDP) or continuous delivery (CD) processes? That's a hard question to answer which largely depends on your internal processes. There are a few questions though that might gives us a guidance.
 

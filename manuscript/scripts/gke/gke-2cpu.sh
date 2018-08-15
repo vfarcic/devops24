@@ -4,8 +4,6 @@
 
 gcloud auth login
 
-gcloud auth application-default login
-
 ZONE=$(gcloud compute zones list \
     --filter "region:(us-east1)" \
     | awk '{print $1}' \
@@ -27,8 +25,7 @@ gcloud container clusters \
     --enable-autoscaling \
     --num-nodes 1 \
     --max-nodes 1 \
-    --min-nodes 1 \
-    --cluster-version "1.9.7-gke.3"
+    --min-nodes 1
 
 kubectl create clusterrolebinding \
     cluster-admin-binding \
