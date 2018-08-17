@@ -15,17 +15,6 @@ helm install stable/jenkins \
     --values helm/jenkins-values.yml \
     --set Master.HostName=$JENKINS_ADDR
 
-# The patch
-kubectl delete clusterrolebinding \
-    jenkins-role-binding
-
-# The patch
-cat helm/jenkins-patch.yml
-
-# The patch
-kubectl apply -n jenkins \
-    -f helm/jenkins-patch.yml
-
 kubectl -n jenkins \
     rollout status deployment jenkins
 
@@ -308,18 +297,6 @@ helm install helm/jenkins \
     --set jenkins.Master.DockerAMI=$AMI_ID \
     --set jenkins.Master.GProject=$G_PROJECT \
     --set jenkins.Master.GAuthFile=$G_AUTH_FILE
-
-# The patch
-kubectl delete clusterrolebinding \
-    jenkins-role-binding
-
-# The patch
-kubectl apply -n jenkins \
-    -f helm/jenkins-patch.yml
-
-# The patch
-kubectl -n jenkins \
-    rollout status deployment jenkins
 
 open "http://$JENKINS_ADDR"
 

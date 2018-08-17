@@ -40,15 +40,15 @@ This book is not your first contact with Kubernetes. I am assuming that you are 
 
 # About the Author
 
-Viktor Farcic is a Senior Consultant at [CloudBees](https://www.cloudbees.com/), a member of the [Docker Captains](https://www.docker.com/community/docker-captains) group, and author.
+Viktor Farcic is a Principal Consultant at [CloudBees](https://www.cloudbees.com/), a member of the [Docker Captains](https://www.docker.com/community/docker-captains) group, and author.
 
 He coded using a plethora of languages starting with Pascal (yes, he is old), Basic (before it got Visual prefix), ASP (before it got .Net suffix), C, C++, Perl, Python, ASP.Net, Visual Basic, C#, JavaScript, Java, Scala, etc. He never worked with Fortran. His current favorite is Go.
 
-His big passions are Microservices, Continuous Deployment and Test-Driven Development (TDD).
+His big passions are containers, distributed systems, microservices, continuous delivery and deployment (CD) and test-driven development (TDD).
 
 He often speaks at community gatherings and conferences.
 
-He wrote [The DevOps 2.0 Toolkit: Automating the Continuous Deployment Pipeline with Containerized Microservices](http://amzn.to/2xSIBCI), [The DevOps 2.1 Toolkit: Docker Swarm: Building, testing, deploying, and monitoring services inside Docker Swarm clusters](http://amzn.to/2xSJ9bK), [The DevOps 2.2 Toolkit: Self-Sufficient Docker Clusters: Building Self-Adaptive And Self-Healing Docker Clusters](http://amzn.to/2yBPWDC), [The DevOps 2.3 Toolkit: Kubernetes: Deploying and managing highly-available and fault-tolerant applications at scale](https://amzn.to/2GvzDjy), and [Test-Driven Java Development](https://www.packtpub.com/application-development/test-driven-java-development).
+He wrote [The DevOps Toolkit Series](http://www.devopstoolkitseries.com/), and [Test-Driven Java Development](https://www.packtpub.com/application-development/test-driven-java-development).
 
 His random thoughts and tutorials can be found in his blog [TechnologyConversations.com](https://technologyconversations.com/).
 

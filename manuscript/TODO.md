@@ -14,7 +14,9 @@
 - [X] 99-the-end.md
 - [ ] Packt
 - [ ] Amazon.com
+- [ ] devopstoolkitseries.com
 - [ ] Preface to TechnologyConversations.com
+- [ ] Cover to TechnologyConversations.com
 - [ ] Workshop
 
 ## The DevOps 2.X Toolkit

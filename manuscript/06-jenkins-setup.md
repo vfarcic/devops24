@@ -1638,16 +1638,6 @@ helm install helm/jenkins \
 
 Please note that, depending on your choices, `AMI_ID`, `G_PROJECT`, and `G_AUTH_FILE` might not be set and, as a result, not all the changes we made to the Chart will be available.
 
-Do you remember the patch I explained before? The one that is a temporary fix for the inability to change ClusterRoleBinding to RoleBinding? We still need to apply it.
-
-```bash
-kubectl delete clusterrolebinding \
-    jenkins-role-binding
-
-kubectl apply -n jenkins \
-    -f helm/jenkins-patch.yml
-```
-
 Next, we'll wait until `jenkins` Deployment rolls out before we open Jenkins and confirm that all the changes we made are indeed applied correctly.
 
 ```bash
