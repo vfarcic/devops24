@@ -49,7 +49,7 @@
 - [ ] Write digital-ocean.md
 - [ ] Write resources.md
 - [ ] Security scanning (Clair, https://github.com/aquasecurity/kube-bench, security/best-practices)
-- [ ] Write security-with-third-party.md (Valut+Consul)
+- [ ] Write security-with-third-party.md (Valut+Consul, https://github.com/manifoldco/kubernetes-credentials)
 - [ ] Write pod-spec-affinity.md
 - [ ] Write node-controller.md (https://github.com/kube-node/kube-machine/blob/master/README.md)
 - [ ] Write metrics.md (Prometheus, https://github.com/kubernetes/kube-state-metrics, https://brancz.com/2018/01/05/prometheus-vs-heapster-vs-kubernetes-metrics-apis/)

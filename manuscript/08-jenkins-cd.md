@@ -1,23 +1,3 @@
-## TODO
-
-- [X] Code
-- [X] Code review Docker for Mac/Windows
-- [X] Code review minikube
-- [X] Code review kops
-- [X] Code review minishift
-- [X] Code review GKE
-- [X] Code review EKS
-- [X] Write
-- [X] Text review
-- [X] Diagrams
-- [X] Gist
-- [X] Review the title
-- [X] Proofread
-- [ ] Add to slides
-- [ ] Publish on TechnologyConversations.com
-- [ ] Add to Book.txt
-- [ ] Publish on LeanPub.com
-
 # Continuous Delivery With Jenkins And GitOps
 
 T> Continuous delivery is a step down from continuous deployment. Instead of deploying every commit from the master branch to production, we are choosing which build should be promoted. Continuous delivery has that single manual step that forces us (humans) to decide which release should be upgraded in production.
@@ -813,6 +793,7 @@ stage("release") {
 }
 ...
 ```
+
 The `release` stage, just as its counterpart from the previous chapter, features the same step that tags and pushes the production release to Docker Hub (`k8sPushImage`) as well as the one that packages and pushes the Helm Chart to ChartMuseum (`k8sPushHelm`). The only difference is that the latter library invocation now uses two additional arguments. The third one, when set to `true`, replaces the `image.tag` value to the tag of the image built in the previous step. The fourth argument, also when set to `true`, fails the build if the version of the Chart is unchanged or, in other words, if it already exists in ChartMuseum. When combining those two, we are guaranteeing that the `image.tag` value in the Chart is the same as the image we built, and that the version of the Chart is unique. The latter forces us to update the version manually. If we'd work on continuous deployment, manual update (or any other manual action), would be unacceptable. But, continuous delivery does involve a human decision when and what to deploy to production. We're just ensuring that the human action of changing the version of the Chart was indeed performed. Please open the source code of [k8sPushHelm.groovy](https://github.com/vfarcic/jenkins-shared-libraries/blob/master/vars/k8sPushHelm.groovy) to check the code behind that library and compare it with the statements you just read.
 
 You'll notice that there is a `when` statement above the steps. Generally speaking, it is used to limit the executions within a stage only to those cases that match the condition. In our case, that condition states that the stage should be executed only if the build is using a commit from the `master` branch. It is equivalent to the `if ("${BRANCH_NAME}" == "master")` block we used in the continuous deployment pipeline in the previous chapter. There are other conditions we could have used but, for our use-case, that one is enough.
@@ -1465,7 +1446,7 @@ Let's say that we decided to upgrade app 1 to the release 2 and app 4 to release
 
 Once we're finished with modifications to `requirements.yaml`, all that's left is to bump the version in `Chart.yaml` and push the changes directly to master or to make a pull request and merge it after a review. No matter the route, once the change reaches the *master* branch, it fires a Webhook which, in turn, initiates a new build of the Jenkins job related to the repository. If all of the steps are successful, the Chart representing the production environment is upgraded and, with it, all the applications specified in `requirements.yaml` are upgraded as well. To be more precise, not all the dependencies are upgraded, but only those we modified. All in all, the production environment will converge to the desired stage after which we'll execute the last round of tests. If something fails, we roll back. Otherwise, another iteration of production deployments is finished, until we repeat the same process.
 
-![Figure 8-8: Continuous deployment process](images/ch08/cdp-high-level.png)
+![Figure 8-8: Continuous deployment process](images/ch08/cd-high-level.png)
 
 ## To Continuously Deploy Or To Continuously Deliver?
 
