@@ -4,8 +4,6 @@ T> Having A Continuous Deployment pipeline capable of a fully automated applicat
 
 This is it. The time has come to put all the knowledge we obtained into good use. We are about to define a "real" continuous deployment pipeline in Jenkins. Our goal is to move every commit through a set of steps until the application is installed (upgraded) and tested in production. We will undoubtedly face some new challenges, but I am confident that we'll manage to overcome them. We already have all the base ingredients, and the main thing left is to put them all together into a continuous deployment pipeline.
 
-W> If you read the previous chapter before August 2018, you'll need to re-run the commands from it. While writing this chapter, I realized that the previous one requires a few tweaks.
-
 Before we move into a practical section, we might want to spend a few moments discussing our goals.
 
 ## Exploring The Continuous Deployment Process

@@ -9,14 +9,13 @@
 - [X] 05-chart-museum.md
 - [X] 06-jenkins-setup.md
 - [X] 07-jenkins-cdp.md
-- [ ] 08-jenkins-cd.md
-- [ ] terraform/kubeadm
-- [ ] Remove warning from 07-jenkins-cdp.md about reading the previous chapter
-- [ ] 09-jenkins-ci.md
-- [ ] 10-extending-pipeline.md (Sonar, security scanning, etc)
-- [ ] 11-big-picture.md
-- [ ] 99-the-end.md
+- [X] 08-jenkins-cd.md
+- [ ] 09-jenkins-ci.md (@tigran)
+- [X] 99-the-end.md
+- [ ] Packt
+- [ ] Amazon.com
 - [ ] Preface to TechnologyConversations.com
+- [ ] Workshop
 
 ## The DevOps 2.X Toolkit
 

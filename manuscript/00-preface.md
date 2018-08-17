@@ -22,7 +22,7 @@ All in all, I decided to test everything in minikube and Docker for Mac locally,
 
 Some of you already chose the Kubernetes flavor you'll use. Others might still wonder whether to adopt one or the other. Even though the comparison of different Kubernetes platforms is not the primary scope of the book, I'll do my best to explain the differences as they come.
 
-To summarize the guidelines, it should be a smaller book that **explores continuous delivery and deployment in Kubernetes using Jenkins**. All the examples will the tested in **minikube, Docker for Mac (or Windows), AWS with kops, GKE, OpenShift with minishift, and EKS**.
+To summarize the guidelines, it **explores continuous delivery and deployment in Kubernetes using Jenkins**. All the examples will be tested in **minikube, Docker for Mac (or Windows), AWS with kops, GKE, OpenShift with minishift, and EKS**.
 
 The moment I finished writing the previous paragraph I realized that I am repeating the same mistakes from the past. I start with something that looks like a reasonable scope, and I end up with something much bigger and longer. Will I be able to follow all of those guidelines? I honestly don't know. I'll do my best.
 
