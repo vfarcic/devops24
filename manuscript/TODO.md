@@ -94,6 +94,7 @@
 - [ ] [cert-manager](https://github.com/jetstack/cert-manager)
 - [ ] [Google Cloud Build](https://cloud.google.com/cloud-build/docs/)
 - [ ] [KNative](https://github.com/knative/)
+- [ ] [Skaffold](https://github.com/GoogleContainerTools/skaffold)
 
 ## Chapter
 

@@ -508,6 +508,8 @@ In most cases we want Services to handle load-balancing and forward requests to 
 
 We'll explore the effect of combining StatefulSets with Headless Services by creating a new Pod from which we can execute `nslookup` commands.
 
+W> `nslookup` does not work in all Kubernetes clusters. If you experience errors, please ignore them and follow the logic from the books' output.
+
 ```bash
 kubectl -n go-demo-3 \
     run -it \
