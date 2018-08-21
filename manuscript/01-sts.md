@@ -544,7 +544,7 @@ When we executed `nslookup`, a request was sent to the CNAME of the Headless Ser
 
 Let's do `nslookup` of one of the Pods managed by the StatefulSet.
 
-The Pods can be accessed with a combination of the Pod name (e.g., `db-0`) and the name of the StatefulSet. If the Pods are in a different Namespace, we need to add it as a suffix. Finally, if we want to use the full CNAME, we can add `svc.cluster.local` as well. We can see the full address from the previous output (e.g., `db-0.db.go-demo-3.svc.cluster.local`). All in all, we can access the Pod with the index `0` as `db-0.db`, `db-0.db.go-demo-3`, or `db-0.db.go-demo-3.svc.cluster.local`. Any of the three combinations should work since we are inside the Pod running in the same Namespace. So, we'll use the shortest version.
+The Pods can be accessed with a combination of the Pod name (e.g., `db-0`) and the name of the Service. If the Pods are in a different Namespace, we need to add it as a suffix. Finally, if we want to use the full CNAME, we can add `svc.cluster.local` as well. We can see the full address from the previous output (e.g., `db-0.db.go-demo-3.svc.cluster.local`). All in all, we can access the Pod with the index `0` as `db-0.db`, `db-0.db.go-demo-3`, or `db-0.db.go-demo-3.svc.cluster.local`. Any of the three combinations should work since we are inside the Pod running in the same Namespace. So, we'll use the shortest version.
 
 ```bash
 nslookup db-0.db
