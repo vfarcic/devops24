@@ -481,7 +481,7 @@ This time, the output is not empty.
 
 ```
 NAME                 	CHART VERSION	APP VERSION	DESCRIPTION                                       
-chartmuseum/go-demo-3	0.0.1        	           	A silly demo based on API written in Go and Mon...
+chartmuseum/go-demo-3	0.0.1        	           	A silly demo...
 ```
 
 Our Chart is now available in ChartMuseum, and we can access it with our Helm client. Let's inspect the Chart.

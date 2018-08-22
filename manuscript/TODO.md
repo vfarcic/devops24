@@ -21,7 +21,9 @@
 
 ## The DevOps 2.X Toolkit
 
-- [ ] Write Scaling (horizontal-pod-autoscaler.md, https://github.com/getamis/vishwakarma/tree/master/aws/elastikube, https://itnext.io/opportunistically-mining-cryptocurrencies-in-kubernetes-94934d095c4d)
+- [X] 99-scaling.md (draft)
+- [ ] 99-monitor.md (Prometheus, https://github.com/kubernetes/kube-state-metrics) (draft in progress)
+- [ ] 99-logging.md (ELK + FluentD, PaperTrail)
 - [ ] Service mesh (Istio, https://akomljen.com/kubernetes-service-mesh/, http://philcalcado.com/2017/08/03/pattern_service_mesh.html)
 - [ ] Serverless (KNative)
 - [ ] Build images (kaniko, buildah)
@@ -34,8 +36,6 @@
 - [ ] CD with Argo (https://applatix.com/open-source/argo/)
 - [ ] Spinnaker
 - [ ] Windows support
-- [ ] Write daemon-set.md
-- [ ] logging (ELK + FluentD, PaperTrail)
 - [ ] Write persistent-volume.md (EBS, EFS, Rook, GlusterFS, Ceph, NFS)
 - [ ] Write `kubectl completion bash`, and `kubectx` appendix
 - [ ] Write kubeadm.md
@@ -53,7 +53,6 @@
 - [ ] Write security-with-third-party.md (Valut+Consul, https://github.com/manifoldco/kubernetes-credentials)
 - [ ] Write pod-spec-affinity.md
 - [ ] Write node-controller.md (https://github.com/kube-node/kube-machine/blob/master/README.md)
-- [ ] Write metrics.md (Prometheus, https://github.com/kubernetes/kube-state-metrics, https://brancz.com/2018/01/05/prometheus-vs-heapster-vs-kubernetes-metrics-apis/)
 - [ ] Write federation.md
 - [ ] Write helm.md
 - [ ] Write scaled-mongo.md

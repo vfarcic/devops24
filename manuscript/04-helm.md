@@ -1129,7 +1129,7 @@ The output is as follows.
 
 We can see that our Chart contains no failures, at least not those based on syntax. That should come as no surprise since we did not even modify the sample Chart Helm created for us.
 
-Charts can be installed using a Chart repository (e.g., `stable/jenkins`), a local Chart archive (e.g., `my-app-0.1.0.tgz`), an unpacked Chart directory (e.g., `my-app`), or a full URL (e.g., `https://acme.com/charts/my-app-0.1.0.tgz`). So far we used Chart repository to install Jenkins. We'll switch to the local archive option to install `my-app`.
+Charts can be installed using a Chart repository (e.g., `stable/jenkins`), a local Chart archive (e.g., `my-app-0.1.0.tgz`), an unpacked Chart directory (e.g., `my-app`), or a full URL. So far we used Chart repository to install Jenkins. We'll switch to the local archive option to install `my-app`.
 
 ```bash
 helm install ./my-app-0.1.0.tgz \

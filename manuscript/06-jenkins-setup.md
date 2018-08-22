@@ -501,7 +501,7 @@ If you scroll down to the *Jenkins URL* field of the *Kubernetes* section, you'l
 
 Let's change the config.
 
-Please scroll to the *Kubernetes* section, and change the value of the *Jenkins URL* field to *http://jenkins.jenkins:8080*. Similarly, change the *Jenkins tunnel* field to *jenkins-agent.jenkins:50000*. Don't forget to click the *Save* button.
+Please scroll to the *Kubernetes* section, and change the value of the *Jenkins URL* field to the address of the Service *http://jenkins.jenkins:8080*. Similarly, change the *Jenkins tunnel* field to *jenkins-agent.jenkins:50000*. Don't forget to click the *Save* button.
 
 ![Figure 6-4: Jenkins configuration screen with Kubernetes plugin configured for cross-Namespace usage](images/ch06/jenkins-configure-k8s-ns.png)
 

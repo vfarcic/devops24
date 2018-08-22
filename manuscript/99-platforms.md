@@ -42,10 +42,6 @@ On the other hand, OpenShift clearly rules among on-prem Kubernetes clusters. Th
 
 The fact that OpenShift has quite a few of its own resource types that are not compatible with Kubernetes core is the primary concern that prevents me from saying "use it, without a doubt."
 
-### Pivotal Container Service (PKS) And IBM Cloud Container Service
-
-I haven't had much direct experience with the two solutions so I can comment only on second-hand information I have. Both are too complex since they are not designed to be a Kubernetes solution. Kubernetes was added on top of existing services and offerings. In my (uneducated) opinion, using PKS or IBM Cloud makes sense for companies that already have a massive investment with the technologies used side by side with those solutions.
-
 ### Rancher 2
 
 Rancher (since release 2) is probably the most commonly used free Kubernetes distribution. Unlike some others (e.g., OpenShift) it does not stray away from core Kubernetes thus making it compatible with community and industry standards. Its focus is more on cluster management (especially with multiple clusters) than Kubernetes internal workings.
@@ -54,24 +50,19 @@ In my experience, Rancher is the best choice for the companies who do want an en
 
 ## Comparing Kubernetes Platforms For Running Clusters In Cloud
 
-TODO: Write
+GKE con: The default Ingress forces Services to publish NodePort making it incompatible with YAMLs created for other platforms
+GKE pro: comes with metrics server 
 
-## Comparing Kubernetes Platforms For Running Managed Clusters
+EKS con: Silly installation instructions
+EKS con: No storage by default
+EKS con: Slow to create (15-20 min. approx)
+EKS con: Does not support metrics-server
+EKS con: Cluster autoscaling is not baked in
+EKS con: Only managed masters, not worker nodes
+EKS con: Charges for masters
 
-TODO: Write
-
-## PKS (GCE)
-
-TODO: Write
-
-### Pros
-
-* Vanila Kubernetes
-* Documentation is easy to understand and is accurate (https://docs.pivotal.io/runtimes/pks/1-0/gcp-prepare-env.html)
-
-### Cons
-
-* Setup is not automated. Too many manual steps.
+AKS con: Slow to create (20-30 min. approx)
+AKS con: Cluster autoscaling is not baked in
 
 ## Random Stuff
 
@@ -81,7 +72,3 @@ OpenShift con: Slight differences in the security context
 OpenShift con: Services accessible through Routes need to be `LoadBalancer` type.
 
 minishift con: A hundred volumes instead of a dynamic StorageClass
-
-GKE con: The default Ingress forces Services to publish NodePort making it incompatible with YAMLs created for other platforms
-
-kops: requires understanding of things like AZs

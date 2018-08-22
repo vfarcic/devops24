@@ -161,7 +161,7 @@ Maybe we could not notice a difference between a StatefulSet and a Deployment be
 
 We'll use `go-demo-3` application throughout this book. It consists of a backend API written in Go that uses MongoDB to store its state. With time, we'll improve the definition of the application. Once we're happy with the way the application is running inside the cluster, we'll work on continuous deployment processes that will fully automate everything from a commit to the `vfarcic/go-demo-3` GitHub repository, all the way until it's running in production.
 
-We need to start somewhere, and our first iteration of the `go-demo-3` application is in `sts/go-demo-3-deploy.yml`.
+We need to start somewhere, and our first iteration of the `go-demo-3` application is in the `sts/go-demo-3-deploy.yml` directory.
 
 ```bash
 cat sts/go-demo-3-deploy.yml

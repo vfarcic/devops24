@@ -1,44 +1,8 @@
 # Logging
 
-## Creating A Cluster
+## Cluster
 
-```bash
-cd k8s-specs
-
-git pull
-
-cd cluster
-
-source kops
-
-export BUCKET_NAME=devops23-$(date +%s)
-
-export KOPS_STATE_STORE=s3://$BUCKET_NAME
-
-aws s3api create-bucket \
-    --bucket $BUCKET_NAME \
-    --create-bucket-configuration \
-    LocationConstraint=$AWS_DEFAULT_REGION
-
-kops create cluster \
-    --name $NAME \
-    --master-count 3 \
-    --node-count 3 \
-    --node-size t2.medium \
-    --master-size t2.small \
-    --zones $ZONES \
-    --master-zones $ZONES \
-    --ssh-public-key devops23.pub \
-    --networking kubenet \
-    --yes
-
-kops validate cluster
-
-kubectl create \
-    -f https://raw.githubusercontent.com/kubernetes/kops/master/addons/ingress-nginx/v1.6.0.yaml
-
-cd ..
-```
+TODO: Gists
 
 ## kubectl logs
 
@@ -120,33 +84,4 @@ kubectl logs -f random-logger
 open "http://$DNS"
 
 # kubernetes.pod_name: "random-logger"
-```
-
-## Something
-
-```bash
-TODO: rsyslog
-
-TODO: start
-
-TODO: es
-
-TODO: stackdriver
-
-TODO: fluentd
-
-TODO: fluentd2
-
-TODO: centralized-logging
-```
-
-## Destroying The Cluster
-
-```bash
-kops delete cluster \
-    --name $NAME \
-    --yes
-
-aws s3api delete-bucket \
-    --bucket $BUCKET_NAME
 ```
