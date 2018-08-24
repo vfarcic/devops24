@@ -21,9 +21,9 @@
 
 ## The DevOps 2.X Toolkit
 
+- [ ] 99-logging.md (ELK + FluentD, PaperTrail)
 - [X] 99-scaling.md (draft)
 - [ ] 99-monitor.md (Prometheus, https://github.com/kubernetes/kube-state-metrics) (draft in progress)
-- [ ] 99-logging.md (ELK + FluentD, PaperTrail)
 - [ ] Service mesh (Istio, https://akomljen.com/kubernetes-service-mesh/, http://philcalcado.com/2017/08/03/pattern_service_mesh.html)
 - [ ] Serverless (KNative)
 - [ ] Build images (kaniko, buildah)
@@ -94,6 +94,7 @@
 - [ ] [Google Cloud Build](https://cloud.google.com/cloud-build/docs/)
 - [ ] [KNative](https://github.com/knative/)
 - [ ] [Skaffold](https://github.com/GoogleContainerTools/skaffold)
+- [ ] Operator pattern
 
 ## Chapter
 

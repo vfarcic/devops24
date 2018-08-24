@@ -3,7 +3,6 @@
 * [gke-scale.sh](TODO): TODO
 * [eks-scale.sh](TODO): TODO
 * [aks-scale.sh](TODO): TODO
-
 * [docker-scale.sh](TODO): TODO
 * [minikube-scale.sh](TODO): TODO
 * [minishift-scale.sh](TODO): TODO
