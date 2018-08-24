@@ -29,3 +29,8 @@ In his own words...
 In his own words...
 
 *Neeraj is an architect who mostly works with American banks. New technologies excite him, and that makes him learn all the time. He likes to analyze and connect the dots in the fast-changing technology world. He is passionate about Microservices and DevOps. He likes to read, daydream and watch movies, His favorite author is Malcolm Gladwell.*
+
+
+**Tigran Mnatsakanyan** - <<your intro here>>
+
+*Tigran is a technologist who works as an independent contractor in London helping teams with technology and ways of working. He started as a Java developer then moved to functional programming using numerous architectural styles and patterns. At some point, he realised that in almost every team writing application code takes less time than everything else afterwards, and he started to explore and learn more the world of Microservices, DevOps and Docker. And of course, he loves reading Viktor's books!*
