@@ -30,7 +30,6 @@ In his own words...
 
 *Neeraj is an architect who mostly works with American banks. New technologies excite him, and that makes him learn all the time. He likes to analyze and connect the dots in the fast-changing technology world. He is passionate about Microservices and DevOps. He likes to read, daydream and watch movies, His favorite author is Malcolm Gladwell.*
 
-
 **Tigran Mnatsakanyan**, just like many others, contributed with corrections, advice, suggestions, and the like. We spent hours in discussions around Kubernetes, Jenkins, and CI/CD. He influenced the content of this books greatly. But, that's not his most significant contribution. He was brave enough to volunteer to write a whole chapter. It is still in progress so I won't give away spoilers, except to say that this edition will be updated as soon as Tigran's chapter is finished.
 
 In his own words...

@@ -1,7 +1,6 @@
 ## The DevOps 2.4 Toolkit
 
 - [X] 00-preface.md
-- [ ] 00-big-picture.md
 - [X] 01-sts.md
 - [X] 02-sa.md
 - [X] 03-manual-cd.md
@@ -13,16 +12,19 @@
 - [ ] 09-jenkins-ci.md (@tigran)
 - [X] 99-the-end.md
 - [ ] Packt
-- [ ] Amazon.com
-- [ ] devopstoolkitseries.com
-- [ ] Preface to TechnologyConversations.com
-- [ ] Cover to TechnologyConversations.com
-- [ ] Workshop
+- [X] Amazon.com
+- [X] devopstoolkitseries.com
+- [X] "Book is out" to TechnologyConversations.com
+- [X] "Book is out" to MailChimp
+- [X] Preface to TechnologyConversations.com
+- [X] Cover to TechnologyConversations.com
+- [X] Amazon marketing
+- [X] Workshop
 
 ## The DevOps 2.X Toolkit
 
 - [ ] 99-logging.md (ELK + FluentD, PaperTrail)
-- [X] 99-scaling.md (draft)
+- [ ] 99-scaling.md (the first draft)
 - [ ] 99-monitor.md (Prometheus, https://github.com/kubernetes/kube-state-metrics) (draft in progress)
 - [ ] Service mesh (Istio, https://akomljen.com/kubernetes-service-mesh/, http://philcalcado.com/2017/08/03/pattern_service_mesh.html)
 - [ ] Serverless (KNative)
@@ -95,6 +97,7 @@
 - [ ] [KNative](https://github.com/knative/)
 - [ ] [Skaffold](https://github.com/GoogleContainerTools/skaffold)
 - [ ] Operator pattern
+- [ ] https://www.keycloak.org/
 
 ## Chapter
 

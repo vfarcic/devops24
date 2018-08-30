@@ -1,54 +1,34 @@
-## GCE Account
+# Create The Cluster
 
 ```bash
-# Register
-open "https://console.cloud.google.com/"
-
-# Install
-open "https://cloud.google.com/sdk/"
-
-# Enable "Compute Engine Instance Group Manager API"
-open "https://console.developers.google.com/apis/api/replicapool.googleapis.com/overview"
-
-gcloud config list project
-
 gcloud auth login
-
-gcloud auth application-default login
-```
-
-## Cluster
-
-```bash
-gcloud compute zones list \
-    --filter="region:(us-east1)"
 
 ZONE=$(gcloud compute zones list \
     --filter "region:(us-east1)" \
     | awk '{print $1}' \
     | tail -n 1)
 
+echo $ZONE
+
 ZONES=$(gcloud compute zones list \
     --filter "region:(us-east1)" \
+    | tail -n +2 \
     | awk '{print $1}' \
     | tr '\n' ',')
 
-gcloud compute machine-types list \
-    --filter="zone:($ZONE)"
+echo $ZONES
 
 MACHINE_TYPE=n1-standard-2
 
 gcloud container clusters \
-    create devops23 \
-    --project "ps-dev-201405" \
-    --zone us-east1-b \
+    create devops24 \
+    --zone $ZONE \
     --node-locations $ZONES \
     --machine-type $MACHINE_TYPE \
     --enable-autoscaling \
-    --max-nodes 6 \
-    --min-nodes 3
-
-kubectl get nodes
+    --num-nodes 1 \
+    --max-nodes 3 \
+    --min-nodes 1
 
 kubectl create clusterrolebinding \
     cluster-admin-binding \
@@ -56,54 +36,26 @@ kubectl create clusterrolebinding \
     --user $(gcloud config get-value account)
 ```
 
-## Ingress
+# Install Ingress
 
 ```bash
-# TODO: Switch to Helm
+kubectl apply \
+    -f https://raw.githubusercontent.com/kubernetes/ingress-nginx/master/deploy/mandatory.yaml
 
-kubectl apply -f \
-    https://raw.githubusercontent.com/kubernetes/ingress-nginx/master/deploy/namespace.yaml
+kubectl apply \
+    -f https://raw.githubusercontent.com/kubernetes/ingress-nginx/master/deploy/provider/cloud-generic.yaml
+```
 
-kubectl apply -f \
-    https://raw.githubusercontent.com/kubernetes/ingress-nginx/master/deploy/default-backend.yaml
+# Get Cluster IP
 
-kubectl apply -f \
-    https://raw.githubusercontent.com/kubernetes/ingress-nginx/master/deploy/configmap.yaml
-
-kubectl apply -f \
-    https://raw.githubusercontent.com/kubernetes/ingress-nginx/master/deploy/tcp-services-configmap.yaml
-
-kubectl apply -f \
-    https://raw.githubusercontent.com/kubernetes/ingress-nginx/master/deploy/udp-services-configmap.yaml
-
-kubectl apply -f \
-    https://raw.githubusercontent.com/kubernetes/ingress-nginx/master/deploy/rbac.yaml
-
-kubectl apply -f \
-    https://raw.githubusercontent.com/kubernetes/ingress-nginx/master/deploy/with-rbac.yaml
-
-kubectl patch deployment \
-    -n ingress-nginx nginx-ingress-controller \
-    --type='json' \
-    --patch="$(curl https://raw.githubusercontent.com/kubernetes/ingress-nginx/master/deploy/publish-service-patch.yaml)"
-
-kubectl apply -f \
-    https://raw.githubusercontent.com/kubernetes/ingress-nginx/master/deploy/provider/gce-gke/service.yaml
-
-kubectl apply -f \
-    https://raw.githubusercontent.com/kubernetes/ingress-nginx/master/deploy/provider/patch-service-with-rbac.yaml
-
-kubectl -n ingress-nginx \
-    get svc ingress-nginx \
-    -o json
-
-# .status.loadBalancer.ingress entry musts exist. If it doesn't, repeat.
-
-CJE_IP=$(kubectl -n ingress-nginx \
+```bash
+export LB_IP=$(kubectl -n ingress-nginx \
     get svc ingress-nginx \
     -o jsonpath="{.status.loadBalancer.ingress[0].ip}")
-    
-CJE_ADDR="jenkins.$CJE_IP.xip.io"
+
+echo $LB_IP
+
+# Repeat the `export` command if the output is empty
 ```
 
 ## CJE
@@ -125,9 +77,13 @@ curl -o cje.tgz $RELEASE_URL
 
 tar -xvf cje.tgz
 
-cd cje2-kubernetes
+cd cje2*
 
-cat cje.yml \
+CJE_ADDR=cjoc.$LB_IP.nip.io
+
+echo $CJE_ADDR
+
+cat cloudbees-core.yml \
     | sed -e \
     "s@https://cje.example.com@http://cje.example.com@g" \
     | sed -e \
@@ -185,8 +141,7 @@ podTemplate(
 
 ```bash
 gcloud container clusters \
-    delete devops23 \
-    --project "ps-dev-201405" \
-    --zone us-east1-b \
+    delete devops24 \
+    --zone $ZONE \
     --quiet
 ```

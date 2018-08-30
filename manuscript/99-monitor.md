@@ -9,6 +9,13 @@
 * [minikube-scale.sh](TODO): TODO
 * [minishift-scale.sh](TODO): TODO
 
+```bash
+# Only if NOT GKE (it's already installed)
+helm install stable/metrics-server \
+    --name metrics \
+    --namespace metrics
+```
+
 ## Prometheus Chart
 
 ```bash
@@ -16,15 +23,21 @@ PROM_ADDR=mon.$LB_IP.nip.io
 
 echo $PROM_ADDR
 
+AM_ADDR=alertmanager.$LB_IP.nip.io
+
+echo $AM_ADDR
+
 helm install stable/prometheus \
-    --name prom \
+    --name prometheus \
     --namespace metrics \
     --set server.ingress.enabled=true \
     --set server.ingress.hosts={$PROM_ADDR}
+    --set alertmanager.ingress.enabled=true \
+    --set alertmanager.ingress.hosts={$AM_ADDR}
 
 kubectl -n metrics \
     rollout status \
-    deploy prom-prometheus-server
+    deploy prometheus-server
 
 open "http://$PROM_ADDR/config"
 
@@ -55,10 +68,30 @@ open "http://$PROM_ADDR/graph"
 * Errors: The number of those requests that are failing.
 * Duration: The amount of time those requests take.
 
-## CPU Usage
+## Node Count
+
+```bash
+# kube_node_info
+
+# count(kube_node_info)
+
+# k8s-viktor: prometheus-values.yaml: serverFiles...alert: TooManyNodes|TooFewNodes
+
+open "http://$PROM_ADDR/alerts"
+
+# k8s-viktor: prometheus-values.yaml: alertmanagerFiles...receiver: slack
+
+open "http://$AM_ADDR"
+
+# Open Slack
+```
+
+## Node CPU Usage
 
 ```bash
 kubectl -n metrics get ds
+
+TODO: Continue
 
 # kube_node_status_allocatable_cpu_cores
 
@@ -68,10 +101,10 @@ kubectl -n metrics get ds
 
 # sum(rate(node_cpu_seconds_total{mode!="idle", mode!="iowait", mode!~"^(?:guest.*)$"}[5m])) / count(node_cpu_seconds_total{mode="system"})
 
-# TODO: Figure out why it's very different from `kubectl top nodes`
+# sum(rate(node_cpu_seconds_total{mode!="idle", mode!="iowait", mode!~"^(?:guest.*)$"}[5m])) by (instance) / count(node_cpu_seconds_total{mode="system"}) by (instance)
 ```
 
-## Memory Usage
+## Node Memory Usage
 
 ```bash
 # sum(node_memory_MemFree + node_memory_Cached + node_memory_Buffers)
@@ -97,7 +130,15 @@ kubectl -n metrics get ds
 # 0.37
 
 kubectl describe nodes
+```
 
+## Pending Pods
+
+TODO: Continue
+
+## Container Memory and CPU
+
+```bash
 # container_memory_usage_bytes
 
 # container_memory_usage_bytes{container_name="prometheus-server"}
