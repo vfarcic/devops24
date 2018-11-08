@@ -575,8 +575,7 @@ Monocular is web-based UI for managing Kubernetes applications packaged as Helm 
 Monocular can be installed with Helm. It is available through a Chart residing in its own [repository](https://kubernetes-helm.github.io/monocular). So, our first step is to add the repository to our Helm client.
 
 ```bash
-helm repo add monocular \
-    https://kubernetes-helm.github.io/monocular
+helm repo add monocular https://helm.github.io/monocular
 ```
 
 Let's take a look at the available values.
