@@ -694,8 +694,8 @@ We should wait until the application rolls out before giving a spin to its UI.
 
 ```bash
 kubectl -n charts \
-    rollout status \
-    deploy monocular-monocular-api
+         rollout status deployment \
+         monocular-monocular-ui
 ```
 
 It will take a while until the API rolls out and the `monocular-api` Pods might fail a few times. Be patient.
