@@ -1,3 +1,23 @@
+## TODO
+- [ ] Code
+- [ ] Code review Docker for Mac/Windows
+- [ ] Code review minikube
+- [ ] Code review kops
+- [ ] Code review minishift
+- [ ] Code review GKE
+- [ ] Write
+- [ ] The story
+- [ ] Text review
+- [ ] Diagrams
+- [ ] Gist
+- [ ] Review the title
+- [ ] Proofread
+- [ ] Add to slides
+- [ ] Publish on TechnologyConversations.com
+- [ ] Add to Book.txt
+- [ ] Publish on LeanPub.com
+
+
 # Continuous Delivery With Jenkins And GitOps
 
 T> As Viktor described in the previous chapter Continuous delivery is a step down from continuous deployment. Instead of deploying every commit from the master branch to production, we are choosing which build should be promoted. And thats where things become more complicated. Because every team has different ways of working, therefore different cycles and methods to deploy. One example of difference can be what git branching model is being used. It is known fact that more parallel branches you have harder it is to bring them together later on. So it is always recomended to merge as soon as possible. However, as Viktor pointed in previous chapter some organisational blockers may affect your ability to release the way you want to release, blockers can be inside or outside of your organisations, companies which are working in regulated environements facing those problems. In this chapter I will show yet another alternative of `CI` implementation, and of course you can mix those examples together, to build your own pipeline, as everything is a code.
