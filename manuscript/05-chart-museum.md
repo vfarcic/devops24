@@ -572,11 +572,11 @@ That being said, I am fully aware that not everyone shares my views. Some like U
 
 Monocular is web-based UI for managing Kubernetes applications packaged as Helm Charts. It allows us to search and discover available charts from multiple repositories, and install them in our clusters with one click.
 
-Monocular can be installed with Helm. It is available through a Chart residing in its own [repository](https://kubernetes-helm.github.io/monocular). So, our first step is to add the repository to our Helm client.
+Monocular can be installed with Helm. It is available through a Chart residing in its own [repository](https://helm.github.io/monocular). So, our first step is to add the repository to our Helm client.
 
 ```bash
 helm repo add monocular \
-    https://kubernetes-helm.github.io/monocular
+    https://helm.github.io/monocular
 ```
 
 Let's take a look at the available values.
