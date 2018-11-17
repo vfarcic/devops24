@@ -160,7 +160,7 @@ helm install monocular/monocular \
 
 kubectl -n charts \
     rollout status \
-    deploy monocular-monocular-api
+    deploy monocular-monocular-ui
 
 open "http://$MONOCULAR_ADDR"
 

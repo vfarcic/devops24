@@ -696,10 +696,10 @@ We should wait until the application rolls out before giving a spin to its UI.
 ```bash
 kubectl -n charts \
     rollout status \
-    deploy monocular-monocular-api
+    deploy monocular-monocular-ui
 ```
 
-It will take a while until the API rolls out and the `monocular-api` Pods might fail a few times. Be patient.
+It will take a while until the API rolls out and the `monocular-ui` Pods might fail a few times. Be patient.
 
 Now we can open Monocular in a browser.
 
