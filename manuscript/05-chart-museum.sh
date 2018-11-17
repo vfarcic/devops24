@@ -138,7 +138,7 @@ curl -XDELETE \
     -u admin:admin
 
 helm repo add monocular \
-    https://kubernetes-helm.github.io/monocular
+    https://helm.github.io/monocular
 
 helm inspect values monocular/monocular
 
