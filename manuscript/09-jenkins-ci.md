@@ -72,8 +72,6 @@ We will use the "Git tags" approach in the examples that follow. We will also at
 
 That was the intro, and lets code a bit.
 
-TODO: Continue review
-
 ## Creating A Cluster
 
 Just as before, we'll start the practical part by making sure that we have the latest version of the *k8s-specs* repository.
@@ -97,13 +95,9 @@ We will setup the cluster with Helm requirements just as we did in the previous 
 
 Here we go.
 
-TODO: Continue test
+## What Is The Continuous Integration Pipeline?
 
-## Defining The Whole Production Environment
-
-Please refer to the previous chapter to bring your production environement up and running.
-
-## What Is The Continuous Delivery Pipeline?
+TODO: Since this explanation does not require a cluster, maybe it would be good to move it above the previous sub-chapter.
 
 Now that we have a cluster and the third-party applications running in the production environment, we can turn our attention towards defining a continuous delivery pipeline.
 
@@ -113,21 +107,27 @@ I> Continuous deployment is a fully automated process that executes a set of ste
 
 I> Continuous delivery is almost a fully automated process that executes a set of steps with the goal of converting each commit to the master branch into a fully tested release that is ready to be deployed to production. We (humans) retain the ability to choose which of the production-ready releases will be deployed to production and when is that deployment going to happen.
 
+TODO: We still need a description of CI and how it compares with CD/CDP.
+
+
 As with the previous chapter, My primary goal is to show a different approach that with small adjustments can be applied to any type of pipeline. 
 
 The main difference would be applying CI on more than one releasable branches, also using semantic versioning for releases, and git tags as correlation between all artifacts. We will also deploy go-demo in `UAT` environement before `Production`.
 
 ## Exploring Application's Repository And Preparing The Environment
 
+TODO: Continue review
 
-As in the previous chapter, I forked the [vfarcic/go-demo-3](https://github.com/vfarcic/go-demo-3) repository into [vfarcic/go-demo-4](https://github.com/vfarcic/go-demo-4). Reason is the same, to not have conflicting issues between different approaches for the pipeline. Obviously Viktor was faster than myself and his chapter pointing to go-demo-5 came out earlier. I hope i am not too late, but after writing this chapter I now appreciate more effort from Viktor. 
+This time, we'll use [vfarcic/go-demo-4](https://github.com/vfarcic/go-demo-4), instead of the [vfarcic/go-demo-3](https://github.com/vfarcic/go-demo-3) and [vfarcic/go-demo-5](https://github.com/vfarcic/go-demo-5) repositorories. By having a repo dedicated to continuous integration, we'll avoid conflicting issues between different approaches for creating a pipeline.
 
-Since we'll need to change a few configuration files and push them back to the repository, you should fork [vfarcic/go-demo-4](https://github.com/vfarcic/go-demo-4), just as you forked [vfarcic/k8s-prod](https://github.com/vfarcic/k8s-prod).
+Since we'll need to change a few configuration files and push them back to the repository, this first thing we need to do it to fork [vfarcic/go-demo-4](https://github.com/vfarcic/go-demo-4), just as you forked a few other repositories used in this book. You know what to do.
 
-Next, we'll clone the repository before we explore the relevant files.
+Next, we'll clone the repository before we explore the relevant files. Please make sure to replace `[...]` with your GitHub user.
 
 ```bash
 cd ..
+
+GH_USER=[...]
 
 git clone \
     https://github.com/$GH_USER/go-demo-4.git
@@ -135,11 +135,11 @@ git clone \
 cd go-demo-4
 ```
 
-There is not much difference between those repos, except
+There is not much difference between those repos, except TODO: finish the sentence.
 
-The Chart located in `helm` directory is the same as the one we used in *go-demo-5* so we'll skip commenting it. Instead, we'll replace GitHub user (`vfarcic`) with yours.
+TODO: Why not replace `vfarcic` with a variable and use `--set` to change it to `$DH_USER`?
 
-Before you execute the commands that follow, make sure you replace `[...]` with your Docker Hub user.
+TODO: There is no `deployment-orig.yaml`, only `deployment.yaml`. I guess that's correct (except for the command below), just change `digitalinside` to a variable and define a default value in `values.yaml`.
 
 ```bash
 DH_USER=[...]
@@ -148,6 +148,8 @@ cat helm/go-demo-4/deployment-orig.yaml \
     | sed -e "s@vfarcic@$DH_USER@g" \
     | tee helm/go-demo-4/templates/deployment.yaml
 ```
+
+TODO: Please remove/rewrite the repeated text (like the one below).
 
 In *go-demo-3*, the resources that define the Namespace, ServiceAccount, RoleBinding, LimitRange, and ResourceQuota were split between `ns.yml` and `build-config.yml` files. I got tired of having them separated, so I joined them into a single file `build.yml`. Other than that, the resources are the same as those we used before so we'll skip commenting on them as well. The only difference is that the Namespace is now *go-demo-4*.
 
