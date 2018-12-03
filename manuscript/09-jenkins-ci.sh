@@ -132,9 +132,21 @@ cat CiJenkinsfile.orig \
     | sed -e "s@vfarcic@$DH_USER@g" \
     | tee Jenkinsfile
 
+
+
+cat platform_deployment.yml.orig \
+    | sed -e "s@acme.com@$ADDR@g" \
+    | tee platform_deployment.yml
+
+
+cat DeploymentJenkinsfile.orig \
+    | sed -e "s@acme.com@$ADDR@g" \
+    | sed -e "s@vfarcic@$DH_USER@g" \
+    | tee DeploymentJenkinsfile
+
 git add .
 
-git commit -m "Jenkinsfile"
+git commit -m "CiJenkinsfile, DeploymentJenkinsfile, platform_deployment.yml"
 
 git push
 
@@ -161,16 +173,14 @@ open "http://$JENKINS_ADDR/blue/organizations/jenkins/"
 
 curl "http://cm.$ADDR/index.yaml"
 
+VERSION=[...]
+
 helm repo add chartmuseum \
     http://cm.$ADDR
 
 helm repo list
 
 helm repo update
-
-helm search --versions go-demo-4
-
-VERSION=[...]
 
 helm inspect chartmuseum/go-demo-4 \
     --version $VERSION
