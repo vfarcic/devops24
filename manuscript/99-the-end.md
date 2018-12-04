@@ -30,7 +30,8 @@ In his own words...
 
 *Neeraj is an architect who mostly works with American banks. New technologies excite him, and that makes him learn all the time. He likes to analyze and connect the dots in the fast-changing technology world. He is passionate about Microservices and DevOps. He likes to read, daydream and watch movies, His favorite author is Malcolm Gladwell.*
 
+**Tigran Mnatsakanyan**, just like many others, contributed with corrections, advice, suggestions, and the like. We spent hours in discussions around Kubernetes, Jenkins, and CI/CD. He influenced the content of this books greatly. But, that's not his most significant contribution. He was brave enough to volunteer to write a whole chapter. It is still in progress so I won't give away spoilers, except to say that this edition will be updated as soon as Tigran's chapter is finished.
 
-**Tigran Mnatsakanyan** - <<your intro here>>
+In his own words...
 
-*Tigran is a technologist who works as an independent contractor in London helping teams with technology and ways of working. He started as a Java developer then moved to functional programming using numerous architectural styles and patterns. At some point, he realised that in almost every team writing application code takes less time than everything else afterwards, and he started to explore and learn more the world of Microservices, DevOps and Docker. And of course, he loves reading Viktor's books!*
+*Tigran is a technologist who works as an independent contractor in London helping teams with technology and ways of working. He started as a Java developer then moved to functional programming using numerous architectural styles and patterns. At some point, he realized that in almost every team writing application code takes less time than everything else afterward, and he started to explore and learn more about the world of Microservices, DevOps, and Docker. And of course, he loves reading Viktor's books!*

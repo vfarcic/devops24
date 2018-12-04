@@ -20,53 +20,63 @@
 
 # Continuous Delivery With Jenkins And GitOps
 
-T> As Viktor described in the previous chapter Continuous delivery is a step down from continuous deployment. Instead of deploying every commit from the master branch to production, we are choosing which build should be promoted. And thats where things become more complicated. Because every team has different ways of working, therefore different cycles and methods to deploy. One example of difference can be what git branching model is being used. It is known fact that more parallel branches you have harder it is to bring them together later on. So it is always recomended to merge as soon as possible. However, as Viktor pointed in previous chapter some organisational blockers may affect your ability to release the way you want to release, blockers can be inside or outside of your organisations, companies which are working in regulated environements facing those problems. In this chapter I will show yet another alternative of `CI` implementation, and of course you can mix those examples together, to build your own pipeline, as everything is a code.
+T> Continuous delivery is a step down from continuous deployment. Instead of deploying every commit from the master branch to production, we are choosing which build should be promoted. Yet, many are not ready for continuous deployment and continuous delivery is the second best option.
 
-We will continue using declarative pipeline and jenkins shared library. To not conflict with existing shared libriaries I have used `ci` prefix for functions. The way we build docker image will remain the same, via mounting the socket. We will stick to GitOps as the main source of truth. 
+In many companies, every team has different ways of working, with different cycles and methods to deploy. One example of such differentces is reflected in Git branching models. It is known fact that more parallel branches you have, the harder it is to bring them together later on. Branches (especially those with long lifetime), introduce management complexity and, more importantly, delayed integration. It is always recomended to merge as soon as possible. However, as pointed in the [Continuous Delivery With Jenkins And GitOps](#cd) chapter, some organisational blockers may affect your ability to release the way you want to release, blockers can be inside or outside of your organisations, companies which are working in regulated environements facing those problems. In this chapter I will show yet another alternative of continuous integration (CI) implementation, and of course you can mix those examples together, to build your own pipeline, as everything is a code.
+
+We will continue using declarative pipeline and jenkins shared library. To avoid conflicts with existing shared libriaries, we'll use *ci* prefix for functions. The way we build docker image will remain the same, via mounting the socket. We will stick to GitOps as the main source of truth.
+
+TODO: Is this chapter about CD or CI? If it's latter, we should probably change the title.
+
+TODO: Add a note that when a merge to master is delayed, it is continuous integration, or not even that. We can continuous execute only some processes (e.g., testing), while we need to wait until merges are done for the rest. The reason I said "not even that" (CI), is that until we merge work of different people (usually on the master or whatever is the name where everyone merges), we don't know whether our code integrates with the code of others.
+
+TODO: The paragraph that follows is new. Please let me know what you think.
+
+It might seem like we're moving backwards, from continuous deployment (CDP), to continuous delivery (CD), and now to continuous integration (CI). That doesn't seem like a logical order. However, from the pipeline perspective, CD is more complex than CDP, and CI is even more complicated than either of the two. That does not mean that CI is the most complex overal. It isn't. CDP and CD force us to adopt new processes, new culture, and new architecture. Changing those three is very hard, even though creating pipelines is easier. Since the chapters in this book are focused on pipelines, and assume certain maturity level of an organization, we ordered them by complexity of building those pipelines, not by the complexity of implementing the whole change (culture, processes, technology, architecture).
+
+Before we dive into the pipeline, we'll explore a individual topics that will influence the process as a whole.
 
 ## Branching Model
 
-I am sure if at some point you thought how to organise git branches for your development and the release, you found numerues articles on internet describing the popular git branching model where commits were landing on `develop` branch, and for releases new `release` branches were created. Same were applying for `hotfix` branches. It was kind of bringing garuantee of work isolation, and so that you can have time to stabilise your release candidate on release branches, without stopping regular development happening on `develop` branch. Git Tags obviously were used to mark the point where the software been released. 
+I am sure if at some point you thought how to organise git branches for your development and the release, you found numerues articles on Internet describing the popular Git branching model where commits were landing on `develop` branch, and for releases new *release* branches were created. Same were applying for *hotfix* branches. It was kind of bringing garuantee of work isolation, so that you can have time to stabilise your release candidate on release branches, without stopping regular development happening on *develop* branch. Git Tags obviously were used to mark the point where the software been released. 
 
-Many build tools then have implemented the same technic for release, to comply with the suggested branching model. Maven, Gradle and others had and still have plugins, which are generating release branches and tags, were opening and closing hotfix branches and so on. Lateron github came up with a bit more relaxed branching model called [github flow](https://guides.github.com/introduction/flow/). 
+Many build tools then have implemented the same technique for release to comply with the suggested branching model. Maven, Gradle and others had and still have plugins, which are generating release branches and tags, were opening and closing hotfix branches and so on. Later on github came up with a bit more relaxed branching model called [github flow](https://guides.github.com/introduction/flow/). 
 
-At the first glance, logically having variaty of branches sounds correct, but if you think about it, it kind of assumes, you need to stabilise your release, and it takes time, therefore you need a branch for it. And if you build your release process around that model, the process will force you to give  time to stabilise the release, time to be tested, then tested even harder, then release it and merge back the stabilisation fixes to `develop`.  The process will force you to be slow. The more things are being build around that branching model, harder it is to change later on. 
+At the first glance, having variety of branches sounds correct, but if you think about it, it kind of assumes that you need to stabilise your release, and that takes time. Therefore, you need a branch for it. And if you build your release process around that model, the process will force you to take time to stabilise the release. You'll need time for testing. After that, you can release it and merge back the stabilisation fixes to the *develop* branch.  The process will force you to be slow. The more things are being build around that branching model, harder it is to change later on. 
 
-When Viktor talks about CD and shows examples there, the branching model is pretty simple, because assumption he does is, you do not need to stabilise software, you always roll forward, everything is automated, or else is going to be automated. In the previous chapter it was blend of those two assumptions, where it was possible to choose what version of software would go to production, however there was no need to branch out release, to stabilise it. Master branch was treated as a stable branch. I will be taking similar approach, where we do not have release branches, instead every merge will be treated as a release candidate, and I will assume that problems on the release candidate can be found early enough and that there is no need to branch out and wait. We will also introduce one more environement called typicall `UAT`, where things are being tested first before promotion to production. In my experience promoting service through different environements is pretty standard approach in most of the organisations. If you were following  devops toolkit series, you probably remember the recomendation to have exactly the same environements, and same configuraiton. That all can be done, but the reality is, its rarely the case, and in typical organisations you get different environements on the way to production, where you meet different type of services, dockerised and not dockerised, but still forming part of the platform. Usually thats one of the big blockers to have everything unified, some part of the big systems are not agile enough, its hard to deploy them or they have not been conteinarised yet therefore its hard to move them arround. Long story short, in most of the organisations I saw the environements are pretty different from each other, and more you move towards production more prod like environement you are getting. 
+The examples of the branching model in the [Creating A Continuous Deployment Pipeline With Jenkins](#cdp) chapter were pretty simple. The assumption was that we do not need to stabilise software. We always roll forward, and everything is (or will be) automated. In the [Continuous Delivery With Jenkins And GitOps](#cd) chapter it was blend of those two assumptions, where it was possible to choose what version of software would go to production. However, there was no need to branch out releases, nor to stabilise them. Master branch was treated as a stable branch. In this chapter, we will be taking a similar approach, where we do not have release branches. Instead, every merge will be treated as a release candidate, and we will assume that problems on the release candidate can be found early enough and that there is no need to branch out and wait. We will also introduce one more environement, typically called *UAT*, where things are being tested first before promotion to production. In my experience promoting service through different environements is pretty standard approach in most of the organisations. If you were following devops toolkit series, you probably remember the recomendation to have exactly the same environements, and the same configuration. All that can be done, but in reality that's rarely the case. In typical organisations, you get different environments on the way to production, where you meet different type of services, dockerised and not dockerised, but still forming part of the platform. Usually thats one of the big blockers to have everything unified. If some parts of big systems are not agile enough, it's hard to deploy them or they have not been conteinarised yet. Therefore, its hard to move them arround. Long story short, in most of the organisations the environements are pretty different from each other, and more you move towards production more prodction like environement you are getting. 
 
-I will also show the correlation between git tags, docker image tags, and helm chart tags. I will also show the ability of fixing issues on the specific release. We will be using `hotfix` branches, and you can scale this model to have more releasable branches if you want to. However make sure you dont build a process which assumes slow development, better to aim for fast development. 
+We'll explore the correlations between Git tags, Docker image tags, and Helm Chart tags. We'll also show the ability of fixing issues on a specific release. We will be using `hotfix` branches. You can scale this model to have additional releasable branches. However make sure you dont build a process which assumes slow development. Aim for fast process.
 
+Now that we have a clearer picture about branching models, we should make decisions how to version our releases.
 
 ## Versioning
 
-Every software we use, have a version. We need versions to know if we are missing any new features, are we behind of latest version or not. But we also need versions to understand how hard is it to upgrade the software. In this chapter we will use [semantic](https://semver.org/ versioning for our service. We will make all our release complient with semantic versioning. Rules for semantic versioning are pretty simple, 
+Every software we use, has a version. We need versions to know if we are missing any new features, and whether we are behind the latest version. But we also need versions to understand how hard is it to upgrade software. In this chapter we will use [semantic](https://semver.org/) versioning for our applications. We will make all our releases complient with semantic versioning. The rules are pretty simple.
 
-Given a version number `MAJOR.MINOR.PATCH`, increment the:
+Given a version number *MAJOR.MINOR.PATCH*, increment each segment using the rules that follow.
 
-1. `MAJOR` version when you make incompatible API changes,
-1. `MINOR` version when you add functionality in a backwards-compatible manner, and
-1. `PATCH` version when you make backwards-compatible bug fixes.
+* *MAJOR* version increases when we make incompatible API changes.
+* *MINOR* version increases when we add functionality in a backwards-compatible manner.
+* *PATCH* version increases when you make backwards-compatible bug fixes.
 
-As we have talked already about hotfix branches, you can guess that the hotfix branches will typically change the `PATCH` version. Changes on `MASTER` branch will change `MINOR` version, unless you know you are introducing incompatible api change. Then our pipeline should give you a chance to change the `MAJOR` version. 
+As we have already talked about hotfix branches, you can guess that they will typically change the *PATCH* version. Changes on *MASTER* branch will change *MINOR* version, unless we know that we are introducing changes that will make API incompatible with previous releases. in that case, our pipeline should give us a chance to change the *MAJOR* version.
 
-Now, it will be a good question to ask, how would we know what version of go-demo are we building. And what is going to be the next version. There are typically two ways of keeping the version of the application. Either in the file, or with git tags. Both have their pros and cons. In case of having version in the file, with every build you will need to increment the version in the version file, and push it back. Then you need to create some kind of a custom mechanism to not trigger a build due to release file push event. As pushing back new version will kickoff the pipeline, and you may end up in an endless loop. You need a custom mechanism to avoid the loop. Some plugins are adding custom comments and you can include that rule in your pipeline, like, if comment says [release commit ...] then skip the build. 
-Another way would be keep the version as a git tag. So there is not going to be a file with a version number inside, but if you would like to know the version of the current source, you will read the latest tag, from release tags. The drawback of this method is, you will need git operation each time you want to read the release version.
+Now might be a good time to ask how would we know what version of we're building. What is going to be the next version? There are typically two ways of managing versions of an application; either in a file, or with Git tags. Both have their pros and cons. In case of having version in a file, every build needs to increment the version by changing that file. Since it is kept in Git, we need to push that change back to the repository. The problem with that approach is that we need to create some kind of a custom mechanism that will prevent those commit from triggering builds. Otherwise, we'd run a risk of creating newer ending loops where a build commits a file, only to trigger another build that commit a file, and so on. We need a custom mechanism to avoid such loops. Some plugins are adding custom comments and you can include that rule in your pipeline. For example, if the comment says `[release commit ...]` then skip the build. 
 
+Another way to keep track of the versions is to leverage Git tags. That avoids having a file with version number inside and avoid pushing that file to the repository. If you (or the process) needs to know the version of the current source, you (or it) will read the latest tag. The drawback of this method is, you will need git operation each time you want to read the release version. TODO: I'm not sure I understand the last sentence.
 
-I personally like the second approach, as it seems clean to me to not have any release commits, and also as we are embracing Gitops, I dont see git operations for reading release tags as an overhead. Git is pretty powerefull source control tool, and git tags are first class citizens there, which can also hold commit messages and descriptions of tags. We will use this approach in our example. We will also attach release notes to our releases, and we will automate release note generation. Release notes are yet another thing involved in the release process which should be automated. At least we will try to do so :)
+Both approaches have their pros and cons. We explored the approach with files that contain versions in the previous chapter. We avoided the problem with "build loops" by having a separate repository that defines everything we need to deploy applications. That, among other things, included versions. In this chapter, we'll explore the approach with Git tags. Git is pretty powerefull source control tool, and its tags are first class citizens.
 
+We will use the "Git tags" approach in the examples that follow. We will also attach release notes to our releases, and we will automate release note generation. Release notes are yet another task involved in the release process which should be automated. At least we will try to do so.
 
 That was the intro, and lets code a bit.
 
-
 ## Creating A Cluster
-
-
-We will setup the production environement with helm requirements like we did in the previous chapter. You will be very familiar with that part of the scripts.
 
 Just as before, we'll start the practical part by making sure that we have the latest version of the *k8s-specs* repository.
 
-I> All the commands from this chapter are available in the [09-jenkins-cd.sh](https://gist.github.com/cb0ececf6600745daeac8cc3ae400a86) Gist.
+I> All the commands from this chapter are available in the [09-jenkins-ci.sh](TODO:) Gist.
 
 ```bash
 cd k8s-specs
@@ -74,8 +84,7 @@ cd k8s-specs
 git pull
 ```
 
-
-For **GKE** we'll need to increase memory slightly so we'll use **n1-highcpu-4** instance types instead of *n1-highcpu-2* we used so far.
+We will setup the cluster with Helm requirements just as we did in the previous chapter. You should familiar with that part of the scripts.
 
 * [docker4mac-cd.sh](https://gist.github.com/d07bcbc7c88e8bd104fedde63aee8374): **Docker for Mac** with 3 CPUs, 4 GB RAM, with **nginx Ingress**, with **tiller**, and with `LB_IP` variable set to the IP of the cluster.
 * [minikube-cd.sh](https://gist.github.com/06bb38787932520906ede2d4c72c2bd8): **minikube** with 3 CPUs, 4 GB RAM, with `ingress`, `storage-provisioner`, and `default-storageclass` addons enabled, with **tiller**, and with `LB_IP` variable set to the VM created by minikube.
@@ -86,11 +95,9 @@ For **GKE** we'll need to increase memory slightly so we'll use **n1-highcpu-4**
 
 Here we go.
 
-## Defining The Whole Production Environment
+## What Is The Continuous Integration Pipeline?
 
-Please refer to the previous chapter to bring your production environement up and running.
-
-## What Is The Continuous Delivery Pipeline?
+TODO: Since this explanation does not require a cluster, maybe it would be good to move it above the previous sub-chapter.
 
 Now that we have a cluster and the third-party applications running in the production environment, we can turn our attention towards defining a continuous delivery pipeline.
 
@@ -100,21 +107,27 @@ I> Continuous deployment is a fully automated process that executes a set of ste
 
 I> Continuous delivery is almost a fully automated process that executes a set of steps with the goal of converting each commit to the master branch into a fully tested release that is ready to be deployed to production. We (humans) retain the ability to choose which of the production-ready releases will be deployed to production and when is that deployment going to happen.
 
+TODO: We still need a description of CI and how it compares with CD/CDP.
+
+
 As with the previous chapter, My primary goal is to show a different approach that with small adjustments can be applied to any type of pipeline. 
 
 The main difference would be applying CI on more than one releasable branches, also using semantic versioning for releases, and git tags as correlation between all artifacts. We will also deploy go-demo in `UAT` environement before `Production`.
 
 ## Exploring Application's Repository And Preparing The Environment
 
+TODO: Continue review
 
-As in the previous chapter, I forked the [vfarcic/go-demo-3](https://github.com/vfarcic/go-demo-3) repository into [vfarcic/go-demo-4](https://github.com/vfarcic/go-demo-4). Reason is the same, to not have conflicting issues between different approaches for the pipeline. Obviously Viktor was faster than myself and his chapter pointing to go-demo-5 came out earlier. I hope i am not too late, but after writing this chapter I now appreciate more effort from Viktor. 
+This time, we'll use [vfarcic/go-demo-4](https://github.com/vfarcic/go-demo-4), instead of the [vfarcic/go-demo-3](https://github.com/vfarcic/go-demo-3) and [vfarcic/go-demo-5](https://github.com/vfarcic/go-demo-5) repositorories. By having a repo dedicated to continuous integration, we'll avoid conflicting issues between different approaches for creating a pipeline.
 
-Since we'll need to change a few configuration files and push them back to the repository, you should fork [vfarcic/go-demo-4](https://github.com/vfarcic/go-demo-4), just as you forked [vfarcic/k8s-prod](https://github.com/vfarcic/k8s-prod).
+Since we'll need to change a few configuration files and push them back to the repository, this first thing we need to do it to fork [vfarcic/go-demo-4](https://github.com/vfarcic/go-demo-4), just as you forked a few other repositories used in this book. You know what to do.
 
-Next, we'll clone the repository before we explore the relevant files.
+Next, we'll clone the repository before we explore the relevant files. Please make sure to replace `[...]` with your GitHub user.
 
 ```bash
 cd ..
+
+GH_USER=[...]
 
 git clone \
     https://github.com/$GH_USER/go-demo-4.git
@@ -122,11 +135,11 @@ git clone \
 cd go-demo-4
 ```
 
-There is not much difference between those repos, except
+There is not much difference between those repos, except TODO: finish the sentence.
 
-The Chart located in `helm` directory is the same as the one we used in *go-demo-5* so we'll skip commenting it. Instead, we'll replace GitHub user (`vfarcic`) with yours.
+TODO: Why not replace `vfarcic` with a variable and use `--set` to change it to `$DH_USER`?
 
-Before you execute the commands that follow, make sure you replace `[...]` with your Docker Hub user.
+TODO: There is no `deployment-orig.yaml`, only `deployment.yaml`. I guess that's correct (except for the command below), just change `digitalinside` to a variable and define a default value in `values.yaml`.
 
 ```bash
 DH_USER=[...]
@@ -135,6 +148,8 @@ cat helm/go-demo-4/deployment-orig.yaml \
     | sed -e "s@vfarcic@$DH_USER@g" \
     | tee helm/go-demo-4/templates/deployment.yaml
 ```
+
+TODO: Please remove/rewrite the repeated text (like the one below).
 
 In *go-demo-3*, the resources that define the Namespace, ServiceAccount, RoleBinding, LimitRange, and ResourceQuota were split between `ns.yml` and `build-config.yml` files. I got tired of having them separated, so I joined them into a single file `build.yml`. Other than that, the resources are the same as those we used before so we'll skip commenting on them as well. The only difference is that the Namespace is now *go-demo-4*.
 

@@ -138,7 +138,7 @@ curl -XDELETE \
     -u admin:admin
 
 helm repo add monocular \
-    https://kubernetes-helm.github.io/monocular
+    https://helm.github.io/monocular
 
 helm inspect values monocular/monocular
 
@@ -160,7 +160,7 @@ helm install monocular/monocular \
 
 kubectl -n charts \
     rollout status \
-    deploy monocular-monocular-api
+    deploy monocular-monocular-ui
 
 open "http://$MONOCULAR_ADDR"
 

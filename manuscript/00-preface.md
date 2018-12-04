@@ -74,7 +74,7 @@ Long story short, the prerequisites are hands-on experience with Kubernetes and 
 
 I> I will assume that this is not your first contact with Kubernetes. If my assumption is wrong, please consider going through [The DevOps 2.3 Toolkit: Kubernetes: Deploying and managing highly-available and fault-tolerant applications at scale](https://amzn.to/2GvzDjy) first.
 
-# Rumblings Of An Old Men
+# Rumblings Of An Old Man
 
 T> Continuous Deployment is about making a decision to do things right. It is a clear goal and a proof that the changes across all levels were successful. The primary obstacle is thinking that we can get there without drastic changes in the application's architecture, processes, and culture. Tools are the least of our problems.
 
