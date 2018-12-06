@@ -138,6 +138,8 @@ cat helm/go-demo-4/deployment-orig.yaml \
     | tee helm/go-demo-4/templates/deployment.yaml
 ```
 
+TODO: Most people will probably remember the previous command from other chapters, but I'd still repeat in a single sentence why we do that.
+
 Just like before lets create our build environment. 
 
 ```bash
@@ -168,56 +170,67 @@ helm init --service-account uat-build \
     --tiller-namespace go-demo-4-uat
 ```
 
+The key elements of our pipeline will be *CiJenkinsfile* and *DeploymentJenkinsfile* files. We'll explore them next.
 
-The key elements of our pipeline will be *CiJenkinsfile* and *DeploymentJenkinsfile* files. Let's explore them now.
-
+TODO: Continue review
 
 ## Demystifying Declarative Pipeline Through A Practical Example
 
-Let's take a look at a *JCienkinsfile.orig* which we'll use as a base to generate *Jenkinsfile* that will contain the correct address of the cluster and the GitHub user.
+TODO: Change the previous title so that it is not exactly the same as the one in the previous chapter. Readers might think it's the same.
+
+Let's take a look at a *CiJenkinsfile.orig* which we'll use as a base to generate *Jenkinsfile* that will contain the correct address of the cluster and the GitHub user.
+
+TODO: It might be confusing that there is `CiJenkinsfile.orig`. If it's going to be used to generate `Jenkinsfile` (as mentioned above), why not call it `Jenkinsfile.orig` (without `Ci`).
 
 ```bash
 cat CiJenkinsfile.orig
 ```
 
-The `option` block has remiand the same. 
+The `option` block has remined the same as the one use used with *go-demo-3*.
 
-The `agent` block however has couple of differences. First the `label` block now has a random value. Reason for that is, if two build are running the same pipeline and at that time the buildpod is available with the same label, it will reuse existing pod, which can result into some race condition errors. Even if you disable concurrent builds with the method `disableConcurrentBuilds()`, parallel build can still happen on different branches, and branches can effectivly refer to the same labeled pod. 
+TODO: It's confusing that the explanation starts with the `options` block even though the first block is `agent`.
 
+The `agent` block from `CiJenkinsfile.orig` is as follows.
+
+TODO: I moved the snippet above the explanation so that readers can see the code and understand that the description that follows refers to it. Also, I reduced the spaces to two characters. When possible (and practical) I tend to keep code blocks within 40 characters per line so that it does not wrap on smaller screens.
 
 ```groovy
 ...
 agent {
-    kubernetes {
-                label "builder-pod-${UUID.randomUUID().toString()}"
-                cloud "go-demo-4-build"
-                defaultContainer 'jnlp'
-                serviceAccount "build"
-                yamlFile "CiKubernetesPod.yaml"
-            }
-    }
+  kubernetes {
+    label "builder-pod-${UUID.randomUUID().toString()}"
+    cloud "go-demo-4-build"
+    defaultContainer 'jnlp'
+    serviceAccount "build"
+    yamlFile "CiKubernetesPod.yaml"
+  }
+}
 ...
 ```
 
-You will also notice that `yamlFile` now refers to a different file called `CiKubernetesPod.yaml`. Lets have a look at the content of the file. 
+The `agent` block however has couple of differences when compared to what we used before. The `label` block now has a random value. If two builds are running the same pipeline and at that time the build Pod is available with the same label, it will reuse the existing Pod, instead of creating a new one. That can result into race condition errors. Even if we disable concurrent builds with the method `disableConcurrentBuilds()`, parallel build can still happen on different branches, and branches can effectivly refer to the same labeled pod. 
 
+You will also notice that `yamlFile` now refers to a different file called `CiKubernetesPod.yaml`. We'll explore it later. For now, please note that `yamlFile` allows us to specify `podTemplate` in a different file thus potentially reduccing clutter inside Jenkinsfile.
+
+TODO: I think it would be better to explore one file at the time. Otherwise, we'd need to `cat` the first file again when we get back to it later so that people can see it on their screen (easier to read that from the book). What do you think? If you agree, please move it down.
 
 ```bash
 cat CiKubernetesPod.yaml
 ```
 
+TODO: Why not call it `KubernetesPod.yaml` (without `Ci`)?
 
 The difference in the output is as follows.
 
 ```yaml
 ...
   - name: gren
-    image: digitalinside/gren:latest //TODO change to vfarcic
+    image: digitalinside/gren:latest // TODO: change to vfarcic
     command:
 ...
 ```
-`Gren` is a lightweight library to generate release notes from github issues. Obviously you might be using a different tool for tracking your requirements, we just want to demonstrate that the release notes are is yet another thing which can be automated as it is part of a release. 
 
+`Gren` is a lightweight library to generate release notes from github issues. Obviously you might be using a different tool for tracking your requirements, we just want to demonstrate that the release notes are is yet another thing which can be automated as it is part of a release. 
 
 Next section which is different in the jenkinsfile is `environment`. We have added two new environment variables. 
 
