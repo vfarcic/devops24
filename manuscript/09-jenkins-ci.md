@@ -154,9 +154,16 @@ The extra step here would be to create the UAT environment defined in `k8s/uat.y
 kubectl apply -f k8s/uat.yml --record
 ```
 
-Finally, the only thing related to the setup of the environment we'll use for *go-demo-4* is to install Tiller. We'll do it just as we did before, but this time for both namespaces.
+Finally, the only thing related to the setup of the environment we'll use for *go-demo-4* is to install Tiller. We'll do it just as we did before, but this time for both namespaces. You may ask, why for both ? Why not just make one Tiller to work with both namespaces through service accounts. The reason is internal security. Now when we have opened the pandora box lets talk about it. 
+
+When it comes to security different teams are working in different ways. There are really many factors involved and it is hard to recommend a solution, because the magnitude of the problem is different. If you are a startup, most likely you are not bothered that much about intenral security, and engineers have access everywhere and if there are problems most likely it will be resolved by someone who is most closer to the laptop. Taking away access from this team from a certain environment will just add  unnecessary complication to their startup life.
+ 
+On the other hand, if you are working in the bank and you can end up in the prison by the local regulator because someone just accidentally (or intentionally) brought down the payment system, and that failure made a GDP of ASIA to go down 10%, you will appreciate some level of control. Surely we are not going to solve that magnitude of a problem in this book, but we would like to open a door where you can start thinking about it, if you need some level of security.  
+
+Like we said before, `UAT` is going to be our production like environment for testing stable releases. If we keep granting access to Tiller to all environments we will end up in a position where internal security is very much questionable as any helm command which will reach tiller namespace can then make side effects on any other environment. That helm command can be an human mistake, code mistake, or a bad intention. That's where idea of control and security comes in. Jenkins has a way to do role base access control, where only certain people can invoke jobs which will be touching important environments. That approach will certainly help as well,  but it needs to be implemented separately. We won't be going deep into possible and impossible security controls, but wanted to show that as a start the bare minimum control can be implemented if Tiller in Build cant harm UAT and PROD environments. Important environments are isolated to some degree, and they require different service account for an access. That service account later on can be stored inside jenkins under role based control. So lets finally run the commands below and create two namespaces with two Tillers.      
 
 TODO: Do we need two tillers? How about having only one for go-demo-4, with with the ServiceAccount that allows us to use Helm in both Namespaces?
+> Done explaination
 
 ```bash
 helm init --service-account build \
@@ -170,29 +177,32 @@ helm init --service-account uat-build \
     --tiller-namespace go-demo-4-uat
 ```
 
-The key elements of our pipeline will be *CiJenkinsfile* and *DeploymentJenkinsfile* files. We'll explore them next.
+The key elements of our pipeline will be *Jenkinsfile* and *DeploymentJenkinsfile* files. We'll explore them next.
 
 TODO: Continue review
 
-## Demystifying Declarative Pipeline Through A Practical Example
+## Learning CI Pipeline Step By Step
 
 TODO: Change the previous title so that it is not exactly the same as the one in the previous chapter. Readers might think it's the same.
+> how about that ?
 
-Let's take a look at a *CiJenkinsfile.orig* which we'll use as a base to generate *Jenkinsfile* that will contain the correct address of the cluster and the GitHub user.
+Let's take a look at a *Jenkinsfile.orig* which we'll use as a base to generate *Jenkinsfile* that will contain the correct address of the cluster and the GitHub user.
 
-TODO: It might be confusing that there is `CiJenkinsfile.orig`. If it's going to be used to generate `Jenkinsfile` (as mentioned above), why not call it `Jenkinsfile.orig` (without `Ci`).
+TODO: It might be confusing that there is `Jenkinsfile.orig`. If it's going to be used to generate `Jenkinsfile` (as mentioned above), why not call it `Jenkinsfile.orig` (without `Ci`).
+> plan was always change it back, now it is done 
 
 ```bash
-cat CiJenkinsfile.orig
+cat Jenkinsfile.orig
 ```
 
-The `option` block has remined the same as the one use used with *go-demo-3*.
+We will now go block by block to compare the difference and check out new code.
 
 TODO: It's confusing that the explanation starts with the `options` block even though the first block is `agent`.
 
-The `agent` block from `CiJenkinsfile.orig` is as follows.
+The `agent` block from `Jenkinsfile.orig` is as follows.
 
 TODO: I moved the snippet above the explanation so that readers can see the code and understand that the description that follows refers to it. Also, I reduced the spaces to two characters. When possible (and practical) I tend to keep code blocks within 40 characters per line so that it does not wrap on smaller screens.
+> Good, thanks
 
 ```groovy
 ...
@@ -202,38 +212,15 @@ agent {
     cloud "go-demo-4-build"
     defaultContainer 'jnlp'
     serviceAccount "build"
-    yamlFile "CiKubernetesPod.yaml"
+    yamlFile "KubernetesPod.yaml"
   }
 }
 ...
 ```
 
-The `agent` block however has couple of differences when compared to what we used before. The `label` block now has a random value. If two builds are running the same pipeline and at that time the build Pod is available with the same label, it will reuse the existing Pod, instead of creating a new one. That can result into race condition errors. Even if we disable concurrent builds with the method `disableConcurrentBuilds()`, parallel build can still happen on different branches, and branches can effectivly refer to the same labeled pod. 
-
-You will also notice that `yamlFile` now refers to a different file called `CiKubernetesPod.yaml`. We'll explore it later. For now, please note that `yamlFile` allows us to specify `podTemplate` in a different file thus potentially reduccing clutter inside Jenkinsfile.
-
-TODO: I think it would be better to explore one file at the time. Otherwise, we'd need to `cat` the first file again when we get back to it later so that people can see it on their screen (easier to read that from the book). What do you think? If you agree, please move it down.
-
-```bash
-cat CiKubernetesPod.yaml
-```
-
-TODO: Why not call it `KubernetesPod.yaml` (without `Ci`)?
-
-The difference in the output is as follows.
-
-```yaml
-...
-  - name: gren
-    image: digitalinside/gren:latest // TODO: change to vfarcic
-    command:
-...
-```
-
-`Gren` is a lightweight library to generate release notes from github issues. Obviously you might be using a different tool for tracking your requirements, we just want to demonstrate that the release notes are is yet another thing which can be automated as it is part of a release. 
-
+The `agent` block has couple of differences when compared to what we used before. The `label` block now has a random value. If two builds are running the same pipeline and at that time the build Pod is available with the same label, it will reuse the existing Pod, instead of creating a new one. That can result into race condition errors. Even if we disable concurrent builds with the method `disableConcurrentBuilds()`, parallel build can still happen on different branches, and branches can effectively refer to the same labeled pod. Everything else remained the same, however `KubernetesPod.yaml` file has a new container called `gren`, which will be helping us with release notes. Will talk more about it soon when we will get to the it's usage.  
+ 
 Next section which is different in the jenkinsfile is `environment`. We have added two new environment variables. 
-
 
 ```groovy
 ...
@@ -252,10 +239,11 @@ As part of our release process we will be creating and pushing back release tags
 
 `githubToken` on the other hand will be used to authenticate `gren`, to publish our release notes back to github. You can read [here](https://help.github.com/articles/creating-a-personal-access-token-for-the-command-line/) how to generate token.
 
-
 Like before, we'll have to change `vfarcic` to your Docker Hub user and `acme.com` to the address of your cluster.
 
-Now we reached the execution of the pipeline. Just as in the previous chapter, we're having `build`, `func-test`, and `release` stages. However they behave a bit different than before. Let us briefly go through each of the stages of the pipeline. The first one is the `build` stage.
+Next, the `option` block has remained the same as the one we used in *go-demo-5* so lets skip it.
+
+Now we finally reached the execution of the pipeline. Just as in the previous chapter, we're having `build`, `func-test`, and `release` stages. However they behave a bit different than before. Let us briefly go through each of the stages of the pipeline. The first one is the `build` stage.
 
 ```groovy
 ...
@@ -275,7 +263,7 @@ stage('build') {
 ...
 ```
 
-The first thing is a method called `ciPrettyBuildNumber()`. It is executed to customize the name of the build by changing the value of the `displayName`. We had that line in our previous chapter, the difference is, it is now moved to the shared jenkins library.
+The first thing is a method called `ciPrettyBuildNumber()`. It is executed to customize the name of the build by changing the value of the `displayName`. We had that line in our previous chapter, the difference is, it is now moved to the shared jenkins library, just to be more declarative.
 
 Second thing to be executed is a function called `ciBuildEnvVars()`.
 
@@ -299,14 +287,12 @@ Lets have a look on the new method.
 
 
  ```groovy
-...
 def call() {
     env.shortGitCommit = "${env.GIT_COMMIT[0..10]}"
     env.BUILD_TAG = ciBuildVersionRead()
 
     echo "build tag set to: ${env.BUILD_TAG}"
 }
-...
 ```
 
 You would see we are doing two things here.  
@@ -334,7 +320,6 @@ def call() {
 We will have a bit of nested calls here, as most of those functions are re-used, and it did make sense to capture them as separate functions. Lets check what `ciVersionRead()` does on the first line.
 
 ```groovy
-
 def call() {
     
     escapedBranch = ciEscapeBranchName()
@@ -354,7 +339,6 @@ def call() {
     echo "version set to $tag"
     return tag
 }
-
 ```
 
 Finally we are getting to the core, where the whole magic happens. Code in the above function will do the following. Remember we were talking about semantic versioning before, now, If the current branch is `master`, it will bump up the `Minor` version. If it is a hotfix branch, most likely it is a bug fix, therefore it will bump up the `patch` version. Finally, if the current branch is not releasable, and is a feature branch, we will use branch name as a version. Obviously we are not going to tag git source with a branch name, in fact we are not going to tag it at all when we are not working on one of the releasable branches. However we will be tagging our docker images, therefore we will need a readable but through away tag. 
@@ -504,7 +488,7 @@ container('git') {
 
 As we discussed before, release is going to be kept in github as a git tag. Therefor we will need to push back our tags. We will use same `ciWithGitKey()` closure. As a reminder, the closure will enable authenticated git operations within it. The nested function which will be called is `ciTagGitRelease(..)`. It is a simple function, which will `tag` the current commit, and will push it back. It will also create default git author called `jenkins` if one does not exist.
 
-Lets continue. Next thing we want to automate are release notes. Container `gren` is going to help us here. 
+Lets continue. Next thing we want to automate are release notes. Lets have a look at the next step in the code.    
 
 ```groovy
 container('gren') {
@@ -512,12 +496,12 @@ container('gren') {
         sh "gren release --token=${TOKEN}"
     }
 }
-
 ```
+Remember we have touched a topic about having a new container in `KubernetesPod.yaml`. [Gren](https://github.com/github-tools/github-release-notes) is a lightweight library to generate release notes from github issues. Obviously you might be using a different tool for tracking your requirements, we just want to demonstrate that the release notes are yet another thing which can be automated as it is part of a release process.
 
-Github has its own issue tracker, and gren works pretty well with it. What it does is, it will collect all the `closed` issues between releases, and will publish them grouped by issue type, and with descriptions. For `gren` to work against authenticated repos, we will use the `githubtoken` credential that we have created before. As a result new shiny github style release notes are going to be published with the release. 
+Github has its own issue tracker, and gren works pretty well with it. What it does is, it will collect all the `closed` issues between releases, and will publish them grouped by issue type, and with descriptions. For `gren` to work against authenticated repos, we will use the `githubtoken` credential that we have created before. As a result new shiny github style release notes are going to be published with the release, along with archived source code. 
 
-Finally, lets package and version our helm chart. 
+Finally, we are approaching to a stage where we want to package and version our helm chart. 
 
 ```groovy
 container("helm") {
@@ -525,7 +509,7 @@ container("helm") {
 }
 ```
 
-`ciK8sPushHelm(...)` does not contain much of a new information. One new thing, it will update `Chart.yaml` file with new release version. So the chart version will have the same version as the docker image and the git tag. It will update `values.yaml` to point to the new image, will package and push the chart to chartmuseum.
+`ciK8sPushHelm(...)` does not contain much of a new information. Only one new thing, it will update `Chart.yaml` file with a new release version. So the chart version will have the same version as the docker image and the git tag. It will update `values.yaml` to point to the new image, will package and push the chart to chartmuseum.
 
 There is nothing else under `release` stage. What is left is `post` actions.
 
@@ -561,7 +545,7 @@ TODO: Run the pipeline and guide the examples Things like
 
 ## Deployment Job
 
-We have explored the *CiJenkinsfile* which  contains steps to package the release and make it repeatable to install to a desired environment. Lets have a look how we can choose a version to deploy. 
+We have explored the *Jenkinsfile* which  contains steps to package the release and make it repeatable to install to a desired environment. Lets have a look how we can choose a version to deploy. 
 
 Lets have a look at the new file in our repo, called `DeploymentJenkinsFile`. It will look like a typical Jenkinsfile we saw many times already. But intention is going to be a little bit different. It wont be running on every commit, but will have instructions on how and where to deploy our software. We will be using jenkins as a UI to interact with, for humans who are making decisions at some point in the cycle. The job which will be running deployment pipeline is a simple example of controlled deployment. 
 
