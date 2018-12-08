@@ -156,7 +156,7 @@ Finally, the only thing related to the setup of the environment we'll use for *g
 
 There are many factors involved in security and it is hard to recommend a solution, because the magnitude of the problem is different. If you are a startup, most likely you are not bothered that much about internal security. Engineers might have access to all parts of the system, and if there are problems, they will likely be resolved by whomever is closest to the laptop. Taking away full access away from such teams would just add unnecessary complications to their startup life.
  
-On the other hand, if you are working in a bank or some other regilated industry, you can end up in the prison by the local regulator just because just accidentally (or intentionally) brought down the payment system. Such a failure made a GDP of ASIA go down 10%. In such cases, you will appreciate some level of tighter control. Surely we are not going to solve that magnitude of a problem in this book, but we would like to open a door where you can start thinking about it, if you need higher level of security.
+On the other hand, if you are working in a bank or some other regilated industry, you can end up in the prison by the local regulator just because someone accidentally (or intentionally) brought down the payment system. Such a failure made a GDP of ASIA go down 10%. In such cases, you will appreciate some level of tighter control. Surely we are not going to solve that magnitude of a problem in this book, but we would like to open a door where you can start thinking about it, if you need higher level of security.
 
 TODO: Do you have a reference (link?) to *GDP of ASIA go down 10%*?
 
