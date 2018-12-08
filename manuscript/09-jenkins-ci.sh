@@ -118,16 +118,16 @@ kubectl apply -f k8s/uat.yml --record
 helm init --service-account uat-build \
     --tiller-namespace go-demo-4-uat
 
-cat CiJenkinsfile.orig
+cat Jenkinsfile.orig
 
-cat CiKubernetesPod.yaml
+cat KubernetesPod.yaml
 
 # Only if minishift
 oc adm policy add-scc-to-user hostmount-anyuid -z build -n go-demo-4-build
 
 
 # Only if NOT minishift
-cat CiJenkinsfile.orig \
+cat Jenkinsfile.orig \
     | sed -e "s@acme.com@$ADDR@g" \
     | sed -e "s@vfarcic@$DH_USER@g" \
     | tee Jenkinsfile
@@ -146,7 +146,7 @@ cat DeploymentJenkinsfile.orig \
 
 git add .
 
-git commit -m "CiJenkinsfile, DeploymentJenkinsfile, platform_deployment.yml"
+git commit -m "Jenkinsfile, DeploymentJenkinsfile, platform_deployment.yml"
 
 git push
 
