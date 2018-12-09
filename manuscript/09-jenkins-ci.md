@@ -261,7 +261,7 @@ The output is as follows.
 
 ```groovy
 def call() {
-    env.shortGitCommit = "${env.GIT_COMMIT[0..10]}"
+    env.SHORT_GIT_COMMIT = "${env.GIT_COMMIT[0..10]}"
     env.BUILD_TAG = ciBuildVersionRead()
 
     echo "build tag set to: ${env.BUILD_TAG}"
@@ -272,7 +272,7 @@ TODO: It might be confusing to use different naming conventions inside the same 
 
 You can see that we are doing two things here.  
 
-`shortGitCommit` is a short version of the Git commit SHA1. `GIT_COMMIT` environment variable is published by the Git plugin during pipeline run. We will be using `shortGitCommit` as an extra image tag.
+`SHORT_GIT_COMMIT` is a short version of the Git commit SHA1. `GIT_COMMIT` environment variable is published by the Git plugin during pipeline run. We will be using `shortGitCommit` as an extra image tag.
 
 TODO: discuss if we need `shortGitCommit` it at all.
 
@@ -466,7 +466,7 @@ Lets have a look, what will happen if someone would decide that build should be 
 
 ```groovy
 container('docker') {
-    ciRetag(env.BUILD_TAG, false, ["latest", env.shortGitCommit, env.RELEASE_TAG])
+    ciRetag(env.BUILD_TAG, false, ["latest", env.SHORT_GIT_COMMIT, env.RELEASE_TAG])
 }
 ```
 
