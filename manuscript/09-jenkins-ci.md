@@ -156,7 +156,7 @@ Finally, the only thing related to the setup of the environment we'll use for *g
 
 There are many factors involved in security and it is hard to recommend a solution, because the magnitude of the problem is different. If you are a startup, most likely you are not bothered that much about internal security. Engineers might have access to all parts of the system, and if there are problems, they will likely be resolved by whomever is closest to the laptop. Taking away full access away from such teams would just add unnecessary complications to their startup life.
  
-On the other hand, if you are working in a bank or some other regilated industry, you can end up in the prison by the local regulator just because someone accidentally (or intentionally) brought down the payment system. Such a failure made a GDP of ASIA go down 10%. In such cases, you will appreciate some level of tighter control. Surely we are not going to solve that magnitude of a problem in this book, but we would like to open a door where you can start thinking about it, if you need higher level of security.
+On the other hand, if you are working in a bank or some other regulated industry, you can end up in the prison by the local regulator just because someone accidentally (or intentionally) brought down the payment system. Such a failure made a GDP of ASIA go down 10%. In such cases, you will appreciate some level of tighter control. Surely we are not going to solve that magnitude of a problem in this book, but we would like to open a door where you can start thinking about it, if you need higher level of security.
 
 TODO: Do you have a reference (link?) to *GDP of ASIA go down 10%*?
 
@@ -389,13 +389,11 @@ stage("func-test") {
 
 This stage is almost stayed the same as in the previous chapter. `ciK8sUpgradeBeta` will deploy local Chart from a folder, which will point to the newly built image. Afterwards, we're waiting until Deployment is rolled out before we run our tests. If tests fail, the current Deployment is deleted. 
 
-TODO: Continue review
-
-It's time to move into the next stage which is `Release`. `Release` stage is a bit longer so we will break it down into pieces. 
+It's time to move into the next stage. the `release` stage is a bit longer so we will break it down into pieces. 
 
 ```groovy
     ...
-    stage("Release") {
+    stage("release") {
         when {
             anyOf {
                 branch "master"
@@ -407,30 +405,33 @@ It's time to move into the next stage which is `Release`. `Release` stage is a b
     ...
 ```
 
-As we have talked before, we have two types of releasable branches. We have used new function called `anyOf` which is self explanatory. We have also used wildcard for hotfix branch to match all the branches which are starting with `hotfix-` prefix. So if the build is running on those branches, release stage will run. 
+As we have talked before, we have two types of releasable branches. We are using the `anyOf` function which is self explanatory. We have also used wildcard for hotfix branch to match all the branches with names starting with `hotfix-` prefix. So if the build is running on those branches, release stage will run. 
 
-Lets see what other new things we have in release stage. First thing which will run inside release stage is below. 
+Lets see what other new things we have in the `release` stage. First thing which will run inside the `release` stage is as follows. 
 
 ```groovy
-stage("Release") {
-    ...            
-    container("git") {
-        ciWithGitKey(env.rsaKey) {
-            env.RELEASE_TAG = ciSuggestVersion(ciVersionRead())
-        }
+stage("release") {
+  ...            
+  container("git") {
+    ciWithGitKey(env.rsaKey) {
+      env.RELEASE_TAG = ciSuggestVersion(ciVersionRead())
     }
-    ...                
+  }
+  ...                
 }
 ```
 
-Here it comes more gitops way of working. As we have discussed before, our release versions are going to be stored as git tags inside our git repo. Intention of this step is to find the latest release number, autoincrement it, and suggest to the user. If user is happy, he/she can click continue or else suggest their own version. There is also a timeout for a decision, which is now set for 15 seconds, but can be changed to your prefer timing. When ttl expires, the suggested value would be taken and pipeline will continue.
+TODO: I feel like the next few paragraphs are confusing. One improvement could be to be more explicit what's going on in `ciWithGitKey` and what is inside `ciSuggestVersion` and `ciVersionRead`. Only that snippet has a function with a closure and inside it is another function that uses a function as the argument. I feel that in some cases readers will not be sure which part of the explanation belongs to which of the two functions. Also, add the links to those functions so that readers can look at them while you're explaining what's going in. The alternative might be to simplify things with less functions. It's a good solution (I like it), but it might be too complex, given that the goal is for readers to understand the process. Also, if the goal of those functions is reusability across multiple jobs, there is a chance that many will not know how to use those pieces (functions) in their own jobs.
 
-So far it was down to jenkins to do git operations for us. Jenkins was checking out the code to the local workspace and was publishing some information via environment variables about git commits. However this is the first time we will need access to our git repo from the code. And because the git repo is going to be authenticated we will need to find a way to authenticate ourselves. There is genuinely two ways to interact with git repo. Either via `ssh` protocol which require ssh keys, or `http` with username and password. We will prefer ssh keys, to not pass username and password with every git command. The problem is, we do not have the private key available inside `git` container. And mounting our key there is an overhead, and also can introduce side effects. What we do is, we pass the private key from jenkins secrets to `ciWithGitKey` closure which will configure `GIT_SSH` environment variable to use the key, therefore every git call within the closure will be authenticated. Again, we will not go behind the scenes of `ciWithGitKey` and we hope you can read and understand it. 
+That is yet another example of GitOps way of working. As we have discussed before, our release versions are going to be stored as Git tags inside our repo. Intention of this step is to find the latest release number, autoincrement it, and suggest it to the user. If user is happy, he/she can click continue, or else suggest their own version. There is also a timeout for a decision, which is now set for 15 seconds, but can be changed to your prefer timing. When ttl expires, the suggested value would be taken and pipeline will continue.
 
-So to summarize, `ciWithGitKey` will authenticate git commands. `ciVersionRead` will get the latest release number and will autoincrement it. `ciSuggestVersion` will suggest the new version to the user with a timeout of 15 seconds. User can change the release value or else continue with the suggestion. 
+So far it was down to Jenkins to do Git operations for us. Jenkins was checking out the code to the local workspace and was publishing some information about Git commits via environment variables. However this is the first time we will need access to our Git repo from the code. And because the Git repo requires authentication, we will need to find a way to authenticate ourselves. There is two primary ways to interact with Git repo. Either via the SSH protocol which require keys, or through HTTP with username and password. We prefer SSH keys over passing username and password with every Git command. However, the problem is that we do not have the private key available inside the `git` container. Mounting our key there is an overhead, and also can introduce side effects. Instead, we're passing the private key from jenkins secrets to `ciWithGitKey` closure which will configure `GIT_SSH` environment variable to use the key. Therefore, every Git call within the closure will be authenticated. Again, we will not go behind the scenes of `ciWithGitKey` and we hope you can read and understand it.
 
-Lets move to the next new steps. You will notice that there are two outer functions around our main release steps. Lets understand why we need them first.
+To summarize, `ciWithGitKey` will authenticate git commands. `ciVersionRead` will get the latest release number and will autoincrement it. `ciSuggestVersion` will suggest the new version to the user with a timeout of 15 seconds. User can change the release value or else continue with the suggestion.
 
+TODO: Continue review
+
+Lets move to the next new steps. You will notice that there are two outer functions around our main release steps. Lets discuss why we need them first.
 
 ```groovy
     ...
