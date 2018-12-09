@@ -288,7 +288,7 @@ Lets have a look on the new method.
 
  ```groovy
 def call() {
-    env.shortGitCommit = "${env.GIT_COMMIT[0..10]}"
+    env.SHORT_GIT_COMMIT = "${env.GIT_COMMIT[0..10]}"
     env.BUILD_TAG = ciBuildVersionRead()
 
     echo "build tag set to: ${env.BUILD_TAG}"
@@ -297,7 +297,7 @@ def call() {
 
 You would see we are doing two things here.  
 
-`shortGitCommit` is short version of the git commit sha1. GIT_COMMIT environment variable is published by git plugin during pipeline run. We will be using `shortGitCommit` as an extra image tag. //TODO discuss if we need it at all ?
+`SHORT_GIT_COMMIT` is short version of the git commit sha1. GIT_COMMIT environment variable is published by git plugin during pipeline run. We will be using `SHORT_GIT_COMMIT` as an extra image tag. //TODO discuss if we need it at all ?
 
 `BUILD_TAG`, is important one. We will be using `BUILD_TAG` to tag all our artifacts like git source, helm charts, docker images. However build tags are going to be different depending if the build is running on a `releasable` branche(s) or no. As we talked about it earlier, we consider master and hotifx branches releasable.
 
@@ -470,7 +470,7 @@ Lets have a look, what will happen if someone would decide that build should be 
 
 ```groovy
 container('docker') {
-    ciRetag(env.BUILD_TAG, false, ["latest", env.shortGitCommit, env.RELEASE_TAG])
+    ciRetag(env.BUILD_TAG, false, ["latest", env.SHORT_GIT_COMMIT, env.RELEASE_TAG])
 }
 ```
 
