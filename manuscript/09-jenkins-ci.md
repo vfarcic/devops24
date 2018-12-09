@@ -109,8 +109,6 @@ TODO: Add the text explaining Gists once they are all verified.
 
 ## Exploring Application's Repository And Preparing The Environment
 
-TODO: Viktor to continue review after the question about two tillers is resolved (see TODO below).
-
 This time, we'll use [vfarcic/go-demo-4](https://github.com/vfarcic/go-demo-4), instead of the [vfarcic/go-demo-3](https://github.com/vfarcic/go-demo-3) and [vfarcic/go-demo-5](https://github.com/vfarcic/go-demo-5) repositorories. By having a repo dedicated to continuous integration, we'll avoid conflicting issues between different approaches for creating a pipeline.
 
 Since we'll need to change a few configuration files and push them back to the repository, this first thing you need to do is fork [vfarcic/go-demo-4](https://github.com/vfarcic/go-demo-4), just as you forked a few other repositories used in this book. You know what to do.
@@ -140,7 +138,7 @@ cat helm/go-demo-4/deployment-orig.yaml \
 
 TODO: Most people will probably remember the previous command from other chapters, but I'd still repeat in a single sentence why we do that.
 
-Just like before lets create our build environment. 
+Just like before, lets create our build environment. 
 
 ```bash
 kubectl apply -f k8s/build.yml --record
@@ -154,55 +152,37 @@ The extra step here would be to create the UAT environment defined in `k8s/uat.y
 kubectl apply -f k8s/uat.yml --record
 ```
 
-Finally, the only thing related to the setup of the environment we'll use for *go-demo-4* is to install Tiller. We'll do it just as we did before, but this time for both namespaces. You may ask, why for both ? Why not just make one Tiller to work with both namespaces through service accounts. The reason is internal security. Now when we have opened the pandora box lets talk about it. 
+Finally, the only thing related to the setup of the environment we'll use for *go-demo-4* is to install Tiller. This time, we'll install two tillers, one in each new Namespace. You might be asking yourself, why two? Why not just make one Tiller to work with both namespaces through service accounts. The reason is internal security. Now when we have opened the pandora box lets talk about it.
 
-When it comes to security different teams are working in different ways. There are really many factors involved and it is hard to recommend a solution, because the magnitude of the problem is different. If you are a startup, most likely you are not bothered that much about intenral security, and engineers have access everywhere and if there are problems most likely it will be resolved by someone who is most closer to the laptop. Taking away access from this team from a certain environment will just add  unnecessary complication to their startup life.
+There are many factors involved in security and it is hard to recommend a solution, because the magnitude of the problem is different. If you are a startup, most likely you are not bothered that much about internal security. Engineers might have access to all parts of the system, and if there are problems, they will likely be resolved by whomever is closest to the laptop. Taking away full access away from such teams would just add unnecessary complications to their startup life.
  
-On the other hand, if you are working in the bank and you can end up in the prison by the local regulator because someone just accidentally (or intentionally) brought down the payment system, and that failure made a GDP of ASIA to go down 10%, you will appreciate some level of control. Surely we are not going to solve that magnitude of a problem in this book, but we would like to open a door where you can start thinking about it, if you need some level of security.  
+On the other hand, if you are working in a bank or some other regilated industry, you can end up in the prison by the local regulator just because someone accidentally (or intentionally) brought down the payment system. Such a failure made a GDP of ASIA go down 10%. In such cases, you will appreciate some level of tighter control. Surely we are not going to solve that magnitude of a problem in this book, but we would like to open a door where you can start thinking about it, if you need higher level of security.
 
-Like we said before, `UAT` is going to be our production like environment for testing stable releases. If we keep granting access to Tiller to all environments we will end up in a position where internal security is very much questionable as any helm command which will reach tiller namespace can then make side effects on any other environment. That helm command can be an human mistake, code mistake, or a bad intention. That's where idea of control and security comes in. Jenkins has a way to do role base access control, where only certain people can invoke jobs which will be touching important environments. That approach will certainly help as well,  but it needs to be implemented separately. We won't be going deep into possible and impossible security controls, but wanted to show that as a start the bare minimum control can be implemented if Tiller in Build cant harm UAT and PROD environments. Important environments are isolated to some degree, and they require different service account for an access. That service account later on can be stored inside jenkins under role based control. So lets finally run the commands below and create two namespaces with two Tillers.      
+TODO: Do you have a reference (link?) to *GDP of ASIA go down 10%*?
 
-TODO: Do we need two tillers? How about having only one for go-demo-4, with with the ServiceAccount that allows us to use Helm in both Namespaces?
-> Done explaination
+Like we said before, `UAT` is going to be our production-like environment for testing stable releases. If we keep granting access to Tiller to all environments we will end up in a position where internal security is very much questionable as any Helm command which will reach tiller namespace can then make side effects on other environments accessible through the associated service account. Such a comment can be an human mistake, a code mistake, or a bad intention. That's where idea of control and security comes in. Jenkins has a way to do role base access control, where only certain people can invoke jobs which will be touching important environments. That approach will certainly help as well, but it needs to be implemented separately. We won't be going deep into possible and impossible security controls. Instead, I wanted to demonstrate that a bare minimum control can be implemented if Tiller in the build environment can't harm UAT and production environments. Important environments are isolated to some degree, and they require different service account for an access. That service account later on can be stored inside Jenkins under role based control. So, we'll run the commands below that will install two Tillers, one in each Namespace that represents different *go-demo-4* environment.
 
 ```bash
 helm init --service-account build \
     --tiller-namespace go-demo-4-build
-```
 
-and
-
-```bash
 helm init --service-account uat-build \
     --tiller-namespace go-demo-4-uat
 ```
 
-The key elements of our pipeline will be *Jenkinsfile* and *DeploymentJenkinsfile* files. We'll explore them next.
+Now that we created two Tillers, one in each Namespace, we can turn our attention to *Jenkinsfile* and *DeploymentJenkinsfile* files as the key elements of our pipeline. We'll explore them next.
 
-TODO: Continue review
-
-## Learning CI Pipeline Step By Step
-
-TODO: Change the previous title so that it is not exactly the same as the one in the previous chapter. Readers might think it's the same.
-> how about that ?
+## Exploring Continous Integration Pipeline
 
 Let's take a look at a *Jenkinsfile.orig* which we'll use as a base to generate *Jenkinsfile* that will contain the correct address of the cluster and the GitHub user.
-
-TODO: It might be confusing that there is `Jenkinsfile.orig`. If it's going to be used to generate `Jenkinsfile` (as mentioned above), why not call it `Jenkinsfile.orig` (without `Ci`).
-> plan was always change it back, now it is done 
 
 ```bash
 cat Jenkinsfile.orig
 ```
 
-We will now go block by block to compare the difference and check out new code.
-
-TODO: It's confusing that the explanation starts with the `options` block even though the first block is `agent`.
+We will now go block by block to comment the differences from the Jenkinsfile we used in the previous chapter.
 
 The `agent` block from `Jenkinsfile.orig` is as follows.
-
-TODO: I moved the snippet above the explanation so that readers can see the code and understand that the description that follows refers to it. Also, I reduced the spaces to two characters. When possible (and practical) I tend to keep code blocks within 40 characters per line so that it does not wrap on smaller screens.
-> Good, thanks
 
 ```groovy
 ...
@@ -218,32 +198,34 @@ agent {
 ...
 ```
 
-The `agent` block has couple of differences when compared to what we used before. The `label` block now has a random value. If two builds are running the same pipeline and at that time the build Pod is available with the same label, it will reuse the existing Pod, instead of creating a new one. That can result into race condition errors. Even if we disable concurrent builds with the method `disableConcurrentBuilds()`, parallel build can still happen on different branches, and branches can effectively refer to the same labeled pod. Everything else remained the same, however `KubernetesPod.yaml` file has a new container called `gren`, which will be helping us with release notes. Will talk more about it soon when we will get to the it's usage.  
+The `agent` block has a couple of differences when compared to what we used before. The `label` statement now has a random value. If two builds are running the same pipeline and at that time the build Pod is available with the same label, it will reuse the existing Pod, instead of creating a new one. That can result in race condition errors. Even if we disable concurrent builds with the method `disableConcurrentBuilds()`, parallel builds can still happen on different branches, and branches can effectively refer to the same Pod if they are labeled the same. Everything else remained equal, except the contents of the `KubernetesPod.yaml` file. We'll talk more about it soon.
  
-Next section which is different in the jenkinsfile is `environment`. We have added two new environment variables. 
+Next section in the Jenkinsfile is `environment`. We added two new environment variables. 
 
 ```groovy
 ...
 environment {
+  project="go-demo-4"
+  image="vfarcic/go-demo-4"
+  domain = "acme.com"
+  cmAddr = "cm.acme.com"
   rsaKey="go-demo-rsa-key"
   githubToken="github_token"
 }
 ...
 ```
 
-Two variables are `rsaKey` and `githubToken`. Those are names of the two new secrets we will need to create together. 
+Two new variables are `rsaKey` and `githubToken`. Those are names of the two new secrets we will need to create together.
 
-TODO: discuss automation of those secrets.
+As part of our release process we will be creating and pushing release tags, and most likely your Git repo will require authentication. Therefore, we will use a private key saved with credential `go-demo-rsa-key` stored in Jenkins. 
 
-As part of our release process we will be creating and pushing back release tags, and most likely your git repo will require authentication, therefore we will use your private key saved with credential id `go-demo-rsa-key` in jenkins. 
-
-`githubToken` on the other hand will be used to authenticate `gren`, to publish our release notes back to github. You can read [here](https://help.github.com/articles/creating-a-personal-access-token-for-the-command-line/) how to generate token.
+`githubToken`, on the other hand, will be used to authenticate to GitHub so that we can publish our release notes. You can read the [Creating a personal access token for the command line](https://help.github.com/articles/creating-a-personal-access-token-for-the-command-line/) article if you need help generating a token.
 
 Like before, we'll have to change `vfarcic` to your Docker Hub user and `acme.com` to the address of your cluster.
 
-Next, the `option` block has remained the same as the one we used in *go-demo-5* so lets skip it.
+Next, the `option` block has remained the same as the one we used in *go-demo-5*, so we'll skip it.
 
-Now we finally reached the execution of the pipeline. Just as in the previous chapter, we're having `build`, `func-test`, and `release` stages. However they behave a bit different than before. Let us briefly go through each of the stages of the pipeline. The first one is the `build` stage.
+We finally reached the execution of the pipeline. Just as in the previous chapter, we're having `build`, `func-test`, and `release` stages. However they behave a bit differently than before. Let us briefly go through each of the stages of the pipeline. The first one is the `build` stage.
 
 ```groovy
 ...
@@ -263,30 +245,21 @@ stage('build') {
 ...
 ```
 
-The first thing is a method called `ciPrettyBuildNumber()`. It is executed to customize the name of the build by changing the value of the `displayName`. We had that line in our previous chapter, the difference is, it is now moved to the shared jenkins library, just to be more declarative.
+The first step is invocation of the function `ciPrettyBuildNumber`. It customizes the name of the build by changing the value of the `displayName`. We had that line in our previous chapter as well. The difference is that it is now moved to the Shared Pipeline Library, thus making the pipeline more declarative and easier to follow.
 
-Second thing to be executed is a function called `ciBuildEnvVars()`.
-
- ```groovy
-...
-stage('build') {
-    steps {
-        ...
-        container('git') {       
-            ciBuildEnvVars() 
-        }
-        ...
-    }
-}
-...
-```
-
-That's where the first difference compared with the previous chapter comes in. The new method will be publishing few environment variables that we will be using during our build. In declarative pipeline there is no easy way of passing variables from one stage to another without breaking code readability, so we will be using environment variables for that, almost like global or static variables in any other traditional programming languages. 
+The second step execute the function `ciBuildEnvVars`. That's where the first important difference compared with the previous chapter comes in. The new method publishes few environment variables that will be used during our builds. In declarative pipeline there is no easy way of passing variables from one stage to another without breaking code readability, so we will be using environment variables for that. They will act as global or static variables in other programming languages. 
 
 Lets have a look on the new method. 
 
+```bash
+curl "https://raw.githubusercontent.com\
+/vfarcic/jenkins-shared-libraries\
+/master/vars/ciBuildEnvVars.groovy"
+```
 
- ```groovy
+The output is as follows.
+
+```groovy
 def call() {
     env.SHORT_GIT_COMMIT = "${env.GIT_COMMIT[0..10]}"
     env.BUILD_TAG = ciBuildVersionRead()
@@ -295,13 +268,25 @@ def call() {
 }
 ```
 
-You would see we are doing two things here.  
+TODO: It might be confusing to use different naming conventions inside the same function. Shall we standardize all env. vars. to be upper case words separated with underscore (like `BUILD_TAG`)? In that case, it should be `SHORT_GIT_COMMIT`.
 
-`SHORT_GIT_COMMIT` is short version of the git commit sha1. GIT_COMMIT environment variable is published by git plugin during pipeline run. We will be using `SHORT_GIT_COMMIT` as an extra image tag. //TODO discuss if we need it at all ?
+You can see that we are doing two things here.  
 
-`BUILD_TAG`, is important one. We will be using `BUILD_TAG` to tag all our artifacts like git source, helm charts, docker images. However build tags are going to be different depending if the build is running on a `releasable` branche(s) or no. As we talked about it earlier, we consider master and hotifx branches releasable.
+`SHORT_GIT_COMMIT` is a short version of the Git commit SHA1. `GIT_COMMIT` environment variable is published by the Git plugin during pipeline run. We will be using `shortGitCommit` as an extra image tag.
 
-You will also notice that there is another call to a function called `ciBuildVersionRead()`. Lets have a look on the function. 
+TODO: discuss if we need `shortGitCommit` it at all.
+
+The environment variable `BUILD_TAG` is important one. We will be using it to tag all our artifacts like Git source, Helm Charts, and Docker images. However build tags are going to be different depending on whether the build is running on a releasable branch. As we talked about it earlier, we consider only master and hotfix branches releasable.
+
+You will also notice that there is another call to a function called `ciBuildVersionRead`. Lets have a look at the function. 
+
+```bash
+curl "https://raw.githubusercontent.com\
+/vfarcic/jenkins-shared-libraries\
+/master/vars/ciBuildVersionRead.groovy"
+```
+
+The output is as follows.
 
 ```groovy
 def call() {
@@ -317,7 +302,15 @@ def call() {
 }
 ```
 
-We will have a bit of nested calls here, as most of those functions are re-used, and it did make sense to capture them as separate functions. Lets check what `ciVersionRead()` does on the first line.
+We have a bit of nested calls here. As most of those functions are reused, it made sense to capture them as separate functions. Lets check what `ciVersionRead` does on the first line.
+
+```bash
+curl "https://raw.githubusercontent.com\
+/vfarcic/jenkins-shared-libraries\
+/master/vars/ciVersionRead.groovy"
+```
+
+The output is as follows.
 
 ```groovy
 def call() {
@@ -341,59 +334,62 @@ def call() {
 }
 ```
 
-Finally we are getting to the core, where the whole magic happens. Code in the above function will do the following. Remember we were talking about semantic versioning before, now, If the current branch is `master`, it will bump up the `Minor` version. If it is a hotfix branch, most likely it is a bug fix, therefore it will bump up the `patch` version. Finally, if the current branch is not releasable, and is a feature branch, we will use branch name as a version. Obviously we are not going to tag git source with a branch name, in fact we are not going to tag it at all when we are not working on one of the releasable branches. However we will be tagging our docker images, therefore we will need a readable but through away tag. 
+Finally we are getting to the core, where the whole magic happens.
 
+We already talked about semantic versioning. You can see that function bumps the `minor` version if the current branch is `master`. If it is a `hotfix` branch, most likely it is a bug fix, therefore we're bumping up the `revision` version. Finally, if the current branch is not releasable, and it is a feature branch, we will use branch name as a version. Obviously we are not going to tag Git source with a branch name. In fact, we are not going to tag it at all when we are not working on one of the releasable branches. However we will be tagging our Docker images. Therefore, we will need a readable tag, even though we'll throw it away. 
 
-You may ask a question, what if it is the first run, what version is going to be bumped up. If you look at the code inside method called `ciMasterVersionRead()` you will notice that it tries to find out what is the latest git tag, and if there isn't any, it will start from `1.0.0`. You can change to any default tag you want, as long as it complies with the semantic versioning. There is another method called `ciBumpUpVersion()` used which we have not talked about, but name of the method suggests that it will run the logic of incrementing correct number in the version. We would not go into details of the method implementation, mainly it applies some regexp logic, and increments numbers later on. 
+What if it is the first run? Which version is going to be bumped up? If you look at the code inside [ciMasterVersionRead](https://github.com/vfarcic/jenkins-shared-libraries/blob/master/vars/ciMasterVersionRead.groovy), you will notice that it tries to find out what is the latest git tag and, if there isn't any, it will start from `1.0.0`. You can change it to any default tag you want, as long as it complies with the semantic versioning.
+
+We're also using the function [ciBumpUpVersion](https://github.com/vfarcic/jenkins-shared-libraries/blob/master/vars/ciBumpUpVersion.groovy) which we did not explore. However, the name of the function suggests that it will run the logic of incrementing correct number in the version. We will not go into details of the method implementation. It applies some regexp logic, and increments numbers later on. Feel free to explore it on your own if you are curious.
 
 Lets move forward. 
 
-As a result of running `ciBuildEnvVars()` method inside `build` stage, `BUILD_TAG` environment variable will be exported, and we will know what tag to use during our build. It is time to build the docker image.
+As a result of running the `ciBuildEnvVars` function inside the `build` stage, the `BUILD_TAG` environment variable will be exported, and we will know which tag to use.
 
+It is time to build the docker image.
 
 ```groovy
 ...
-    container('docker') {
-        ciK8sBuildImage(params.image, false, env.BUILD_TAG)
-    }
+  container('docker') {
+    ciK8sBuildImage(params.image, false, env.BUILD_TAG)
+  }
 ...
 ```
 
-We will use equivalent of `k8sBuildImage` we have used before, the only change in `ciK8sBuildImage` is, the method now can push extra tags on the same image. 
+The `ciK8sBuildImage` function is almost the same as `k8sBuildImage` we used before. The only difference is that it can push extra tags if the fourth argument is specified.
 
+TODO: Is the new functionality to push extra tags used anywhere?
 
-We are approaching `func-test` now, which looks similar to what we had before.
-
+We are approaching the `func-test` stage. It looks similar to what we had before.
 
 ```groovy
-    ...
-    stage("func-test") {
-        steps {
-            container("helm") {
-                ciK8sUpgradeBeta(env.project, env.domain, env.BUILD_TAG)
-            }
-    
-            container("kubectl") {
-                ciK8sRolloutBeta(env.project)
-            }
-    
-            container("golang") {
-                ciK8sFuncTestGolang(env.project, env.domain)
-            }
-        }
-    
-        post {
-            failure {
-                container("helm") {
-                    ciK8sDeleteBeta(env.project)
-                }
-            }
-        }
+...
+stage("func-test") {
+  steps {
+    container("helm") {
+      ciK8sUpgradeBeta(env.project, env.domain, env.BUILD_TAG)
     }
-    ...
+    container("kubectl") {
+      ciK8sRolloutBeta(env.project)
+    }
+    container("golang") {
+      ciK8sFuncTestGolang(env.project, env.domain)
+    }
+  }
+  post {
+    failure {
+      container("helm") {
+        ciK8sDeleteBeta(env.project)
+      }
+    }
+  }
+}
+...
 ```
 
-This section almost stayed the same, `ciK8sUpgradeBeta` will deploy local chart from a folder, which will point to the newly built image. We will wait until deployment is rolled out, and we will run our tests. If tests would fail, we will delete current deployment. 
+This stage is almost stayed the same as in the previous chapter. `ciK8sUpgradeBeta` will deploy local Chart from a folder, which will point to the newly built image. Afterwards, we're waiting until Deployment is rolled out before we run our tests. If tests fail, the current Deployment is deleted. 
+
+TODO: Continue review
 
 It's time to move into the next stage which is `Release`. `Release` stage is a bit longer so we will break it down into pieces. 
 
