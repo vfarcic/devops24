@@ -1393,34 +1393,37 @@ The output is as follows
 
 ```yaml
 jenkins:
-  Master:
-    ImageTag: "2.121.1-alpine"
-    Cpu: "500m"
-    Memory: "500Mi"
-    ServiceType: ClusterIP
-    ServiceAnnotations:
+  master:
+    imageTag: "2.151-alpine"
+    cpu: "500m"
+    memory: "500Mi"
+    serviceType: ClusterIP
+    serviceAnnotations:
       service.beta.kubernetes.io/aws-load-balancer-backend-protocol: http
-    InstallPlugins:
-      - blueocean:1.5.0
-      - credentials:2.1.16
-      - ec2:1.39
-      - git:3.9.1
-      - git-client:2.7.2
-      - github:1.29.1
-      - kubernetes:1.7.1
-      - pipeline-utility-steps:2.1.0
-      - script-security:1.44
-      - slack:2.3
-      - thinBackup:1.9
-      - workflow-aggregator:2.5
-      - ssh-slaves:1.26
-      - ssh-agent:1.15
-      - jdk-tool:1.1
-      - command-launcher:1.2
-      - github-oauth:0.29
-      - google-compute-engine:1.0.4
-    Ingress:
-      Annotations:
+    installPlugins:
+    - durable-task:1.28
+    - workflow-durable-task-step:2.28
+    - blueocean:1.10.1
+    - credentials:2.1.18
+    - ec2:1.39
+    - git:3.9.1
+    - git-client:2.7.6
+    - github:1.29.3
+    - kubernetes:1.14.3
+    - pipeline-utility-steps:2.2.0
+    - pipeline-model-definition:1.3.4.1
+    - slack:2.14
+    - thinBackup:1.9
+    - workflow-aggregator:2.6
+    - ssh-slaves:1.29.4
+    - ssh-agent:1.17
+    - jdk-tool:1.2
+    - command-launcher:1.3
+    - github-oauth:0.31
+    - google-compute-engine:1.0.8
+    - pegdown-formatter:1.3
+    ingress:
+      annotations:
         kubernetes.io/ingress.class: "nginx"
         nginx.ingress.kubernetes.io/ssl-redirect: "false"
         nginx.ingress.kubernetes.io/proxy-body-size: 50m
@@ -1428,16 +1431,17 @@ jenkins:
         ingress.kubernetes.io/ssl-redirect: "false"
         ingress.kubernetes.io/proxy-body-size: 50m
         ingress.kubernetes.io/proxy-request-buffering: "off"
-    HostName: jenkins.acme.com
-    CustomConfigMap: true
-    CredentialsXmlSecret: jenkins-credentials
-    SecretsFilesSecret: jenkins-secrets
-    # DockerAMI:
+    hostName: jenkins.acme.com
+    customConfigMap: true
+    credentialsXmlSecret: jenkins-credentials
+    secretsFilesSecret: jenkins-secrets
+    DockerVM: false
+    # DockerAMI: 
     # GProject:
     # GAuthFile:
+    # GlobalLibraries: true
   rbac:
-    install: true
-    roleBindingKind: RoleBinding
+    create: true
 ```
 
 If we compare that with `helm/jenkins-values.yml`, we'll notice that most entries are almost the same. There is one significant difference though. This time, all the entries are inside `jenkins`. That way, we're telling Helm that the values should be applied to the dependency named `jenkins` and defined in `requirements.yaml`.

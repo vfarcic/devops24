@@ -54,7 +54,7 @@ His random thoughts and tutorials can be found in his blog [TechnologyConversati
 
 # Dedication
 
-To Sara, the only person that truly matters in this world.
+To Sara and Eva.
 
 # Prerequisites
 
