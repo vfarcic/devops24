@@ -232,21 +232,6 @@ echo $CM_ADDR
 
 In my case, the output is `cm.18.221.122.90.nip.io`.
 
-If you go back to the values output, you'll notice that the Chart requires host to be defined as a key/value pairs. The problem is that "special" characters cannot be used as part of keys. In the case of our address, we need to escape all the dots. We'll use a bit of `sed` magic for that.
-
-```bash
-CM_ADDR_ESC=$(echo $CM_ADDR \
-    | sed -e "s@\.@\\\.@g")
-
-echo $CM_ADDR_ESC
-```
-
-We echoed the address, and we sent the output to the `sed` command that replaced every `.` character with `\.`. The output of the latter command should be similar to the one that follows.
-
-```
-cm\.18\.221\.122\.90\.nip\.io
-```
-
 I already prepared a file with all the values we'll want to customize. Let's take a quick look at it.
 
 ```bash
@@ -277,8 +262,8 @@ ingress:
     ingress.kubernetes.io/ssl-redirect: "false"
     nginx.ingress.kubernetes.io/ssl-redirect: "false"
   hosts:
-    cm.127.0.0.1.nip.io:
-    - /
+  - name: cm.127.0.0.1.nip.io
+    path: /
 ```
 
 This is becoming monotonous, and that's OK. It should be that way. Installations should be boring and follow the same pattern. We found that pattern in Helm.
@@ -296,7 +281,7 @@ helm install stable/chartmuseum \
     --namespace charts \
     --name cm \
     --values helm/chartmuseum-values.yml \
-    --set ingress.hosts."$CM_ADDR_ESC"={"/"} \
+    --set "ingress.hosts[0].name=$CM_ADDR" \
     --set env.secret.BASIC_AUTH_USER=admin \
     --set env.secret.BASIC_AUTH_PASS=admin
 ```
