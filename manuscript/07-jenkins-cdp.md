@@ -174,11 +174,11 @@ JENKINS_ADDR="go-demo-3-jenkins.$LB_IP.nip.io"
 helm install helm/jenkins \
     --name go-demo-3-jenkins \
     --namespace go-demo-3-jenkins \
-    --set jenkins.Master.HostName=$JENKINS_ADDR \
-    --set jenkins.Master.DockerVM=$DOCKER_VM \
-    --set jenkins.Master.DockerAMI=$AMI_ID \
-    --set jenkins.Master.GProject=$G_PROJECT \
-    --set jenkins.Master.GAuthFile=$G_AUTH_FILE
+    --set jenkins.master.hostName=$JENKINS_ADDR \
+    --set jenkins.master.DockerVM=$DOCKER_VM \
+    --set jenkins.master.DockerAMI=$AMI_ID \
+    --set jenkins.master.GProject=$G_PROJECT \
+    --set jenkins.master.GAuthFile=$G_AUTH_FILE
 ```
 
 We generated a `nip.io` address and installed Jenkins in the `go-demo-3-jenkins` Namespace. Remember, this Jenkins is dedicated to the *go-demo-3* team, and we might have many other instances serving the needs of other teams.
@@ -930,10 +930,10 @@ kubectl -n go-demo-3-jenkins cp \
     cluster/jenkins/secrets
 ```
 
-I already modified the template of the Jenkins Helm Chart to include the file we just copied. All you have to do the next time you install Jenkins with Helm is to add `jenkins.Master.GlobalLibraries` value. The full argument should be as follows.
+I already modified the template of the Jenkins Helm Chart to include the file we just copied. All you have to do the next time you install Jenkins with Helm is to add `jenkins.master.GlobalLibraries` value. The full argument should be as follows.
 
 ```
---set jenkins.Master.GlobalLibraries=true
+--set jenkins.master.GlobalLibraries=true
 ```
 
 Now we can refactor our pipeline to use shared libraries and see whether that simplifies things.

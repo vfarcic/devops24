@@ -13,7 +13,7 @@ helm install stable/jenkins \
     --name jenkins \
     --namespace jenkins \
     --values helm/jenkins-values.yml \
-    --set Master.HostName=$JENKINS_ADDR
+    --set master.hostName=$JENKINS_ADDR
 
 kubectl -n jenkins \
     rollout status deployment jenkins
@@ -293,10 +293,10 @@ kubectl -n jenkins \
 helm install helm/jenkins \
     --name jenkins \
     --namespace jenkins \
-    --set jenkins.Master.HostName=$JENKINS_ADDR \
-    --set jenkins.Master.DockerAMI=$AMI_ID \
-    --set jenkins.Master.GProject=$G_PROJECT \
-    --set jenkins.Master.GAuthFile=$G_AUTH_FILE
+    --set jenkins.master.hostName=$JENKINS_ADDR \
+    --set jenkins.master.DockerAMI=$AMI_ID \
+    --set jenkins.master.GProject=$G_PROJECT \
+    --set jenkins.master.GAuthFile=$G_AUTH_FILE
 
 open "http://$JENKINS_ADDR"
 

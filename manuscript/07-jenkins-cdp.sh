@@ -62,11 +62,11 @@ JENKINS_ADDR="go-demo-3-jenkins.$LB_IP.nip.io"
 helm install helm/jenkins \
     --name go-demo-3-jenkins \
     --namespace go-demo-3-jenkins \
-    --set jenkins.Master.HostName=$JENKINS_ADDR \
-    --set jenkins.Master.DockerVM=$DOCKER_VM \
-    --set jenkins.Master.DockerAMI=$AMI_ID \
-    --set jenkins.Master.GProject=$G_PROJECT \
-    --set jenkins.Master.GAuthFile=$G_AUTH_FILE
+    --set jenkins.master.hostName=$JENKINS_ADDR \
+    --set jenkins.master.DockerVM=$DOCKER_VM \
+    --set jenkins.master.DockerAMI=$AMI_ID \
+    --set jenkins.master.GProject=$G_PROJECT \
+    --set jenkins.master.GAuthFile=$G_AUTH_FILE
 
 # Only if minishift
 oc -n go-demo-3-jenkins create route edge --service go-demo-3-jenkins --insecure-policy Allow --hostname $JENKINS_ADDR

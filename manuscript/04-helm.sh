@@ -42,7 +42,7 @@ helm install stable/jenkins \
 
 # Only if minikube
 helm upgrade jenkins stable/jenkins \
-    --set Master.ServiceType=NodePort
+    --set master.serviceType=NodePort
 
 # Only if minishift
 oc -n jenkins create route edge \
@@ -102,10 +102,10 @@ helm inspect stable/jenkins
 helm install stable/jenkins \
     --name jenkins \
     --namespace jenkins \
-    --set Master.ImageTag=2.112-alpine
+    --set master.imageTag=2.112-alpine
 
 # Only if minikube
-helm upgrade jenkins stable/jenkins --set Master.ServiceType=NodePort --reuse-values
+helm upgrade jenkins stable/jenkins --set master.serviceType=NodePort --reuse-values
 
 kubectl -n jenkins \
     rollout status deployment jenkins
@@ -128,7 +128,7 @@ echo $ADDR
 open "http://$ADDR"
 
 helm upgrade jenkins stable/jenkins \
-    --set Master.ImageTag=2.116-alpine \
+    --set master.imageTag=2.116-alpine \
     --reuse-values
 
 kubectl -n jenkins \
@@ -189,7 +189,7 @@ helm install stable/jenkins \
     --name jenkins \
     --namespace jenkins \
     --values helm/jenkins-values.yml \
-    --set Master.HostName=$HOST
+    --set master.hostName=$HOST
 
 kubectl -n jenkins \
     rollout status deployment jenkins

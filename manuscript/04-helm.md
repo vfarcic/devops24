@@ -287,7 +287,7 @@ W> ## A note to minikube users
 W>
 W> If you go back to the output, you'll notice that the type of the `jenkins` Service is `LoadBalancer`. Since we do not have a load balancer in front of our minikube cluster, that type will not work, and we should change it to `NodePort`. Please execute the command that follows.
 W>
-W> `helm upgrade jenkins stable/jenkins --set Master.ServiceType=NodePort`
+W> `helm upgrade jenkins stable/jenkins --set master.serviceType=NodePort`
 W>
 W> We haven't explained the `upgrade` process just yet. For now, just note that we changed the Service type to `NodePort`.
 
@@ -563,11 +563,11 @@ The output, limited to the relevant parts, is as follows.
 | Parameter         | Description      | Default |
 | ----------------- | ---------------- | ------- |
 ...
-| `Master.ImageTag` | Master image tag | `lts`   |
+| `master.imageTag` | Master image tag | `lts`   |
 ...
 ```
 
-That did not provide much more info. Still, we do not really need more than that. We can assume that `Master.ImageTag` will allow us to replace the default value `lts` with `2.112-alpine`.
+That did not provide much more info. Still, we do not really need more than that. We can assume that `master.imageTag` will allow us to replace the default value `lts` with `2.112-alpine`.
 
 If we go through the documentation, we'll discover that one of the ways to overwrite the default values is through the `--set` argument. Let's give it a try.
 
@@ -575,18 +575,18 @@ If we go through the documentation, we'll discover that one of the ways to overw
 helm install stable/jenkins \
     --name jenkins \
     --namespace jenkins \
-    --set Master.ImageTag=2.112-alpine
+    --set master.imageTag=2.112-alpine
 ```
 
 W> ## A note to minikube users
 W>
 W> We still need to change the `jenkins` Service type to `NodePort`. Since this is specific to minikube, I did not want to include it in the command we just executed. Instead, we'll run the same command as before. Please execute the command that follows.
 W>
-W> `helm upgrade jenkins stable/jenkins --set Master.ServiceType=NodePort --reuse-values`
+W> `helm upgrade jenkins stable/jenkins --set master.serviceType=NodePort --reuse-values`
 W>
 W> We still did not go through the `upgrade` process. For now, just note that we changed the Service type to `NodePort`.
 W>
-W> Alternatively, you can `delete` the chart and install it again but, this time, the `--set Master.ServiceType=NodePort` argument needs to be added to `helm install`.
+W> Alternatively, you can `delete` the chart and install it again but, this time, the `--set master.serviceType=NodePort` argument needs to be added to `helm install`.
 
 W> ## A note to minishift users
 W>
@@ -643,7 +643,7 @@ Let's imagine that some time passed and we decided to upgrade our Jenkins from *
 
 ```bash
 helm upgrade jenkins stable/jenkins \
-    --set Master.ImageTag=2.116-alpine \
+    --set master.imageTag=2.116-alpine \
     --reuse-values
 ```
 
@@ -965,7 +965,7 @@ helm install stable/jenkins \
     --name jenkins \
     --namespace jenkins \
     --values helm/jenkins-values.yml \
-    --set Master.HostName=$HOST
+    --set master.hostName=$HOST
 ```
 
 We used the `--values` argument to pass the contents of the `helm/jenkins-values.yml`. Since we had to overwrite the `HostName`, we used `--set`. If the same value is defined through `--values` and `--set`, the latter always takes precedence.

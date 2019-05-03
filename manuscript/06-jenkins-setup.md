@@ -64,7 +64,7 @@ helm install stable/jenkins \
     --name jenkins \
     --namespace jenkins \
     --values helm/jenkins-values.yml \
-    --set Master.HostName=$JENKINS_ADDR
+    --set master.hostName=$JENKINS_ADDR
 ```
 
 Next, we'll confirm that Jenkins is rolled out.
@@ -1377,7 +1377,7 @@ The output, limited to the `Custom ConfigMap` section, is as follows.
 
 When creating a new parent chart with this chart as a dependency, the `CustomConfigMap` parameter can be used to override the default config.xml provided.
 It also allows for providing additional xml configuration files that will be copied into `/var/jenkins_home`. In the parent chart's values.yaml,
-set the `jenkins.Master.CustomConfigMap` value to true...
+set the `jenkins.master.customConfigMap` value to true...
 ...
 and provide the file `templates/config.tpl` in your parent chart for your use case. You can start by copying the contents of `config.yaml` from this chart into your parent charts `templates/config.tpl` as a basis for customization. Finally, you'll need to wrap the contents of `templates/config.tpl`...
 ...
@@ -1446,7 +1446,7 @@ jenkins:
 
 If we compare that with `helm/jenkins-values.yml`, we'll notice that most entries are almost the same. There is one significant difference though. This time, all the entries are inside `jenkins`. That way, we're telling Helm that the values should be applied to the dependency named `jenkins` and defined in `requirements.yaml`.
 
-If we ignore the fact that all the entries are now inside `jenkins`, there is another significant difference in that we set `jenkins.Master.CustomConfigMap` to `true`. According to the instructions we saw in the README, this flag will allow us to provide a custom ConfigMap that will replace Jenkins' `config.xml` file by parsing `templates/config.tmpl`. We'll take a closer look at it soon.
+If we ignore the fact that all the entries are now inside `jenkins`, there is another significant difference in that we set `jenkins.master.customConfigMap` to `true`. According to the instructions we saw in the README, this flag will allow us to provide a custom ConfigMap that will replace Jenkins' `config.xml` file by parsing `templates/config.tmpl`. We'll take a closer look at it soon.
 
 The other new parameter is `CredentialsXmlSecret`. It holds the name of the Kubernetes secret where we'll store Jenkins' `credentials.xml` file we copied earlier. That parameter is tightly coupled with `SecretsFilesSecret` which holds the name of yet another Kubernetes secret which, this time, will contain the secrets which we copied to the local directory `cluster/jenkins/secrets`.
 
@@ -1487,7 +1487,7 @@ data:
                   <envVars>
                     <org.csanchez.jenkins.plugins.kubernetes.ContainerEnvVar>
                       <key>JENKINS_URL</key>
-                      <value>http://{{ template "jenkins.fullname" . }}.{{ .Release.Namespace }}:{{.Values.Master.ServicePort}}{{ default "" .Values.Master.JenkinsUriPrefix }}</value>
+                      <value>http://{{ template "jenkins.fullname" . }}.{{ .Release.Namespace }}:{{.Values.master.servicePort}}{{ default "" .Values.master.jenkinsUriPrefix }}</value>
                     </org.csanchez.jenkins.plugins.kubernetes.ContainerEnvVar>
                   </envVars>
                 </org.csanchez.jenkins.plugins.kubernetes.ContainerTemplate>
@@ -1496,7 +1496,7 @@ data:
             </org.csanchez.jenkins.plugins.kubernetes.PodTemplate>
 {{- end -}}
           ...
-          <jenkinsUrl>http://{{ template "jenkins.fullname" . }}.{{ .Release.Namespace }}:{{.Values.Master.ServicePort}}{{ default "" .Values.Master.JenkinsUriPrefix }}</jenkinsUrl>
+          <jenkinsUrl>http://{{ template "jenkins.fullname" . }}.{{ .Release.Namespace }}:{{.Values.master.servicePort}}{{ default "" .Values.master.jenkinsUriPrefix }}</jenkinsUrl>
           <jenkinsTunnel>{{ template "jenkins.fullname" . }}-agent.{{ .Release.Namespace }}:50000</jenkinsTunnel>
           ...
 ```
@@ -1507,36 +1507,36 @@ The next difference is the section dedicated to the `ec2` plugin.
 
 ```tpl
 ...
-{{- if .Values.Master.DockerAMI }}
+{{- if .Values.master.DockerAMI }}
   <hudson.plugins.ec2.EC2Cloud plugin="ec2@1.39">
     <name>ec2-docker-agents</name>
     ...
     <templates>
       <hudson.plugins.ec2.SlaveTemplate>
-        <ami>{{.Values.Master.DockerAMI}}</ami>
+        <ami>{{.Values.master.DockerAMI}}</ami>
         ...
 {{- end }}
 ...
 ```
 
-That section represents the addition that will be created if we use Jenkins' EC2 plugin. I'll be honest here and admit that I did not write that XML snippet. I don't think that anyone could. Instead, I copied it from the previous Jenkins setup, pasted it to `config.tpl`, wrapped it with `{{- if .Values.Master.DockerAMI }}` and `{{- end }}` instructions, and changed `<ami>` entry to use `{{.Values.Master.DockerAMI}}` as the value. That way, the section will be rendered only if we provide `jenkins.Master.DockerAMI` value and the `ami` entry will be set to whatever our AMI ID is.
+That section represents the addition that will be created if we use Jenkins' EC2 plugin. I'll be honest here and admit that I did not write that XML snippet. I don't think that anyone could. Instead, I copied it from the previous Jenkins setup, pasted it to `config.tpl`, wrapped it with `{{- if .Values.master.DockerAMI }}` and `{{- end }}` instructions, and changed `<ami>` entry to use `{{.Values.master.DockerAMI}}` as the value. That way, the section will be rendered only if we provide `jenkins.master.DockerAMI` value and the `ami` entry will be set to whatever our AMI ID is.
 
-Similarly to the section enabled through the existence of the `jenkins.Master.DockerAMI` value, we can enable Google cloud through the XML wrapped inside `{{- if .Values.Master.GProject }}` and `{{- end }}` block. The relevant snippet of the `config.tpl` file is as follows.
+Similarly to the section enabled through the existence of the `jenkins.master.DockerAMI` value, we can enable Google cloud through the XML wrapped inside `{{- if .Values.master.GProject }}` and `{{- end }}` block. The relevant snippet of the `config.tpl` file is as follows.
 
 ```tpl
 ...
-{{- if .Values.Master.GProject }}
+{{- if .Values.master.GProject }}
   <com.google.jenkins.plugins.computeengine.ComputeEngineCloud plugin="google-compute-engine@1.0.4">
     <name>gce-docker</name>
     <instanceCap>2147483647</instanceCap>
-    <projectId>{{.Values.Master.GProject}}</projectId>
-    <credentialsId>{{.Values.Master.GProject}}</credentialsId>
+    <projectId>{{.Values.master.GProject}}</projectId>
+    <credentialsId>{{.Values.master.GProject}}</credentialsId>
     ...
 {{- end }}
 ...
 ```
 
-Just as with the EC2, that snippet was copied from the previous Jenkins instance. I enveloped it with the `if`/`end` block. All occurrences of the Google project were replaced with `{{.Values.Master.GProject}}`.
+Just as with the EC2, that snippet was copied from the previous Jenkins instance. I enveloped it with the `if`/`end` block. All occurrences of the Google project were replaced with `{{.Values.master.GProject}}`.
 
 Unfortunately, changing the template that produces Jenkins' `config.xml` file is not enough, so I had to modify a few other entries in `config.tpl`.
 
@@ -1552,15 +1552,15 @@ The last snippet from `config.tpl` comes from the `apply_config.sh` entry in the
     ...
     mkdir -p /var/jenkins_home/nodes/docker-build
     cp /var/jenkins_config/docker-build /var/jenkins_home/nodes/docker-build/config.xml;
-{{- if .Values.Master.GAuthFile }}
+{{- if .Values.master.GAuthFile }}
     mkdir -p /var/jenkins_home/gauth
-    cp -n /var/jenkins_secrets/{{.Values.Master.GAuthFile}} /var/jenkins_home/gauth;
+    cp -n /var/jenkins_secrets/{{.Values.master.GAuthFile}} /var/jenkins_home/gauth;
 {{- end }}
 ...
-{{- if .Values.Master.CredentialsXmlSecret }}
+{{- if .Values.master.CredentialsXmlSecret }}
     cp -n /var/jenkins_credentials/credentials.xml /var/jenkins_home;
 {{- end }}
-{{- if .Values.Master.SecretsFilesSecret }}
+{{- if .Values.master.SecretsFilesSecret }}
     cp -n /var/jenkins_secrets/* /usr/share/jenkins/ref/secrets;
 {{- end }}
 ...
@@ -1568,9 +1568,9 @@ The last snippet from `config.tpl` comes from the `apply_config.sh` entry in the
 
 The `apply_config.sh` script will be executed during Jenkins initialization. The process is already defined in the official Jenkins Chart. I just had to extend it by adding `mkdir` and `cp` commands that will copy `docker-build` config into `/var/jenkins_home/nodes/docker-build/config.xml`. That should take care of the `docker-build` agent that uses the Vagrant VM we created earlier. If you choose to skip static VM in favor of AWS EC2 or Google cloud options, the agent will be created nevertheless, but it will be disconnected.
 
-Further down, we can see a similar logic for the `gauth` directory that will be populated with the file provided as the Kubernetes secret with the name defined as the `jenkins.Master.GAuthFile` value.
+Further down, we can see a similar logic for the `gauth` directory that will be populated with the file provided as the Kubernetes secret with the name defined as the `jenkins.master.GAuthFile` value.
 
-Finally, it is worth mentioning the parts inside `{{- if .Values.Master.CredentialsXmlSecret }}` and `{{- if .Values.Master.SecretsFilesSecret }}` blocks. Those already existed in the original `config.yaml` file used as the base for `config.tpl`. They are responsible for copying the credentials and the secrets into the appropriate directories inside Jenkins home.
+Finally, it is worth mentioning the parts inside `{{- if .Values.master.CredentialsXmlSecret }}` and `{{- if .Values.master.SecretsFilesSecret }}` blocks. Those already existed in the original `config.yaml` file used as the base for `config.tpl`. They are responsible for copying the credentials and the secrets into the appropriate directories inside Jenkins home.
 
 I must admit that all those steps are not easy to figure out. They require knowledge about internal Jenkins workings and are anything but intuitive. I should probably submit a few pull requests to the Jenkins Helm project to simplify the setup. Nevertheless, the current configuration should provide everything we need, even though it might not be easy to understand how we got here.
 
@@ -1633,11 +1633,11 @@ This is it. The moment of truth is upon us. We are about to test whether our att
 helm install helm/jenkins \
     --name jenkins \
     --namespace jenkins \
-    --set jenkins.Master.HostName=$JENKINS_ADDR \
-    --set jenkins.Master.DockerVM=$DOCKER_VM \
-    --set jenkins.Master.DockerAMI=$AMI_ID \
-    --set jenkins.Master.GProject=$G_PROJECT \
-    --set jenkins.Master.GAuthFile=$G_AUTH_FILE
+    --set jenkins.master.hostName=$JENKINS_ADDR \
+    --set jenkins.master.DockerVM=$DOCKER_VM \
+    --set jenkins.master.DockerAMI=$AMI_ID \
+    --set jenkins.master.GProject=$G_PROJECT \
+    --set jenkins.master.GAuthFile=$G_AUTH_FILE
 ```
 
 Please note that, depending on your choices, `AMI_ID`, `G_PROJECT`, and `G_AUTH_FILE` might not be set and, as a result, not all the changes we made to the Chart will be available.
