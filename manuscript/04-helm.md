@@ -928,6 +928,7 @@ Master:
     - thinBackup:1.9
     - workflow-aggregator:2.5
   Ingress:
+    enabled: true
     Annotations:
       nginx.ingress.kubernetes.io/ssl-redirect: "false"
       nginx.ingress.kubernetes.io/proxy-body-size: 50m

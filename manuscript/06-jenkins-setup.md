@@ -1423,6 +1423,7 @@ jenkins:
     - google-compute-engine:1.0.8
     - pegdown-formatter:1.3
     ingress:
+      enabled: true
       annotations:
         kubernetes.io/ingress.class: "nginx"
         nginx.ingress.kubernetes.io/ssl-redirect: "false"

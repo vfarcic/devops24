@@ -27,13 +27,7 @@ ADDR=$LB_IP.nip.io
 
 echo $ADDR
 
-ADDR_ESC=$(echo $ADDR \
-    | sed -e "s@\.@\\\.@g")
-
-echo $ADDR_ESC
-
 cat helm/values-orig.yaml \
-    | sed -e "s@acme-escaped.com@$ADDR_ESC@g" \
     | sed -e "s@acme.com@$ADDR@g" \
     | tee helm/values.yaml
 

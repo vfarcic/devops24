@@ -155,19 +155,19 @@ chartmuseum:
       ingress.kubernetes.io/ssl-redirect: "false"
       nginx.ingress.kubernetes.io/ssl-redirect: "false"
     hosts:
-      cm.acme-escaped.com: # Change me!
-      - /
+    - name: cm.acme.com # Change me!
+      path: /  
 
 jenkins:
-  Master:
-    ImageTag: "2.129-alpine"
-    Cpu: "500m"
-    Memory: "500Mi"
-    ServiceType: ClusterIP
-    ServiceAnnotations:
+  master:
+    imageTag: "2.129-alpine"
+    cpu: "500m"
+    memory: "500Mi"
+    serviceType: ClusterIP
+    serviceAnnotations:
       service.beta.kubernetes.io/aws-load-balancer-backend-protocol: http
     GlobalLibraries: true
-    InstallPlugins:
+    installPlugins:
     - durable-task:1.22
     - blueocean:1.7.1
     - credentials:2.1.18
@@ -189,8 +189,9 @@ jenkins:
     - github-oauth:0.29
     - google-compute-engine:1.0.4
     - pegdown-formatter:1.3
-    Ingress:
-      Annotations:
+    ingress:
+      enabled: true
+      annotations:
         kubernetes.io/ingress.class: "nginx"
         nginx.ingress.kubernetes.io/ssl-redirect: "false"
         nginx.ingress.kubernetes.io/proxy-body-size: 50m
@@ -198,7 +199,7 @@ jenkins:
         ingress.kubernetes.io/ssl-redirect: "false"
         ingress.kubernetes.io/proxy-body-size: 50m
         ingress.kubernetes.io/proxy-request-buffering: "off"
-    HostName: jenkins.acme.com # Change me!
+      hostName: jenkins.acme.com # Change me!
     CustomConfigMap: true
     CredentialsXmlSecret: jenkins-credentials
     SecretsFilesSecret: jenkins-secrets
@@ -279,11 +280,6 @@ I already mentioned that `values-orig.yaml` is too generic and that we should up
 ADDR=$LB_IP.nip.io
 
 echo $ADDR
-
-ADDR_ESC=$(echo $ADDR \
-    | sed -e "s@\.@\\\.@g")
-
-echo $ADDR_ESC
 ```
 
 We defined the address of the cluster (`ADDR`) as well as the escaped variant required by ChartMuseum since it uses address as the key, not the value. As you already know from previous chapters, keys cannot contain "special" characters like dots (`.`).
@@ -292,7 +288,6 @@ Now that we have the address of your cluster, we can use `sed` to modify `values
 
 ```bash
 cat helm/values-orig.yaml \
-    | sed -e "s@acme-escaped.com@$ADDR_ESC@g" \
     | sed -e "s@acme.com@$ADDR@g" \
     | tee helm/values.yaml
 ```
