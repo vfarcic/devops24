@@ -51,16 +51,11 @@ CM_ADDR="cm.$LB_IP.nip.io"
 
 echo $CM_ADDR
 
-CM_ADDR_ESC=$(echo $CM_ADDR \
-    | sed -e "s@\.@\\\.@g")
-
-echo $CM_ADDR_ESC
-
 helm install stable/chartmuseum \
     --namespace charts \
     --name cm \
     --values helm/chartmuseum-values.yml \
-    --set ingress.hosts."$CM_ADDR_ESC"={"/"} \
+    --set "ingress.hosts[0].name=$CM_ADDR" \
     --set env.secret.BASIC_AUTH_USER=admin \
     --set env.secret.BASIC_AUTH_PASS=admin
 

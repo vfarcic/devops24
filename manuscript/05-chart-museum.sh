@@ -56,11 +56,6 @@ CM_ADDR="cm.$LB_IP.nip.io"
 
 echo $CM_ADDR
 
-CM_ADDR_ESC=$(echo $CM_ADDR \
-    | sed -e "s@\.@\\\.@g")
-
-echo $CM_ADDR_ESC
-
 cat helm/chartmuseum-values.yml
 
 helm install stable/chartmuseum \
