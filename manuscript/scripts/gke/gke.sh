@@ -4,27 +4,17 @@
 
 gcloud auth login
 
-ZONE=$(gcloud compute zones list \
-    --filter "region:(us-east1)" \
-    | awk '{print $1}' \
-    | tail -n 1)
-
-ZONES=$(gcloud compute zones list \
-    --filter "region:(us-east1)" \
-    | tail -n +2 \
-    | awk '{print $1}' \
-    | tr '\n' ',')
+REGION=us-east1
 
 MACHINE_TYPE=n1-standard-1
 
 gcloud container clusters \
     create devops24 \
-    --zone $ZONE \
-    --node-locations $ZONES \
+    --region $REGION \
     --machine-type $MACHINE_TYPE \
     --enable-autoscaling \
     --num-nodes 1 \
-    --max-nodes 1 \
+    --max-nodes 3 \
     --min-nodes 1
 
 kubectl create clusterrolebinding \
@@ -32,9 +22,11 @@ kubectl create clusterrolebinding \
     --clusterrole cluster-admin \
     --user $(gcloud config get-value account)
 
-kubectl apply -f https://raw.githubusercontent.com/kubernetes/ingress-nginx/master/deploy/mandatory.yaml
+kubectl apply \
+    -f https://raw.githubusercontent.com/kubernetes/ingress-nginx/1cd17cd12c98563407ad03812aebac46ca4442f2/deploy/mandatory.yaml
 
-kubectl apply -f https://raw.githubusercontent.com/kubernetes/ingress-nginx/master/deploy/provider/cloud-generic.yaml
+kubectl apply \
+    -f https://raw.githubusercontent.com/kubernetes/ingress-nginx/1cd17cd12c98563407ad03812aebac46ca4442f2/deploy/provider/cloud-generic.yaml
 
 #######################
 # Destroy the cluster #
@@ -42,5 +34,5 @@ kubectl apply -f https://raw.githubusercontent.com/kubernetes/ingress-nginx/mast
 
 gcloud container clusters \
     delete devops24 \
-    --zone $ZONE \
+    --region $REGION \
     --quiet
