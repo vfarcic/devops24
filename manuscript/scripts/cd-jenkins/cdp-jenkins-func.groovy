@@ -26,7 +26,7 @@ spec:
     command: ["cat"]
     tty: true
   - name: golang
-    image: golang:1.9
+    image: golang:1.12
     command: ["cat"]
     tty: true
 """

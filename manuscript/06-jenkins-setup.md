@@ -221,7 +221,7 @@ spec:
     command: ["sleep"]
     args: ["100000"]
   - name: golang
-    image: golang:1.9
+    image: golang:1.12
     command: ["sleep"]
     args: ["100000"]
   - name: helm
@@ -371,7 +371,7 @@ spec:
     command: ["sleep"]
     args: ["100000"]
   - name: golang
-    image: golang:1.9
+    image: golang:1.12
     command: ["sleep"]
     args: ["100000"]
   - name: helm
@@ -1166,7 +1166,7 @@ spec:
     command: ["sleep"]
     args: ["100000"]
   - name: golang
-    image: golang:1.9
+    image: golang:1.12
     command: ["sleep"]
     args: ["100000"]
   - name: helm
@@ -1748,7 +1748,7 @@ spec:
     command: ["sleep"]
     args: ["100000"]
   - name: golang
-    image: golang:1.9
+    image: golang:1.12
     command: ["sleep"]
     args: ["100000"]
   - name: helm

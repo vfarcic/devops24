@@ -317,7 +317,7 @@ spec:
       mountPath: /workspace
     workingDir: /workspace
   - name: golang
-    image: golang:1.9
+    image: golang:1.12
     command: ["sleep"]
     args: ["100000"]
     volumeMounts:
@@ -416,7 +416,7 @@ cat Dockerfile
 The output is as follows.
 
 ```
-FROM golang:1.9 AS build
+FROM golang:1.12 AS build
 ADD . /src
 WORKDIR /src
 RUN go get -d -v -t
@@ -452,7 +452,7 @@ docker image build \
     .
 ```
 
-W> On some clusters you might receive `error parsing reference: "golang:1.9 AS build" is not a valid repository/tag: invalid reference format` error message. That probably means that Docker server is older than v17.05. You can check it with `docker version` command.
+W> On some clusters you might receive `error parsing reference: "golang:1.12 AS build" is not a valid repository/tag: invalid reference format` error message. That probably means that Docker server is older than v17.05. You can check it with `docker version` command.
 W> If you are indeed unable to use multi-stage builds, you've stumbled into one of the problems with this approach. We'll solve this issue later (in one of the next chapters). For now, please execute the commands that follow as a workaround.
 W>
 W> `docker image pull vfarcic/go-demo-3:1.0-beta`
