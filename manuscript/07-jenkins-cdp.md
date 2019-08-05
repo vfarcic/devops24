@@ -174,6 +174,7 @@ JENKINS_ADDR="go-demo-3-jenkins.$LB_IP.nip.io"
 helm install helm/jenkins \
     --name go-demo-3-jenkins \
     --namespace go-demo-3-jenkins \
+    --values helm/jenkins/values.yaml \
     --set jenkins.master.hostName=$JENKINS_ADDR \
     --set jenkins.master.DockerVM=$DOCKER_VM \
     --set jenkins.master.DockerAMI=$AMI_ID \

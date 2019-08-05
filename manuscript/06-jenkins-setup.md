@@ -1634,6 +1634,7 @@ This is it. The moment of truth is upon us. We are about to test whether our att
 helm install helm/jenkins \
     --name jenkins \
     --namespace jenkins \
+    --values helm/jenkins/values.yaml \
     --set jenkins.master.hostName=$JENKINS_ADDR \
     --set jenkins.master.DockerVM=$DOCKER_VM \
     --set jenkins.master.DockerAMI=$AMI_ID \

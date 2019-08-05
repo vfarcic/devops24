@@ -293,6 +293,7 @@ kubectl -n jenkins \
 helm install helm/jenkins \
     --name jenkins \
     --namespace jenkins \
+    --values helm/jenkins/values.yaml \
     --set jenkins.master.hostName=$JENKINS_ADDR \
     --set jenkins.master.DockerAMI=$AMI_ID \
     --set jenkins.master.GProject=$G_PROJECT \
