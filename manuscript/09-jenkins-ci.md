@@ -626,4 +626,5 @@ This approach will allow us to deploy any service to any new namespace. There ar
 > Run and guide through with images
 
 ## What Now?
-?
+
+Destroy the cluster if you created it only for the purpose of this chapter. Have a break. You deserve it.
