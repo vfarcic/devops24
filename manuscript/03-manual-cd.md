@@ -452,6 +452,8 @@ docker image build \
     .
 ```
 
+W> If you're using **EKS**, the build might fail with an error. If that's the case, you are probably experiencing the [amazon-eks-ami issue 183](https://github.com/awslabs/amazon-eks-ami/issues/183). An easy fix is to add the `--network=host` argument to the previous command as well as to all other `docker image build` commands you'll use throughout the rest of the book.
+
 W> On some clusters you might receive `error parsing reference: "golang:1.12 AS build" is not a valid repository/tag: invalid reference format` error message. That probably means that Docker server is older than v17.05. You can check it with `docker version` command.
 W> If you are indeed unable to use multi-stage builds, you've stumbled into one of the problems with this approach. We'll solve this issue later (in one of the next chapters). For now, please execute the commands that follow as a workaround.
 W>

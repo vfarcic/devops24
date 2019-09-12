@@ -37,6 +37,7 @@ kubectl apply \
 # Install StorageClass #
 ########################
 
+# Ignore if it fails saying that the storage class already exists
 echo 'kind: StorageClass
 apiVersion: storage.k8s.io/v1
 metadata:
