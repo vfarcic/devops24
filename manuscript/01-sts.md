@@ -301,7 +301,7 @@ cat sts/go-demo-3-sts.yml
 Most of the new definition is the same as the one we used before, so we'll comment only on the differences. The first in line is StatefulSet that replaces the `db` Deployment. It is as follows.
 
 ```yaml
-apiVersion: apps/v1beta2
+apiVersion: apps/v1
 kind: StatefulSet
 metadata:
   name: db
@@ -745,7 +745,7 @@ The output, limited to relevant parts, is as follows.
 
 ```yaml
 ...
-apiVersion: apps/v1beta2
+apiVersion: apps/v1
 kind: StatefulSet
 metadata:
   name: db

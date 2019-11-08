@@ -1452,7 +1452,7 @@ cat helm/go-demo-3/templates/deployment.yaml
 The output is as follows.
 
 ```yaml
-apiVersion: apps/v1beta2
+apiVersion: apps/v1
 kind: Deployment
 metadata:
   name: {{ template "helm.fullname" . }}
