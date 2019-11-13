@@ -57,6 +57,8 @@ The Helm client is a command line utility responsible for the local development 
 
 I> Do not get too attached to Tiller. Helm v3 will remove the server component and operate fully from the client side. At the time of this writing (June 2018), it is still unknown when will v3 reach GA.
 
+W> The commands in the rest of this book assume that you're using Helm v2.+ (NOT v3.+). If you're running a newer version of Helm, please downgrade it to v2.+ or be prepared to adapt the examples.
+
 I'm sure that this brief explanation is more confusing than helpful. Worry not. Everything will be explained soon through examples. For now, we'll focus on installing Helm and Tiller.
 
 If you are a **MacOS user**, please use [Homebrew](https://brew.sh/) to install Helm. The command is as follows.
