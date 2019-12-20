@@ -20,7 +20,7 @@ spec:
     command: ["sleep"]
     args: ["100000"]
   - name: helm
-    image: vfarcic/helm:2.8.2
+    image: vfarcic/helm:3.0.2
     command: ["sleep"]
     args: ["100000"]
 """
@@ -48,7 +48,7 @@ spec:
         }
         container("helm") {
             stage("helm") {
-                sh "helm version --tiller-namespace go-demo-3-build"
+                sh "helm version"
             }
         }
     }

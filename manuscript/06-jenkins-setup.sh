@@ -9,13 +9,14 @@ echo $JENKINS_ADDR
 # Only if minishift
 oc patch scc restricted -p '{"runAsUser":{"type": "RunAsAny"}}'
 
-helm install stable/jenkins \
-    --name jenkins \
+kubectl create namespace jenkins
+
+helm install jenkins stable/jenkins \
     --namespace jenkins \
-    --values helm/jenkins-values.yml \
+    --values helm/jenkins-values2.yml \
     --set master.hostName=$JENKINS_ADDR
 
-kubectl -n jenkins \
+kubectl --namespace jenkins \
     rollout status deployment jenkins
 
 # Only if minishift
@@ -30,15 +31,15 @@ JENKINS_PASS=$(kubectl -n jenkins \
 
 echo $JENKINS_PASS
 
-kubectl -n jenkins get pods
+kubectl --namespace jenkins get pods
 
 open "http://$JENKINS_ADDR/job/my-k8s-job/configure"
 
 open "http://$JENKINS_ADDR/blue/organizations/jenkins/my-k8s-job/activity"
 
-kubectl -n jenkins get pods
+kubectl --namespace jenkins get pods
 
-kubectl -n jenkins get pods
+kubectl --namespace jenkins get pods
 
 open "http://$JENKINS_ADDR/job/my-k8s-job/configure"
 
@@ -64,16 +65,9 @@ kubectl apply \
 
 open "http://$JENKINS_ADDR/configure"
 
-helm init --service-account build \
-    --tiller-namespace go-demo-3-build
-
-kubectl -n go-demo-3-build \
-    rollout status \
-    deployment tiller-deploy
-
 open "http://$JENKINS_ADDR/blue/organizations/jenkins/my-k8s-job/activity"
 
-kubectl -n go-demo-3-build \
+kubectl --namespace go-demo-3-build \
     get pods
 
 # Only if using Vagrant for building containers
@@ -229,31 +223,31 @@ open "http://$JENKINS_ADDR/blue/organizations/jenkins/my-k8s-job/activity"
 
 mkdir -p cluster/jenkins/secrets
 
-kubectl -n jenkins \
+kubectl --namespace jenkins \
     describe deployment jenkins
 
-kubectl -n jenkins \
+kubectl --namespace jenkins \
     get pods \
-    -l component=jenkins-jenkins-master
+    --selector app.kubernetes.io/component=jenkins-master
 
-JENKINS_POD=$(kubectl -n jenkins \
+JENKINS_POD=$(kubectl --namespace jenkins \
     get pods \
-    -l component=jenkins-jenkins-master \
-    -o jsonpath='{.items[0].metadata.name}')
+    --selector app.kubernetes.io/component=jenkins-master \
+    --output jsonpath='{.items[0].metadata.name}')
 
 echo $JENKINS_POD
 
-kubectl -n jenkins cp \
+kubectl --namespace jenkins cp \
     $JENKINS_POD:var/jenkins_home/credentials.xml \
-    cluster/jenkins
+    cluster/jenkins/credentials.xml
 
-kubectl -n jenkins cp \
+kubectl --namespace jenkins cp \
     $JENKINS_POD:var/jenkins_home/secrets/hudson.util.Secret \
-    cluster/jenkins/secrets
+    cluster/jenkins/secrets/hudson.util.Secret
 
-kubectl -n jenkins cp \
+kubectl --namespace jenkins cp \
     $JENKINS_POD:var/jenkins_home/secrets/master.key \
-    cluster/jenkins/secrets
+    cluster/jenkins/secrets/master.key
 
 # Only if using GCE for building containers
 kubectl -n jenkins cp $JENKINS_POD:var/jenkins_home/gauth/ cluster/jenkins/secrets
@@ -264,40 +258,43 @@ G_AUTH_FILE=$(ls cluster/jenkins/secrets/key*json | xargs -n 1 basename)
 # Only if using GCE for building containers
 echo $G_AUTH_FILE
 
-helm delete jenkins --purge
+helm --namespace jenkins delete jenkins
 
 ls -1 helm/jenkins
 
-cat helm/jenkins/requirements.yaml
+cat helm/jenkins2/requirements.yaml
 
 helm inspect readme stable/jenkins
 
-cat helm/jenkins/values.yaml
+cat helm/jenkins2/values.yaml
 
-cat helm/jenkins/templates/config.tpl
+cat helm/jenkins2/templates/config.tpl
 
 helm dependency update helm/jenkins
 
 ls -1 helm/jenkins/charts
 
-kubectl -n jenkins \
+kubectl --namespace jenkins \
     create secret generic \
     jenkins-credentials \
     --from-file cluster/jenkins/credentials.xml
 
-kubectl -n jenkins \
+kubectl --namespace jenkins \
     create secret generic \
     jenkins-secrets \
     --from-file cluster/jenkins/secrets
 
-helm install helm/jenkins \
-    --name jenkins \
+helm install jenkins helm/jenkins \
     --namespace jenkins \
-    --values helm/jenkins/values.yaml \
+    --values helm/jenkins2/values.yaml \
     --set jenkins.master.hostName=$JENKINS_ADDR \
+    --set jenkins.master.DockerVM=$DOCKER_VM \
     --set jenkins.master.DockerAMI=$AMI_ID \
     --set jenkins.master.GProject=$G_PROJECT \
     --set jenkins.master.GAuthFile=$G_AUTH_FILE
+
+kubectl --namespace jenkins \
+    rollout status deployment jenkins
 
 open "http://$JENKINS_ADDR"
 

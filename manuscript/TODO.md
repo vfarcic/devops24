@@ -1,5 +1,8 @@
+- Continue from 06-jenkins-setup.md
 - [ ] Switch to helm 3
-- [ ] Remove tiller
+- [ ] Replace `jenkins-slave-` with `kubernetes-`
+- [ ] Remove tiller from the text
+- [ ] Remove tiller from the diagrams
 - [ ] Update Gists
 
 ## The DevOps 2.4 Toolkit

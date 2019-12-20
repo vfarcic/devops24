@@ -60,17 +60,18 @@ W> `oc patch scc restricted -p '{"runAsUser":{"type": "RunAsAny"}}'`
 We'll start exploring the steps we'll need to run Jenkins in a Kubernetes cluster by executing the same `helm install` command we used in the previous chapters. It won't provide everything we need, but it will be a good start. We'll improve the process throughout the rest of the chapter with the objective of having a fully automated Jenkins installation process. We might not be able to accomplish our goal 100%. Or, we might conclude that full automation is not worth the trouble. Nevertheless, we'll use the installation from the [Packaging Kubernetes Applications](#chartmuseum) as the base and see how far we can go in our quest for full automation.
 
 ```bash
-helm install stable/jenkins \
-    --name jenkins \
+kubectl create namespace jenkins
+
+helm install jenkins stable/jenkins \
     --namespace jenkins \
-    --values helm/jenkins-values.yml \
+    --values helm/jenkins-values2.yml \
     --set master.hostName=$JENKINS_ADDR
 ```
 
 Next, we'll confirm that Jenkins is rolled out.
 
 ```bash
-kubectl -n jenkins \
+kubectl --namespace jenkins \
     rollout status deployment jenkins
 ```
 
@@ -171,7 +172,7 @@ Please click the *Open Blue Ocean* link from the left-hand menu. You'll see the 
 The build is running, and we should go back to the terminal window to confirm that the Pod is indeed created.
 
 ```bash
-kubectl -n jenkins get pods
+kubectl --namespace jenkins get pods
 ```
 
 The output is as follows.
@@ -225,7 +226,7 @@ spec:
     command: ["sleep"]
     args: ["100000"]
   - name: helm
-    image: vfarcic/helm:2.8.2
+    image: vfarcic/helm:3.0.2
     command: ["sleep"]
     args: ["100000"]
 """
@@ -255,7 +256,7 @@ spec:
 }
 ```
 
-I> If you prefer to copy and paste, the job is available in the [my-k8s-job-yaml.groovy Gist](https://gist.github.com/a1b3b36c68323aea161d7364b1231de2).
+I> If you prefer to copy and paste, the job is available in the [my-k8s-job-yaml.groovy Gist](https://gist.github.com/717a5b5a6912a21c8fd249e442c08309).
 
 This time, the format of the script is different. Instead of the `containers` argument inside `podTemplate`, now we have `yaml`. Inside it is Kubernetes Pod definition just as if we'd define a standard Kubernetes resource.
 
@@ -276,7 +277,7 @@ I have an assignment for you while the build is running. Try to find out what is
 Jenkins will create a Pod in the same Namespace. That Pod will have five containers, four of which will host the tools we specified in the `podTemplate`, and Jenkins will inject the fifth as a way to establish the communication between Jenkins and the Pod. We can confirm that by listing the Pods in the `jenkins` Namespace.
 
 ```bash
-kubectl -n jenkins get pods
+kubectl --namespace jenkins get pods
 ```
 
 The output is as follows.
@@ -294,36 +295,12 @@ Let's take a look at the build from Jenkins' UI.
 After a while, the build will reach the `helm` stage. Click it, and you'll see the output similar to the one that follows.
 
 ```
-[my-k8s-job] Running shell script
-
 + helm version
 
-Client: &version.Version{SemVer:"v2.8.2", GitCommit:"...", GitTreeState:"clean"}
+version.BuildInfo{Version:"v3.0.2", GitCommit:"19e47ee3283ae98139d98460de796c1be1e3975f", GitTreeState:"clean", GoVersion:"go1.13.5"}
 ```
 
-You'll notice that the build will hang at this point. After a few minutes, you might think that it will hang forever. It won't. Approximately five minutes later, the output of the step in the `helm` stage will change to the one that follows.
-
-```
-[my-k8s-job] Running shell script
-
-+ helm version
-
-Client: &version.Version{SemVer:"v2.8.2", GitCommit:"...", GitTreeState:"clean"}
-
-EXITCODE   0Error: cannot connect to Tiller
-
-script returned exit code 1
-```
-
-W> ## A note to Docker For Mac/Windows users
-W>
-W> Even though Docker for Mac/Windows supports RBAC, it allows any internal process inside containers to communicate with Kube API. Unlike with other Kubernetes flavors, you will not see the same error. The build will complete successfully.
-
-Our build could not connect to `Tiller`. Helm kept trying for five minutes. It reached its pre-defined timeout, and it gave up.
-
-![Figure 6-3: Jenkins agent (slave) Pod trying to connect to tiller in a different Namespace](images/ch06/jenkins-setup-agent-to-tiller-in-kube-system.png)
-
-If what we learned in the [Enabling Process Communication With Kube API Through Service Accounts](#sa) chapter is still fresh in your mind, that outcome should not be a surprise. We did not set ServiceAccount that would allow Helm running inside a container to communicate with Tiller. It is questionable whether we should even allow Helm running in a container to interact with Tiller running in `kube-system`. That would be a huge security risk that would allow anyone with access to Jenkins to gain access to any part of the cluster. It would defy one of the big reasons why we're using Namespaces. We'll explore this, and a few other problems next. For now, we'll confirm that Jenkins removed the Pod created by the failed build.
+Let's confirm that Jenkins removed the Pod created by the failed build.
 
 ```bash
 kubectl -n jenkins get pods
@@ -336,7 +313,7 @@ NAME        READY STATUS  RESTARTS AGE
 jenkins-... 1/1   Running 0        42m
 ```
 
-The `jenkins-slave-...` Pod is gone, and our system is restored to the state before the build started.
+The `kubernetes-...` Pod is gone, and our system is restored to the state before the build started.
 
 ## Running Builds In Different Namespaces
 
@@ -375,7 +352,7 @@ spec:
     command: ["sleep"]
     args: ["100000"]
   - name: helm
-    image: vfarcic/helm:2.8.2
+    image: vfarcic/helm:3.0.2
     command: ["sleep"]
     args: ["100000"]
 """
@@ -398,14 +375,14 @@ spec:
         }
         container("helm") {
             stage("helm") {
-                sh "helm version --tiller-namespace go-demo-3-build"
+                sh "helm version"
             }
         }
     }
 }
 ```
 
-I> Getting spoiled with Gist and still do not want to type? The job is available in the [my-k8s-job-ns.groovy Gist](https://gist.github.com/ced1806af8e092d202942a79e81d5ba9).
+I> Getting spoiled with Gist and still do not want to type? The job is available in the [my-k8s-job-ns.groovy Gist](https://gist.github.com/db1bb40ad782e292dbe89250d0b0cba4).
 
 The only difference between that job and the one we used before is in `podTemplate` arguments `namespace` and `serviceAccount`. This time we specified that the Pod should be created in the `go-demo-3-build` Namespace and that it should use the ServiceAccount `build`. If everything works as expected, the instruction to run Pods in a different Namespace should provide the separation we crave, and the ServiceAccount will give the permissions the Pod might need when interacting with Kube API or other Pods.
 
@@ -503,27 +480,6 @@ Let's change the config.
 
 Please scroll to the *Kubernetes* section, and change the value of the *Jenkins URL* field to the address of the Service *http://jenkins.jenkins:8080*. Similarly, change the *Jenkins tunnel* field to *jenkins-agent.jenkins:50000*. Don't forget to click the *Save* button.
 
-![Figure 6-4: Jenkins configuration screen with Kubernetes plugin configured for cross-Namespace usage](images/ch06/jenkins-configure-k8s-ns.png)
-
-Our troubles are not yet over. We need to rethink our Helm strategy.
-
-We have Tiller running in the `kube-system` Namespace. However, our agent Pods running in `go-demo-3-build` do not have permissions to access it. We could extend the permissions, but that would allow the Pods in that Namespace to gain almost complete control over the whole cluster. Unless your organization is very small, that is often not acceptable. Instead, we'll deploy another Tiller instance in the `go-demo-3-build` Namespace and tie it to the ServiceAccount `build`. That will give the new tiller the same permissions in the `go-demo-3` and `go-demo-3-build` Namespaces. It'll be able to do anything in those, but nothing anywhere else.
-
-That strategy has a downside. It is more expensive to run multiple Tillers than to run one. However, if we organize them per teams in our organization by giving each a separate Tiller instance, we can allow them full freedom within their Namespaces without affecting others. On top of that, remember that Tiller will be removed in Helm v3, so this is only a temporary fix.
-
-```bash
-helm init --service-account build \
-    --tiller-namespace go-demo-3-build
-```
-
-The output ends with the `Happy Helming!` message, letting us know that Tiller resources are installed. To be on the safe side, we'll wait until it rolls out.
-
-```bash
-kubectl -n go-demo-3-build \
-    rollout status \
-    deployment tiller-deploy
-```
-
 ![Figure 6-5: Jenkins with permissions to operate across multiple Namespaces](images/ch06/jenkins-setup-multi-ns.png)
 
 Now we are ready to re-run the job.
@@ -537,21 +493,20 @@ Please click the *Run* button followed with a click to the row of the new build.
 While waiting for the build to start, we'll go back to the terminal and confirm that a new `jenkins-slave-...` Pod is created.
 
 ```bash
-kubectl -n go-demo-3-build \
+kubectl --namespace go-demo-3-build \
     get pods
 ```
 
 The output is as follows.
 
 ```
-NAME              READY STATUS  RESTARTS AGE
-jenkins-slave-... 5/5   Running 0        36s
-tiller-deploy-... 1/1   Running 0        3m
+NAME               READY STATUS  RESTARTS AGE
+kubernetes-... 5/5 Running 0        36s
 ```
 
-If you do not see the `jenkins-slave` Pod, you might need to wait for a few moments, and retrieve the Pods again.
+If you do not see the `kubernetes` Pod, you might need to wait for a few moments, and retrieve the Pods again.
 
-Once the state of the `jenkins-slave` Pod is `Running`, we can go back to Jenkins UI and observe that it progresses until the end and that it turns to green.
+Once the state of the `kubernetes` Pod is `Running`, we can go back to Jenkins UI and observe that it progresses until the end and that it turns to green.
 
 ![Figure 6-6: Jenkins job for testing tools](images/ch06/jenkins-tools-build.png)
 
@@ -654,7 +609,7 @@ Next, we should set the *Remote root directory*. That's the place on the node's 
 
 We should set labels that define the machine we're going to use as a Jenkins agent. It is always a good idea to be descriptive, even if we're sure that we will use only one of the labels. Since that node is based on Ubuntu Linux distribution and it has Docker, our labels will be *docker ubuntu linux*. Please type the three into the *Labels* field.
 
-There are a couple of methods we can use to establish the communication between Jenkins and the newly created node. Since it's Linux, the easiest, and probably the best method is SSH. Please select *Launch slave agents via SSH* as the *Launch Method*.
+There are a couple of methods we can use to establish the communication between Jenkins and the newly created node. Since it's Linux, the easiest, and probably the best method is SSH. Please select *Launch agent agents via SSH* as the *Launch Method*.
 
 The last piece of information we'll define, before jumping into credentials, is the *Host*. Please type *10.100.198.200*.
 
@@ -670,7 +625,7 @@ We'll have to go back to the terminal to retrieve the private key created by Vag
 cat .vagrant/machines/docker-build/virtualbox/private_key
 ```
 
-Please copy the output, go back to Jenkins UI, and paste it into the *Key* field. Type *docker-build* as the *ID*, and click the *Add* button.
+Please copy the output, go back to Jenkins UI, click the *Add* button in the *Key* section, and paste it into the *Key* field. Type *docker-build* as the *ID*, and click the *Add* button.
 
 The credentials are generated, and we are back in the agent configuration screen. However, Jenkins did not pick the newly credentials automatically, so we'll need to select *vagrant* in the *Credentials* drop-down list. Finally, since we used the private key, we'll skip verification by selecting *Not verifying Verification Strategy* as the *Host Key Verification Strategy*.
 
@@ -1170,7 +1125,7 @@ spec:
     command: ["sleep"]
     args: ["100000"]
   - name: helm
-    image: vfarcic/helm:2.8.2
+    image: vfarcic/helm:3.0.2
     command: ["sleep"]
     args: ["100000"]
 """
@@ -1198,14 +1153,14 @@ spec:
         }
         container("helm") {
             stage("helm") {
-                sh "helm version --tiller-namespace go-demo-3-build"
+                sh "helm version"
             }
         }
     }
 }
 ```
 
-I> If you prefer to copy and paste, the job is available in the [my-k8s-job-docker.groovy Gist](https://gist.github.com/fbf9fc6611fe400c7950f43cfc89f406).
+I> If you prefer to copy and paste, the job is available in the [my-k8s-job-docker.groovy Gist](https://gist.github.com/fd43883b659e0522b8ba5b00326d1af9).
 
 The only notable difference, when compared with the previous version of the job, is that we added the second `node` segment. Most of the steps will be executed inside the `kubernetes` node that hosts a few containers. The new `node` is called `docker` and will be in charge of the steps that require Docker server. Depending on the path you took, that node might be a static VM, a dynamically created (and destroyed) node in AWS or GCE, or something entirely different. From job's perspective, it does not matter how is that node created, but that it exists or that it will be created on demand. The job will request nodes `docker` and `kubernetes`, and it is up to Jenkins' internal configuration to figure out how to get them.
 
@@ -1242,7 +1197,7 @@ mkdir -p cluster/jenkins/secrets
 Next, we need to copy the files from the existing Jenkins instance. To do that, we need to find out the name of the Pod with Jenkins. We'll describe `jenkins` Deployment and check whether Jenkins Pods have labels that uniquely describe them.
 
 ```bash
-kubectl -n jenkins \
+kubectl --namespace jenkins \
     describe deployment jenkins
 ```
 
@@ -1250,19 +1205,20 @@ The output, limited to the `Labels` section, is as follows.
 
 ```
 ...
-Labels: chart=jenkins-0.16.1
-        component=jenkins-jenkins-master
-        heritage=Tiller
-        release=jenkins
+Labels: app.kubernetes.io/component=jenkins-master
+        app.kubernetes.io/instance=jenkins
+        app.kubernetes.io/managed-by=Helm
+        app.kubernetes.io/name=jenkins
+        helm.sh/chart=jenkins-1.9.10
 ...
 ```
 
-The `component` label seems to be unique, and we can use it to retrieve the Jenkins Pod.
+The `app.kubernetes.io/component` label seems to be unique, and we can use it to retrieve the Jenkins Pod.
 
 ```bash
-kubectl -n jenkins \
+kubectl --namespace jenkins \
     get pods \
-    -l component=jenkins-jenkins-master
+    --selector app.kubernetes.io/component=jenkins-master
 ```
 
 The output is as follows.
@@ -1275,10 +1231,10 @@ jenkins-... 1/1   Running 0        3h
 We can combine that command with `jsonpath` output to retrieve only the name of the Pod and store it in an environment variable we'll use later to copy the files we need.
 
 ```bash
-JENKINS_POD=$(kubectl -n jenkins \
+JENKINS_POD=$(kubectl --namespace jenkins \
     get pods \
-    -l component=jenkins-jenkins-master \
-    -o jsonpath='{.items[0].metadata.name}')
+    --selector app.kubernetes.io/component=jenkins-master \
+    --output jsonpath='{.items[0].metadata.name}')
 
 echo $JENKINS_POD
 ```
@@ -1294,17 +1250,17 @@ Now we can copy the files we need.
 As a minimum, we'll need `credentials.xml`. That's where (most of) the credentials are stored. Since Jenkins uses the secrets to encrypt and decrypt credentials, we'll need them as well. Otherwise, Jenkins would generate new secrets when initializing and it could not decrypt the credentials.
 
 ```bash
-kubectl -n jenkins cp \
+kubectl --namespace jenkins cp \
     $JENKINS_POD:var/jenkins_home/credentials.xml \
-    cluster/jenkins
+    cluster/jenkins/credentials.xml
 
-kubectl -n jenkins cp \
+kubectl --namespace jenkins cp \
     $JENKINS_POD:var/jenkins_home/secrets/hudson.util.Secret \
-    cluster/jenkins/secrets
+    cluster/jenkins/secrets/hudson.util.Secret
 
-kubectl -n jenkins cp \
+kubectl --namespace jenkins cp \
     $JENKINS_POD:var/jenkins_home/secrets/master.key \
-    cluster/jenkins/secrets
+    cluster/jenkins/secrets/master.key
 ```
 
 W> ## A note to GKE users
@@ -1322,7 +1278,7 @@ W> The first command copied all the files from the `gauth` directory inside Jenk
 Now that we stored the secrets and the credentials, we can remove Jenkins altogether and start over. This time, the goal is to have the installation and the setup fully automated or, if that's not possible, to reduce the number of manual steps to a minimum.
 
 ```bash
-helm delete jenkins --purge
+helm --namespace jenkins delete jenkins
 ```
 
 The output clearly states that the `release "jenkins"` was `deleted`.
@@ -1347,7 +1303,7 @@ values.yaml
 We can see that Chart follows a similar logic as the others. `Chart.yaml` defines metadata. You already used `values.yaml` so that should not come as a surprise, even though there is a twist which we'll experience a bit later. The `templates` directory contains the templates that form the Chart even though, as you will discover later, it has only one file. What makes this Chart unique, when compared with those we used so far, is the `requirements.yaml` file. We'll explore it first since it'll provide insights into the twists and weirdness we'll encounter in other files.
 
 ```bash
-cat helm/jenkins/requirements.yaml
+cat helm/jenkins2/requirements.yaml
 ```
 
 The output is as follows.
@@ -1355,7 +1311,7 @@ The output is as follows.
 ```yaml
 dependencies:
   - name: jenkins
-    version: 0.16.1
+    version: 1.5.0
     repository:  https://kubernetes-charts.storage.googleapis.com
 ```
 
@@ -1373,20 +1329,20 @@ The output, limited to the `Custom ConfigMap` section, is as follows.
 
 ```
 ...
-## Custom ConfigMap
-
-When creating a new parent chart with this chart as a dependency, the `CustomConfigMap` parameter can be used to override the default config.xml provided.
+The following configuration method is deprecated and will be removed in an upcoming version of this chart.
+We recommend you use Jenkins Configuration as Code to configure instead.
+When creating a new parent chart with this chart as a dependency, the `customConfigMap` parameter can be used to override the default config.xml provided.
 It also allows for providing additional xml configuration files that will be copied into `/var/jenkins_home`. In the parent chart's values.yaml,
-set the `jenkins.master.customConfigMap` value to true...
+set the `jenkins.master.customConfigMap` value to true like so
 ...
-and provide the file `templates/config.tpl` in your parent chart for your use case. You can start by copying the contents of `config.yaml` from this chart into your parent charts `templates/config.tpl` as a basis for customization. Finally, you'll need to wrap the contents of `templates/config.tpl`...
+and provide the file `templates/config.tpl` in your parent chart for your use case. You can start by copying the contents of `config.yaml` from this chart into your parent charts `templates/config.tpl` as a basis for customization. Finally, you'll need to wrap the contents of `templates/config.tpl` like so:
 ...
 ```
 
 To comply with those instructions, I already created the `values.yaml` file, so let's take a quick look at it.
 
 ```bash
-cat helm/jenkins/values.yaml
+cat helm/jenkins2/values.yaml
 ```
 
 The output is as follows
@@ -1394,33 +1350,33 @@ The output is as follows
 ```yaml
 jenkins:
   master:
-    imageTag: "2.151-alpine"
+    tag: "2.204.1-alpine"
     cpu: "500m"
     memory: "500Mi"
     serviceType: ClusterIP
     serviceAnnotations:
       service.beta.kubernetes.io/aws-load-balancer-backend-protocol: http
     installPlugins:
-    - durable-task:1.28
-    - workflow-durable-task-step:2.28
-    - blueocean:1.10.1
-    - credentials:2.1.18
-    - ec2:1.39
-    - git:3.9.1
-    - git-client:2.7.6
-    - github:1.29.3
-    - kubernetes:1.14.3
-    - pipeline-utility-steps:2.2.0
-    - pipeline-model-definition:1.3.4.1
-    - slack:2.14
+    - durable-task:1.33
+    - workflow-durable-task-step:2.35
+    - blueocean:1.21.0
+    - credentials:2.3.0
+    - ec2:1.47
+    - git:4.0.0
+    - git-client:3.0.0
+    - github:1.29.5
+    - kubernetes:1.22.3
+    - pipeline-utility-steps:2.3.1
+    - pipeline-model-definition:1.5.0
+    - slack:2.35
     - thinBackup:1.9
     - workflow-aggregator:2.6
-    - ssh-slaves:1.29.4
+    - ssh-slaves:1.31.0
     - ssh-agent:1.17
-    - jdk-tool:1.2
-    - command-launcher:1.3
-    - github-oauth:0.31
-    - google-compute-engine:1.0.8
+    - jdk-tool:1.4
+    - command-launcher:1.4
+    - github-oauth:0.33
+    - google-compute-engine:4.2.0
     - pegdown-formatter:1.3
     ingress:
       enabled: true
@@ -1445,7 +1401,7 @@ jenkins:
     create: true
 ```
 
-If we compare that with `helm/jenkins-values.yml`, we'll notice that most entries are almost the same. There is one significant difference though. This time, all the entries are inside `jenkins`. That way, we're telling Helm that the values should be applied to the dependency named `jenkins` and defined in `requirements.yaml`.
+If we compare that with `helm/jenkins-values2.yml`, we'll notice that most entries are almost the same. There is one significant difference though. This time, all the entries are inside `jenkins`. That way, we're telling Helm that the values should be applied to the dependency named `jenkins` and defined in `requirements.yaml`.
 
 If we ignore the fact that all the entries are now inside `jenkins`, there is another significant difference in that we set `jenkins.master.customConfigMap` to `true`. According to the instructions we saw in the README, this flag will allow us to provide a custom ConfigMap that will replace Jenkins' `config.xml` file by parsing `templates/config.tmpl`. We'll take a closer look at it soon.
 
@@ -1456,14 +1412,14 @@ Further on, we have four commented parameters which will enable specific behavio
 The `helm/jenkins/templates/config.tpl` file is the key to our goals, so let's take a closer look at it.
 
 ```bash
-cat helm/jenkins/templates/config.tpl
+cat helm/jenkins2/templates/config.tpl
 ```
 
 The output is too big to be digested at once, so we'll break the explanation into various pieces.
 
 How did I create that file? I started by following the instructions in Chart's README. I copied `config.yaml` and made the minor changes documented in the README. That was the easy part. Then I inspected the changes we made to `config.xml` inside our manually configured Jenkins (the one we deleted a few moments ago). They provided enough info about the entries that are missing, and I started modifying `config.tpl` file. The first change is in the snippet that follows.
 
-```tpl
+```
 {{- define "override_config_map" }}
 
 apiVersion: v1
@@ -1506,7 +1462,7 @@ If you pay closer attention, you'll notice that those are the changes we did pre
 
 The next difference is the section dedicated to the `ec2` plugin.
 
-```tpl
+```
 ...
 {{- if .Values.master.DockerAMI }}
   <hudson.plugins.ec2.EC2Cloud plugin="ec2@1.39">
@@ -1524,7 +1480,7 @@ That section represents the addition that will be created if we use Jenkins' EC2
 
 Similarly to the section enabled through the existence of the `jenkins.master.DockerAMI` value, we can enable Google cloud through the XML wrapped inside `{{- if .Values.master.GProject }}` and `{{- end }}` block. The relevant snippet of the `config.tpl` file is as follows.
 
-```tpl
+```
 ...
 {{- if .Values.master.GProject }}
   <com.google.jenkins.plugins.computeengine.ComputeEngineCloud plugin="google-compute-engine@1.0.4">
@@ -1547,7 +1503,7 @@ We're almost done with the exploration of the changes, the only thing missing is
 
 The last snippet from `config.tpl` comes from the `apply_config.sh` entry in the ConfigMap. The relevant parts are as follows.
 
-```tpl
+```
 ...
   apply_config.sh: |-
     ...
@@ -1615,12 +1571,12 @@ We can see that the dependencies specified in the `requirements.yaml` file are d
 We're only one step away from being able to install custom Jenkins Chart with (almost) fully automated setup. The only things missing are the `jenkins-credentials` and `jenkins-secrets` Secrets.
 
 ```bash
-kubectl -n jenkins \
+kubectl --namespace jenkins \
     create secret generic \
     jenkins-credentials \
     --from-file cluster/jenkins/credentials.xml
 
-kubectl -n jenkins \
+kubectl --namespace jenkins \
     create secret generic \
     jenkins-secrets \
     --from-file cluster/jenkins/secrets
@@ -1631,10 +1587,9 @@ The `jenkins-credentials` Secret contains the `credentials.xml` file we extracte
 This is it. The moment of truth is upon us. We are about to test whether our attempt to (almost) fully automate Jenkins setup indeed produces the desired effect.
 
 ```bash
-helm install helm/jenkins \
-    --name jenkins \
+helm install jenkins helm/jenkins \
     --namespace jenkins \
-    --values helm/jenkins/values.yaml \
+    --values helm/jenkins2/values.yaml \
     --set jenkins.master.hostName=$JENKINS_ADDR \
     --set jenkins.master.DockerVM=$DOCKER_VM \
     --set jenkins.master.DockerAMI=$AMI_ID \
@@ -1647,7 +1602,7 @@ Please note that, depending on your choices, `AMI_ID`, `G_PROJECT`, and `G_AUTH_
 Next, we'll wait until `jenkins` Deployment rolls out before we open Jenkins and confirm that all the changes we made are indeed applied correctly.
 
 ```bash
-kubectl -n jenkins \
+kubectl --namespace jenkins \
     rollout status deployment jenkins
 ```
 
