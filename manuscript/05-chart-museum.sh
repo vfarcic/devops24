@@ -58,9 +58,10 @@ echo $CM_ADDR
 
 cat helm/chartmuseum-values.yml
 
-helm install stable/chartmuseum \
+kubectl create namespace charts
+
+helm install cm stable/chartmuseum \
     --namespace charts \
-    --name cm \
     --values helm/chartmuseum-values.yml \
     --set "ingress.hosts[0].name=$CM_ADDR" \
     --set env.secret.BASIC_AUTH_USER=admin \
@@ -69,7 +70,7 @@ helm install stable/chartmuseum \
 # Only if minishift
 oc -n charts create route edge --service cm-chartmuseum --hostname $CM_ADDR --insecure-policy Allow
 
-kubectl -n charts \
+kubectl --namespace charts \
     rollout status deploy \
     cm-chartmuseum
 
@@ -99,17 +100,20 @@ helm push \
 curl "http://$CM_ADDR/index.yaml" \
     -u admin:admin
 
-helm search chartmuseum/
+helm search repo chartmuseum/
 
 helm repo update
 
-helm search chartmuseum/
+helm search repo chartmuseum/
 
-helm inspect chartmuseum/go-demo-3
+helm inspect chart \
+    chartmuseum/go-demo-3
 
 GD3_ADDR="go-demo-3.$LB_IP.nip.io"
 
 echo $GD3_ADDR
+
+kubectl create namespace go-demo-3
 
 helm upgrade -i go-demo-3 \
     chartmuseum/go-demo-3 \
@@ -121,12 +125,15 @@ helm upgrade -i go-demo-3 \
 # Only if minishift
 oc -n go-demo-3 create route edge --service go-demo-3 --hostname $GD3_ADDR --insecure-policy Allow
 
-kubectl -n go-demo-3 \
+kubectl --namespace go-demo-3 \
     rollout status deploy go-demo-3
 
 curl "http://$GD3_ADDR/demo/hello"
 
-helm delete go-demo-3 --purge
+helm --namespace go-demo-3 \
+    delete go-demo-3
+
+kubectl delete namespace go-demo-3
 
 curl -XDELETE \
     "http://$CM_ADDR/api/charts/go-demo-3/0.0.1" \
@@ -147,19 +154,20 @@ echo $MONOCULAR_ADDR
 open https://blog.openshift.com/deploy-monocular-openshift/ # And follow the instructions
 
 # Only if NOT minishift
-helm install monocular/monocular \
+helm install \
+    monocular monocular/monocular \
     --namespace charts \
-    --name monocular \
     --values helm/monocular-values.yml \
     --set ingress.hosts={$MONOCULAR_ADDR}
 
-kubectl -n charts \
+kubectl --namespace charts \
     rollout status \
     deploy monocular-monocular-ui
 
 open "http://$MONOCULAR_ADDR"
 
-helm delete $(helm ls -q) --purge
+helm --namespace charts \
+    delete $(helm --namespace charts ls -q)
 
-kubectl delete ns \
-    charts go-demo-3 jenkins
+kubectl delete namespace \
+    charts

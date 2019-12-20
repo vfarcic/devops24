@@ -277,9 +277,10 @@ Ingress section defines the same annotations as those we used with the other Hel
 Let's install the Chart.
 
 ```bash
-helm install stable/chartmuseum \
+kubectl create namespace charts
+
+helm install cm stable/chartmuseum \
     --namespace charts \
-    --name cm \
     --values helm/chartmuseum-values.yml \
     --set "ingress.hosts[0].name=$CM_ADDR" \
     --set env.secret.BASIC_AUTH_USER=admin \
@@ -307,7 +308,7 @@ W> `oc -n charts create route edge --service cm-chartmuseum --hostname $CM_ADDR 
 By now, the resources we installed should be up-and-running. We'll confirm that just to be on the safe side.
 
 ```bash
-kubectl -n charts \
+kubectl --namespace charts \
     rollout status deploy \
     cm-chartmuseum
 ```
@@ -437,7 +438,7 @@ We can see that the `go-demo-3` Chart is now in the repository. Most of the info
 Finally, we should validate that our local Helm client indeed sees the new Chart.
 
 ```bash
-helm search chartmuseum/
+helm search repo chartmuseum/
 ```
 
 The output is probably disappointing. It states that `no results` were `found`. The problem is that even though the Chart is stored in the ChartMuseum repository, we did not update the repository information stored locally in the Helm client. So, let's update it first.
@@ -459,20 +460,21 @@ Update Complete. Happy Helming!
 If you added more repositories to your Helm client, you might see a bigger output. Those additional repositories do not matter in this context. What does matter is that the `chartmuseum` was updated and that we can try to search it again.
 
 ```bash
-helm search chartmuseum/
+helm search repo chartmuseum/
 ```
 
 This time, the output is not empty.
 
 ```
-NAME                 	CHART VERSION	APP VERSION	DESCRIPTION                                       
-chartmuseum/go-demo-3	0.0.1        	           	A silly demo...
+NAME                  CHART VERSION APP VERSION DESCRIPTION                                       
+chartmuseum/go-demo-3 0.0.1                     A silly demo...
 ```
 
 Our Chart is now available in ChartMuseum, and we can access it with our Helm client. Let's inspect the Chart.
 
 ```bash
-helm inspect chartmuseum/go-demo-3
+helm inspect chart \
+    chartmuseum/go-demo-3
 ```
 
 We won't go through the output since it is the same as the one we explored in the previous chapter. The only difference is that this time it is not retrieved from the Chart stored locally, but from ChartMuseum running inside our cluster. From now on, anyone with the access to that repository can deploy the *go-demo-3* application.
@@ -496,6 +498,8 @@ The output should be similar to `go-demo-3.18.221.122.90.nip.io`.
 Now we can finally install *go-demo-3* Chart stored in ChartMuseum running inside our cluster. We'll continue using `upgrade` with `-i` since that is more friendly to our yet-to-be-defined continuous deployment process.
 
 ```bash
+kubectl create namespace go-demo-3
+
 helm upgrade -i go-demo-3 \
     chartmuseum/go-demo-3 \
     --namespace go-demo-3 \
@@ -515,7 +519,7 @@ W> `oc -n go-demo-3 create route edge --service go-demo-3 --hostname $GD3_ADDR -
 Next, we'll wait until the application is rolled out and confirm that we can access it.
 
 ```bash
-kubectl -n go-demo-3 \
+kubectl --namespace go-demo-3 \
     rollout status deploy go-demo-3
 
 curl "http://$GD3_ADDR/demo/hello"
@@ -526,7 +530,10 @@ The latter command output the familiar `hello, world!` message thus confirming t
 The only thing left to learn is how to remove Charts from ChartMuseum. But, before we do that, we'll delete *go-demo-3* from the cluster. We don't need it anymore.
 
 ```bash
-helm delete go-demo-3 --purge
+helm --namespace go-demo-3 \
+    delete go-demo-3
+
+kubectl delete namespace go-demo-3
 ```
 
 Unfortunately, there is no Helm plugin that will allow us to delete a Chart from a repository, so we'll accomplish our mission using `curl`.
@@ -667,9 +674,9 @@ W> Installing Monocular in OpenShift creates a few issues and requires quite a f
 Now we are ready to install Monocular Chart.
 
 ```bash
-helm install monocular/monocular \
+helm install \
+    monocular monocular/monocular \
     --namespace charts \
-    --name monocular \
     --values helm/monocular-values.yml \
     --set ingress.hosts={$MONOCULAR_ADDR}
 ```
@@ -679,7 +686,7 @@ The output follows the same pattern as the other charts. It shows the status at 
 We should wait until the application rolls out before giving a spin to its UI.
 
 ```bash
-kubectl -n charts \
+kubectl --namespace charts \
     rollout status \
     deploy monocular-monocular-ui
 ```
@@ -725,8 +732,9 @@ All in all, we'll continue using Docker Hub for storing container images, and we
 All that's left is for us to remove the Charts we installed. We'll delete them all at once. Alternatively, you can delete the whole cluster if you do plan to make a break. In any case, the next chapter will start from scratch.
 
 ```bash
-helm delete $(helm ls -q) --purge
+helm --namespace charts \
+    delete $(helm --namespace charts ls -q)
 
-kubectl delete ns \
-    charts go-demo-3 jenkins
+kubectl delete namespace \
+    charts
 ```

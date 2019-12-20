@@ -14,42 +14,31 @@ open https://github.com/kubernetes/helm/releases
 # Only if Linux
 # Download `tar.gz` file, unpack it, and move the binary to `/usr/local/bin/`.
 
-cat helm/tiller-rbac.yml
-
-kubectl create \
-    -f helm/tiller-rbac.yml \
-    --record --save-config
-
-helm init --service-account tiller
-
-kubectl -n kube-system \
-    rollout status deploy tiller-deploy
-
-kubectl -n kube-system get pods
-
 helm repo update
 
-helm search
+helm search repo
 
-helm search jenkins
+helm search repo jenkins
 
 # Only if minishift
 oc patch scc restricted -p '{"runAsUser":{"type": "RunAsAny"}}'
 
-helm install stable/jenkins \
-    --name jenkins \
+kubectl create namespace jenkins
+
+helm install jenkins stable/jenkins \
     --namespace jenkins
 
 # Only if minikube
 helm upgrade jenkins stable/jenkins \
-    --set master.serviceType=NodePort
+    --set master.serviceType=NodePort \
+    --namespace jenkins
 
 # Only if minishift
 oc -n jenkins create route edge \
     --service jenkins \
     --insecure-policy Allow
 
-kubectl -n jenkins \
+kubectl --namespace jenkins \
     rollout status deploy jenkins
 
 ADDR=$(kubectl -n jenkins \
@@ -74,40 +63,38 @@ kubectl -n jenkins \
     -o jsonpath="{.data.jenkins-admin-password}" \
     | base64 --decode; echo
 
-helm inspect stable/jenkins
+helm inspect all stable/jenkins
 
-helm ls
+helm ls --all-namespaces
 
-helm status jenkins
+helm --namespace jenkins status jenkins
 
-kubectl -n kube-system get cm
+kubectl --namespace jenkins get cm
 
-kubectl -n kube-system \
-    describe cm jenkins.v1
+kubectl --namespace jenkins \
+    describe cm jenkins
 
-helm delete jenkins
+helm --namespace jenkins delete jenkins
 
-kubectl -n jenkins get all
+kubectl --namespace jenkins get all
 
-helm status jenkins
-
-helm delete jenkins --purge
-
-helm status jenkins
+helm --namespace jenkins status jenkins
 
 helm inspect values stable/jenkins
 
-helm inspect stable/jenkins
+helm inspect all stable/jenkins
 
-helm install stable/jenkins \
-    --name jenkins \
+helm install jenkins stable/jenkins \
     --namespace jenkins \
-    --set master.imageTag=2.112-alpine
+    --set master.tag=2.112-alpine
 
 # Only if minikube
-helm upgrade jenkins stable/jenkins --set master.serviceType=NodePort --reuse-values
+helm upgrade jenkins stable/jenkins \
+    --set master.serviceType=NodePort \
+    --namespace jenkins \
+    --reuse-values
 
-kubectl -n jenkins \
+kubectl --namespace jenkins \
     rollout status deployment jenkins
 
 ADDR=$(kubectl -n jenkins \
@@ -128,29 +115,31 @@ echo $ADDR
 open "http://$ADDR"
 
 helm upgrade jenkins stable/jenkins \
-    --set master.imageTag=2.116-alpine \
+    --set master.tag=2.116-alpine \
+    --namespace jenkins \
     --reuse-values
 
-kubectl -n jenkins \
+kubectl --namespace jenkins \
     describe deployment jenkins
 
-kubectl -n jenkins \
+kubectl --namespace jenkins \
     rollout status deployment jenkins
 
 open "http://$ADDR"
 
-helm list
+helm list --all-namespaces
 
-helm rollback jenkins 0
+helm --namespace jenkins \
+    rollback jenkins 0
 
-helm list
+helm list --all-namespaces
 
-kubectl -n jenkins \
+kubectl --namespace jenkins \
     rollout status deployment jenkins
 
 open "http://$ADDR"
 
-helm delete jenkins --purge
+helm --namespace jenkins delete jenkins
 
 # Only if AWS with kops
 LB_HOST=$(kubectl -n kube-ingress \
@@ -183,24 +172,24 @@ HOST=$ADDR && echo $HOST
 
 helm inspect values stable/jenkins
 
-cat helm/jenkins-values.yml
+cat helm/jenkins-values2.yml
 
-helm install stable/jenkins \
-    --name jenkins \
+helm install jenkins stable/jenkins \
     --namespace jenkins \
     --values helm/jenkins-values.yml \
     --set master.hostName=$HOST
 
-kubectl -n jenkins \
+kubectl --namespace jenkins \
     rollout status deployment jenkins
 
 open "http://$HOST"
 
-helm get values jenkins
+helm --namespace jenkins \
+    get values jenkins
 
-helm delete jenkins --purge
+helm --namespace jenkins delete jenkins
 
-kubectl delete ns jenkins
+kubectl delete namespace jenkins
 
 cd ../go-demo-3
 
@@ -230,10 +219,9 @@ helm package my-app
 
 helm lint my-app
 
-helm install ./my-app-0.1.0.tgz \
-    --name my-app
+helm install my-app ./my-app-0.1.0.tgz
 
-helm delete my-app --purge
+helm delete my-app
 
 rm -rf my-app
 
@@ -273,6 +261,8 @@ HOST="go-demo-3-go-demo-3.$(minishift ip).nip.io"
 
 echo $HOST
 
+kubectl create namespace go-demo-3
+
 helm upgrade -i \
     go-demo-3 helm/go-demo-3 \
     --namespace go-demo-3 \
@@ -294,6 +284,7 @@ helm upgrade -i \
     --set image.tag=2.0 \
     --reuse-values
 
-helm delete go-demo-3 --purge
+helm --namespace go-demo-3 \
+    delete go-demo-3
 
 kubectl delete ns go-demo-3

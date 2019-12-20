@@ -55,10 +55,6 @@ Helm is a client/server type of application. We'll start with a client. Once we 
 
 The Helm client is a command line utility responsible for the local development of Charts, managing repositories, and interaction with the Tiller. Tiller server, on the other hand, runs inside a Kubernetes cluster and interacts with Kube API. It listens for incoming requests from the Helm client, combines Charts and configuration values to build a release, installs Charts and tracks subsequent releases, and is in charge of upgrading and uninstalling Charts through interaction with Kube API.
 
-I> Do not get too attached to Tiller. Helm v3 will remove the server component and operate fully from the client side. At the time of this writing (June 2018), it is still unknown when will v3 reach GA.
-
-W> The commands in the rest of this book assume that you're using Helm v2.+ (NOT v3.+). If you're running a newer version of Helm, please downgrade it to v2.+ or be prepared to adapt the examples.
-
 I'm sure that this brief explanation is more confusing than helpful. Worry not. Everything will be explained soon through examples. For now, we'll focus on installing Helm and Tiller.
 
 If you are a **MacOS user**, please use [Homebrew](https://brew.sh/) to install Helm. The command is as follows.
@@ -75,85 +71,9 @@ choco install kubernetes-helm
 
 Finally, if you are neither Windows nor MacOS user, you must be running **Linux**. Please go to the [releases](https://github.com/kubernetes/helm/releases) page, download `tar.gz` file, unpack it, and move the binary to `/usr/local/bin/`.
 
-If you already have Helm installed, please make sure that it is newer than 2.8.2. That version, and probably a few versions before, was failing on Docker For Mac/Windows.
+W> All the examples are based on Helm 3.x. Please upgrade it if you already have an older version.
 
 Once you're done installing (or upgrading) Helm, please execute `helm help` to verify that it is working.
-
-We are about to install *Tiller*. It'll run inside our cluster. Just as `kubectl` is a client that communicates with Kube API, `helm` will propagate our wishes to `tiller` which, in turn, will issue requests to Kube API.
-
-It should come as no surprise that Tiller will be yet another Pod in our cluster. As such, you should already know that we'll need a ServiceAccount that will allow it to establish communication with Kube API. Since we hope to use Helm for all our installation in Kubernetes, we should give that ServiceAccount very generous permissions across the whole cluster.
-
-Let's take a look at the definition of a ServiceAccount we'll create for Tiller.
-
-```bash
-cat helm/tiller-rbac.yml
-```
-
-The output is as follows.
-
-```yaml
-apiVersion: v1
-kind: ServiceAccount
-metadata:
-  name: tiller
-  namespace: kube-system
-
----
-
-apiVersion: rbac.authorization.k8s.io/v1beta1
-kind: ClusterRoleBinding
-metadata:
-  name: tiller
-roleRef:
-  apiGroup: rbac.authorization.k8s.io
-  kind: ClusterRole
-  name: cluster-admin
-subjects:
-  - kind: ServiceAccount
-    name: tiller
-    namespace: kube-system
-```
-
-Since by now you are an expert in ServiceAccounts, there should be no need for a detailed explanation of the definition. We're creating a ServiceAccount called `tiller` in the `kube-system` Namespace, and we are assigning it ClusterRole `cluster-admin`. In other words, the account will be able to execute any operation anywhere inside the cluster.
-
-You might be thinking that having such broad permissions might seem dangerous, and you would be right. Only a handful of people should have the user permissions to operate inside `kube-system` Namespace. On the other hand, we can expect much wider circle of people being able to use Helm. We'll solve that problem later in one of the next chapters. For now, we'll focus only on how Helm works, and get back to the permissions issue later.
-
-Let's create the ServiceAccount.
-
-```bash
-kubectl create \
-    -f helm/tiller-rbac.yml \
-    --record --save-config
-```
-
-We can see from the output that both the ServiceAccount and the ClusterRoleBinding were created.
-
-Now that we have the ServiceAccount that gives Helm full permissions to manage any Kubernetes resource, we can proceed and install Tiller.
-
-```bash
-helm init --service-account tiller
-
-kubectl -n kube-system \
-    rollout status deploy tiller-deploy
-```
-
-We used `helm init` to create the server component called `tiller`. Since our cluster uses RBAC and all the processes require authentication and permissions to communicate with Kube API, we added `--service-account tiller` argument. It'll attach the ServiceAccount to the `tiller` Pod.
-
-The latter command waits until the Deployment is rolled out.
-
-We could have specified `--tiller-namespace` argument to deploy it to a specific Namespace. That ability will come in handy in one of the next chapters. For now, we omitted that argument, so Tiller was installed in the `kube-system` Namespace by default. To be on the safe side, we'll list the Pods to confirm that it is indeed running.
-
-```bash
-kubectl -n kube-system get pods
-```
-
-The output, limited to the relevant parts, is as follows.
-
-```
-NAME              READY STATUS  RESTARTS AGE
-...
-tiller-deploy-... 1/1   Running 0        59s
-```
 
 Helm already has a single repository pre-configured. For those of you who just installed Helm for the first time, the repository is up-to-date. On the other hand, if you happen to have Helm from before, you might want to update the repository references by executing the command that follows.
 
@@ -164,17 +84,17 @@ helm repo update
 The only thing left is to search for our favorite application hoping that it is available in the Helm repository.
 
 ```bash
-helm search
+helm search repo
 ```
 
 The output, limited to the last few entries, is as follows.
 
 ```
 ...
-stable/weave-scope 0.9.2 1.6.5 A Helm chart for the Weave Scope cluster visual...
-stable/wordpress   1.0.7 4.9.6 Web publishing platform for building blogs and ...
-stable/zeppelin    1.0.1 0.7.2 Web-based notebook that enables data-driven, in...
-stable/zetcd       0.1.9 0.0.3 CoreOS zetcd Helm chart for Kubernetes            
+stable/wordpress 8.0.3 5.3.1 Web publishing platform for building blogs and ...
+stable/xray      0.4.2 2.3.0 DEPRECATED Universal component scan for securit...
+stable/zeppelin  1.1.0 0.7.2 Web-based notebook that enables data-driven, in...
+stable/zetcd     0.1.9 0.0.3 CoreOS zetcd Helm chart for Kubernetes   
 ```
 
 We can see that the default repository already contains quite a few commonly used applications. It is the repository that contains the official Kubernetes Charts which are carefully curated and well maintained. Later on, in one of the next chapters, we'll add more repositories to our local Helm installation. For now, we just need Jenkins, which happens to be one of the official Charts.
@@ -186,14 +106,14 @@ I already mentioned Charts a few times. You'll find out what they are soon. For 
 The first thing we'll do is to confirm that Jenkins indeed exists in the official Helm repository. We could do that by executing `helm search` (again) and going through all the available Charts. However, the list is pretty big and growing by the day. We'll filter the search to narrow down the output.
 
 ```bash
-helm search jenkins
+helm search repo jenkins
 ```
 
 The output is as follows.
 
 ```
-NAME           CHART VERSION APP VERSION DESCRIPTION                                       
-stable/jenkins 0.16.1        2.107       Open source continuous integration server. It s...
+NAME           CHART VERSION	APP VERSION	DESCRIPTION                                       
+stable/jenkins 1.9.9        	lts        	Open source continuous integration server. It s...
 ```
 
 We can see that the repository contains `stable/jenkins` chart based on Jenkins version 2.107.
@@ -209,8 +129,9 @@ We'll install Jenkins with the default values first. If that works as expected, 
 Now that we know (through `search`) that the name of the Chart is `stable/jenkins`, all we need to do is execute `helm install`.
 
 ```bash
-helm install stable/jenkins \
-    --name jenkins \
+kubectl create namespace jenkins
+
+helm install jenkins stable/jenkins \
     --namespace jenkins
 ```
 
@@ -219,49 +140,21 @@ We instructed Helm to install `stable/jenkins` with the name `jenkins`, and insi
 The output is as follows.
 
 ```
-NAME:   jenkins
-LAST DEPLOYED: Sun May ...
+NAME: jenkins
+LAST DEPLOYED: Mon Dec 16 11:19:59 2019
 NAMESPACE: jenkins
-STATUS: DEPLOYED
-
-RESOURCES:
-==> v1/Service
-NAME          TYPE         CLUSTER-IP     EXTERNAL-IP PORT(S)        AGE
-jenkins-agent ClusterIP    10.111.123.174 <none>      50000/TCP      1s
-jenkins       LoadBalancer 10.110.48.57   localhost   8080:31294/TCP 0s
-
-==> v1beta1/Deployment
-NAME    DESIRED CURRENT UP-TO-DATE AVAILABLE AGE
-jenkins 1       1       1          0         0s
-
-==> v1/Pod(related)
-NAME        READY STATUS   RESTARTS AGE
-jenkins-... 0/1   Init:0/1 0        0s
-
-==> v1/Secret
-NAME    TYPE   DATA AGE
-jenkins Opaque 2    1s
-
-==> v1/ConfigMap
-NAME          DATA AGE
-jenkins       4    1s
-jenkins-tests 1    1s
-
-==> v1/PersistentVolumeClaim
-NAME    STATUS VOLUME  CAPACITY ACCESS MODES STORAGECLASS AGE
-jenkins Bound  pvc-... 8Gi      RWO          gp2          1s
-
-
+STATUS: deployed
+REVISION: 1
 NOTES:
 1. Get your 'admin' user password by running:
   printf $(kubectl get secret --namespace jenkins jenkins -o jsonpath="{.data.jenkins-admin-password}" | base64 --decode);echo
 2. Get the Jenkins URL to visit by running these commands in the same shell:
-  NOTE: It may take a few minutes for the LoadBalancer IP to be available.
-        You can watch the status of by running 'kubectl get svc --namespace jenkins -w jenkins'
-  export SERVICE_IP=$(kubectl get svc --namespace jenkins jenkins --template "{{ range (index .status.loadBalancer.ingress 0) }}{{ . }}{{ end }}")
-  echo http://$SERVICE_IP:8080/login
+  export POD_NAME=$(kubectl get pods --namespace jenkins -l "app.kubernetes.io/component=jenkins-master" -l "app.kubernetes.io/instance=jenkins" -o jsonpath="{.items[0].metadata.name}")
+  echo http://127.0.0.1:8080
+  kubectl --namespace jenkins port-forward $POD_NAME 8080:8080
 
 3. Login with the password from step 1 and the username: admin
+
 
 For more information on running Jenkins on Kubernetes, visit:
 https://cloud.google.com/solutions/jenkins-on-container-engine
@@ -269,27 +162,13 @@ https://cloud.google.com/solutions/jenkins-on-container-engine
 
 At the top of the output, we can see some general information like the name we gave to the installed Chart (`jenkins`), when it was deployed, what the Namespace is, and the status.
 
-Below the general information is the list of the installed resources. We can see that the Chart installed two services; one for the master and the other for the agents. Below is the Deployment and the Pod. It also created a Secret that holds the administrative username and password. We'll use it soon. Further on, we can see that it created two ConfigMaps. One (`jenkins`) holds all the configurations Jenkins might need. Later on, when we customize it, the data in this ConfigMap will reflect those changes. The second ConfigMap (`jenkins-tests`) is, at the moment, used only to provide a command used for executing liveness and readiness probes. Finally, we can see that a PersistentVolumeClass was created as well, thus making our Jenkins fault tolerant without losing its state.
-
-Don't worry if you feel overwhelmed. We'll do a couple of iterations of the Jenkins installation process, and that will give us plenty of opportunities to explore this Chart in more details. If you are impatient, please `describe` any of those resources to get more insight into what's installed.
-
-One thing worthwhile commenting right away is the type of the `jenkins` Service. It is, by default, set to `LoadBalancer`. We did not explore that type in [The DevOps 2.3 Toolkit: Kubernetes](https://amzn.to/2GvzDjy), primarily because the book is, for the most part, based on minikube.
-
-On cloud providers which support external load balancers, setting the type field to `LoadBalancer` will provision an external load balancer for the Service. The actual creation of the load balancer happens asynchronously, and information about the provisioned balancer is published in the Service’s `status.loadBalancer` field.
-
-When a Service is of the `LoadBalancer` type, it publishes a random port just as if it is the `NodePort` type. The additional feature is that it also communicates that change to the external load balancer (LB) which, in turn, should open a port as well. In most cases, the port opened in the external LB will be the same as the Service's `TargetPort`. For example, if the `TargetPort` of a Service is `8080` and the published port is `32456`, the external LB will be configured to accept traffic on the port `8080`, and it will forward traffic to one of the healthy nodes on the port `32456`. From there on, requests will be picked up by the Service and the standard process of forwarding it further towards the replicas will be initiated. From user's perspective, it seems as if the published port is the same as the `TargetPort`.
-
-The problem is that not all load balancers and hosting vendors support the `LoadBalancer` type, so we'll have to change it to `NodePort` in some of the cases. Those changes will be outlined as notes specific to the Kubernetes flavor.
-
-Going back to the Helm output...
-
 At the bottom of the output, we can see the post-installation instructions provided by the authors of the Chart. In our case, those instructions tell us how to retrieve the administrative password from the Secret, how to open Jenkins in a browser, and how to log in.
 
 W> ## A note to minikube users
 W>
 W> If you go back to the output, you'll notice that the type of the `jenkins` Service is `LoadBalancer`. Since we do not have a load balancer in front of our minikube cluster, that type will not work, and we should change it to `NodePort`. Please execute the command that follows.
 W>
-W> `helm upgrade jenkins stable/jenkins --set master.serviceType=NodePort`
+W> `helm upgrade jenkins stable/jenkins --set master.serviceType=NodePort --namespace jenkins`
 W>
 W> We haven't explained the `upgrade` process just yet. For now, just note that we changed the Service type to `NodePort`.
 
@@ -304,7 +183,7 @@ W> That command created an `edge` Router tied to the `jenkins` Service. Since we
 Next, we'll wait until `jenkins` Deployment is rolled out.
 
 ```bash
-kubectl -n jenkins \
+kubectl --namespace jenkins \
     rollout status deploy jenkins
 ```
 
@@ -380,7 +259,7 @@ Mission accomplished. Jenkins is up-and-running without us spending any time wri
 If you are ever unsure about the details behind one of the Helm Charts, you can execute `helm inspect`.
 
 ```bash
-helm inspect stable/jenkins
+helm inspect all stable/jenkins
 ```
 
 The output of the `inspect` command is too big to be presented in a book. It contains all the information you might need before installing an application (in this case Jenkins).
@@ -392,14 +271,14 @@ We won't go back to [Kubeapps](https://kubeapps.com/) since I prefer command lin
 With time, the number of the Charts running in your cluster will increase, and you might be in need to list them. You can do that with the `ls` command.
 
 ```bash
-helm ls
+helm ls --all-namespaces
 ```
 
 The output is as follows.
 
 ```
-NAME    REVISION UPDATED     STATUS   CHART          NAMESPACE
-jenkins 1        Thu May ... DEPLOYED jenkins-0.16.1 jenkins
+NAME    NAMESPACE REVISION UPDATED       STATUS   CHART         APP VERSION
+jenkins jenkins   2        2019-12-16... deployed jenkins-1.9.9 lts    
 ```
 
 There is not much to look at right now since we have only one Chart. Just remember that the command exists. It'll come in handy later on.
@@ -407,7 +286,7 @@ There is not much to look at right now since we have only one Chart. Just rememb
 If you need to see the details behind one of the installed Charts, please use the `status` command.
 
 ```bash
-helm status jenkins
+helm --namespace jenkins status jenkins
 ```
 
 The output should be very similar to the one you saw when we installed the Chart. The only difference is that this time all the Pods are running.
@@ -417,16 +296,15 @@ Tiller obviously stores the information about the installed Charts somewhere. Un
 Let's take a look at the ConfigMaps in the `kube-system` Namespace where tiller is running.
 
 ```bash
-kubectl -n kube-system get cm
+kubectl --namespace jenkins get cm
 ```
 
 The output, limited to the relevant parts, is as follows.
 
 ```
-NAME       DATA AGE
-...
-jenkins.v1 1    25m
-...
+NAME          DATA AGE
+jenkins       5    18m
+jenkins-tests 1    18m
 ```
 
 We can see that there is a config named `jenkins.v1`. We did not explore revisions just yet. For now, only assume that each new installation of a Chart is version 1.
@@ -434,36 +312,33 @@ We can see that there is a config named `jenkins.v1`. We did not explore revisio
 Let's take a look at the contents of the ConfigMap.
 
 ```bash
-kubectl -n kube-system \
-    describe cm jenkins.v1
+kubectl --namespace jenkins \
+    describe cm jenkins
 ```
 
 The output is as follows.
 
 ```
-Name:        jenkins.v1
-Namespace:   kube-system
-Labels:      MODIFIED_AT=1527424681
-             NAME=jenkins
-             OWNER=TILLER
-             STATUS=DEPLOYED
-             VERSION=1
-Annotations: <none>
+Name:         jenkins
+Namespace:    jenkins
+Labels:       app.kubernetes.io/component=jenkins-master
+              app.kubernetes.io/instance=jenkins
+              app.kubernetes.io/managed-by=Helm
+              app.kubernetes.io/name=jenkins
+              helm.sh/chart=jenkins-1.9.9
+Annotations:  <none>
 
 Data
 ====
-release:
+apply_config.sh:
 ----
-[ENCRYPTED RELEASE INFO]
-Events:  <none>
+...
 ```
-
-I replaced the content of the release Data with `[ENCRYPTED RELEASE INFO]` since it is too big to be presented in the book. The release contains all the info tiller used to create the first `jenkins` release. It is encrypted as a security precaution.
 
 We're finished exploring our Jenkins installation, so our next step is to remove it.
 
 ```bash
-helm delete jenkins
+helm --namespace jenkins delete jenkins
 ```
 
 The output shows that the `release "jenkins"` was `deleted`.
@@ -471,7 +346,7 @@ The output shows that the `release "jenkins"` was `deleted`.
 Since this is the first time we deleted a Helm Chart, we might just as well confirm that all the resources were indeed removed.
 
 ```bash
-kubectl -n jenkins get all
+kubectl --namespace jenkins get all
 ```
 
 The output is as follows.
@@ -486,44 +361,16 @@ Everything is gone except the Pod that is still `terminating`. Soon it will disa
 Let's check the status of the `jenkins` Chart.
 
 ```bash
-helm status jenkins
-```
-
-The relevant parts of the output are as follows.
-
-```
-LAST DEPLOYED: Thu May 24 11:46:38 2018
-NAMESPACE: jenkins
-STATUS: DELETED
-
-...
-```
-
-If you expected an empty output or an error stating that `jenkins` does not exist, you were wrong. The Chart is still in the system, only this time its status is `DELETED`. You'll notice that all the resources are gone though.
-
-When we execute `helm delete [THE_NAME_OF_A_CHART]`, we are only removing the Kubernetes resources. The Chart is still in the system. We could, for example, revert the `delete` action and return to the previous state with Jenkins up-and-running again.
-
-If you want to delete not only the Kubernetes resources created by the Chart but also the Chart itself, please add `--purge` argument.
-
-```bash
-helm delete jenkins --purge
-```
-
-The output is still the same as before. It states that the `release "jenkins"` was `deleted`.
-
-Let's check the status now after we purged the system.
-
-```bash
-helm status jenkins
+helm --namespace jenkins status jenkins
 ```
 
 The output is as follows.
 
 ```
-Error: getting deployed release "jenkins": release: "jenkins" not found
+Error: release: not found
 ```
 
-This time, everything was removed, and `helm` cannot find the `jenkins` Chart anymore.
+Everything was removed, and `helm` cannot find the `jenkins` release anymore.
 
 ## Customizing Helm Installations
 
@@ -543,17 +390,17 @@ The output, limited to the relevant parts, is as follows.
 
 ```
 ...
-Master:
-  Name: jenkins-master
-  Image: "jenkins/jenkins"
-  ImageTag: "lts"
+master:
+  componentName: "jenkins-master"
+  image: "jenkins/jenkins"
+  tag: "lts"
   ...
 ```
 
-We can see that within the `Master` section there is a variable `ImageTag`. The name of the variable should be, in this case, sufficiently self-explanatory. If we need more information, we can always inspect the Chart.
+We can see that within the `master` section there is a variable `tag`. The name of the variable should be, in this case, sufficiently self-explanatory. If we need more information, we can always inspect all the information about the Chart.
 
 ```bash
-helm inspect stable/jenkins
+helm inspect all stable/jenkins
 ```
 
 I encourage you to read the whole output at some later moment. For now, we care only about the `ImageTag`.
@@ -574,17 +421,16 @@ That did not provide much more info. Still, we do not really need more than that
 If we go through the documentation, we'll discover that one of the ways to overwrite the default values is through the `--set` argument. Let's give it a try.
 
 ```bash
-helm install stable/jenkins \
-    --name jenkins \
+helm install jenkins stable/jenkins \
     --namespace jenkins \
-    --set master.imageTag=2.112-alpine
+    --set master.tag=2.112-alpine
 ```
 
 W> ## A note to minikube users
 W>
 W> We still need to change the `jenkins` Service type to `NodePort`. Since this is specific to minikube, I did not want to include it in the command we just executed. Instead, we'll run the same command as before. Please execute the command that follows.
 W>
-W> `helm upgrade jenkins stable/jenkins --set master.serviceType=NodePort --reuse-values`
+W> `helm upgrade jenkins stable/jenkins --set master.serviceType=NodePort --namespace jenkins --reuse-values`
 W>
 W> We still did not go through the `upgrade` process. For now, just note that we changed the Service type to `NodePort`.
 W>
@@ -597,7 +443,7 @@ W> The Route we created earlier still exists, so we do not need to create it aga
 The output of the `helm install` command is almost the same as when we executed it the first time, so there's probably no need to go through it again. Instead, we'll wait until `jenkins` rolls out.
 
 ```bash
-kubectl -n jenkins \
+kubectl --namespace jenkins \
     rollout status deployment jenkins
 ```
 
@@ -645,7 +491,8 @@ Let's imagine that some time passed and we decided to upgrade our Jenkins from *
 
 ```bash
 helm upgrade jenkins stable/jenkins \
-    --set master.imageTag=2.116-alpine \
+    --set master.tag=2.116-alpine \
+    --namespace jenkins \
     --reuse-values
 ```
 
@@ -655,9 +502,10 @@ The output of the `upgrade` command, limited to the first few lines, is as follo
 
 ```
 Release "jenkins" has been upgraded. Happy Helming!
-LAST DEPLOYED: Thu May 24 12:51:03 2018
+NAME: jenkins
+LAST DEPLOYED: Mon Dec 16 12:09:43 2019
 NAMESPACE: jenkins
-STATUS: DEPLOYED
+STATUS: deployed
 ...
 ```
 
@@ -666,7 +514,7 @@ We can see that the release was upgraded.
 To be on the safe side, we'll describe the `jenkins` Deployment and confirm that the image is indeed `2.116-alpine`.
 
 ```bash
-kubectl -n jenkins \
+kubectl --namespace jenkins \
     describe deployment jenkins
 ```
 
@@ -689,7 +537,7 @@ The image was indeed updated to the tag `2.116-alpine`.
 To satisfy my paranoid nature, we'll also open Jenkins UI and confirm the version there. But, before we do that, we need to wait until the update rolls out.
 
 ```bash
-kubectl -n jenkins \
+kubectl --namespace jenkins \
     rollout status deployment jenkins
 ```
 
@@ -708,14 +556,14 @@ No matter how we deploy our applications and no matter how much we trust our val
 Fortunately, Helm provides a mechanism to roll back. Before we try it out, let's take a look at the list of the Charts we installed so far.
 
 ```bash
-helm list
+helm list --all-namespaces
 ```
 
 The output is as follows.
 
 ```
-NAME    REVISION UPDATED     STATUS   CHART          NAMESPACE
-jenkins 2        Thu May ... DEPLOYED jenkins-0.16.1 jenkins  
+NAME    NAMESPACE REVISION UPDATED       STATUS   CHART         APP VERSION
+jenkins jenkins   3        2019-12-16... deployed jenkins-1.9.9 lts
 ```
 
 As expected, we have only one Chart running in our cluster. The critical piece of information is that it is the second revision. First, we installed the Chart with Jenkins version 2.112, and then we upgraded it to 2.116.
@@ -731,7 +579,8 @@ Luckily, there is an undocumented feature that allows us to roll back to the pre
 Please execute the command that follows.
 
 ```bash
-helm rollback jenkins 0
+helm --namespace jenkins \
+    rollback jenkins 0
 ```
 
 By specifying `0` as the revision number, Helm will roll back to the previous version. It's as easy as that.
@@ -741,7 +590,7 @@ We got the visual confirmation in the form of the "`Rollback was a success! Happ
 Let's take a look at the current situation.
 
 ```bash
-helm list
+helm list --all-namespaces
 ```
 
 The output is as follows.
@@ -756,7 +605,7 @@ We can see that even though we issued a rollback, Helm created a new revision `3
 To be on the safe side, we'll go back to Jenkins UI and confirm that we are using version `2.112` again.
 
 ```bash
-kubectl -n jenkins \
+kubectl --namespace jenkins \
     rollout status deployment jenkins
 
 open "http://$ADDR"
@@ -767,7 +616,7 @@ We waited until Jenkins rolled out, and opened it in our favorite browser. If we
 We are about to start over one more time, so our next step it to purge Jenkins.
 
 ```bash
-helm delete jenkins --purge
+helm --namespace jenkins delete jenkins
 ```
 
 ## Using YAML Values To Customize Helm Installations
@@ -903,44 +752,55 @@ Everything we need to accomplish our new requirements is available through the v
 I already prepared a YAML file with the values that will fulfill our requirements, so let's take a quick look at them.
 
 ```bash
-cat helm/jenkins-values.yml
+cat helm/jenkins-values2.yml
 ```
 
 The output is as follows.
 
 ```yaml
-Master:
-  ImageTag: "2.116-alpine"
-  Cpu: "500m"
-  Memory: "500Mi"
-  ServiceType: ClusterIP
-  ServiceAnnotations:
+# helm install stable/jenkins --name jenkins --namespace jenkins --values helm/jenkins-values --set master.hostName=...
+master:
+  tag: "2.151-alpine"
+  cpu: "500m"
+  memory: "500Mi"
+  serviceType: ClusterIP
+  serviceAnnotations:
     service.beta.kubernetes.io/aws-load-balancer-backend-protocol: http
-  InstallPlugins:
-    - blueocean:1.5.0
-    - credentials:2.1.16
-    - ec2:1.39
-    - git:3.8.0
-    - git-client:2.7.1
-    - github:1.29.0
-    - kubernetes:1.5.2
-    - pipeline-utility-steps:2.0.2
-    - script-security:1.43
-    - slack:2.3
-    - thinBackup:1.9
-    - workflow-aggregator:2.5
-  Ingress:
+  installPlugins:
+  - durable-task:1.28
+  - workflow-durable-task-step:2.28
+  - blueocean:1.10.1
+  - credentials:2.1.18
+  - ec2:1.39
+  - git:3.9.1
+  - git-client:2.7.6
+  - github:1.29.3
+  - kubernetes:1.14.3
+  - pipeline-utility-steps:2.2.0
+  - pipeline-model-definition:1.3.4.1
+  - slack:2.14
+  - thinBackup:1.9
+  - workflow-aggregator:2.6
+  - ssh-slaves:1.29.4
+  - ssh-agent:1.17
+  - jdk-tool:1.2
+  - command-launcher:1.3
+  - github-oauth:0.31
+  - google-compute-engine:1.0.8
+  - pegdown-formatter:1.3
+  ingress:
     enabled: true
-    Annotations:
+    annotations:
+      kubernetes.io/ingress.class: "nginx"
       nginx.ingress.kubernetes.io/ssl-redirect: "false"
       nginx.ingress.kubernetes.io/proxy-body-size: 50m
       nginx.ingress.kubernetes.io/proxy-request-buffering: "off"
       ingress.kubernetes.io/ssl-redirect: "false"
       ingress.kubernetes.io/proxy-body-size: 50m
       ingress.kubernetes.io/proxy-request-buffering: "off"
-  HostName: jenkins.acme.com
+  hostName: jenkins.acme.com
 rbac:
-  install: true
+  create: true
 ```
 
 As you can see, the variables in that file follow the same format as those we output through the `helm inspect values` command. The only difference is in values, and the fact that `helm/jenkins-values.yml` contains only those that we are planning to change.
@@ -964,10 +824,9 @@ Having all those variables defined at once might be a bit overwhelming. You migh
 Let's install the Chart with those variables.
 
 ```bash
-helm install stable/jenkins \
-    --name jenkins \
+helm install jenkins stable/jenkins \
     --namespace jenkins \
-    --values helm/jenkins-values.yml \
+    --values helm/jenkins-values2.yml \
     --set master.hostName=$HOST
 ```
 
@@ -980,7 +839,7 @@ W> The values define Ingress which does not exist in your cluster. If we'd creat
 Next, we'll wait for `jenkins` Deployment to roll out and open its UI in a browser.
 
 ```bash
-kubectl -n jenkins \
+kubectl --namespace jenkins \
     rollout status deployment jenkins
 
 open "http://$HOST"
@@ -989,55 +848,68 @@ open "http://$HOST"
 The fact that we opened Jenkins through a domain defined as Ingress (or Route in case of OpenShift) tells us that the values were indeed used. We can double check those currently defined for the installed Chart with the command that follows.
 
 ```bash
-helm get values jenkins
+helm --namespace jenkins \
+    get values jenkins
 ```
 
 The output is as follows.
 
 ```yaml
-Master:
-  Cpu: 500m
-  HostName: jenkins.18.220.212.56.nip.io
-  ImageTag: 2.116-alpine
-  Ingress:
-    Annotations:
+USER-SUPPLIED VALUES:
+master:
+  cpu: 500m
+  hostName: jenkins.192.168.99.100.nip.io
+  imageTag: 2.151-alpine
+  ingress:
+    annotations:
       ingress.kubernetes.io/proxy-body-size: 50m
       ingress.kubernetes.io/proxy-request-buffering: "off"
       ingress.kubernetes.io/ssl-redirect: "false"
+      kubernetes.io/ingress.class: nginx
       nginx.ingress.kubernetes.io/proxy-body-size: 50m
       nginx.ingress.kubernetes.io/proxy-request-buffering: "off"
       nginx.ingress.kubernetes.io/ssl-redirect: "false"
-  InstallPlugins:
-  - blueocean:1.5.0
-  - credentials:2.1.16
+    enabled: true
+  installPlugins:
+  - durable-task:1.28
+  - workflow-durable-task-step:2.28
+  - blueocean:1.10.1
+  - credentials:2.1.18
   - ec2:1.39
-  - git:3.8.0
-  - git-client:2.7.1
-  - github:1.29.0
-  - kubernetes:1.5.2
-  - pipeline-utility-steps:2.0.2
-  - script-security:1.43
-  - slack:2.3
+  - git:3.9.1
+  - git-client:2.7.6
+  - github:1.29.3
+  - kubernetes:1.14.3
+  - pipeline-utility-steps:2.2.0
+  - pipeline-model-definition:1.3.4.1
+  - slack:2.14
   - thinBackup:1.9
-  - workflow-aggregator:2.5
-  Memory: 500Mi
-  ServiceAnnotations:
+  - workflow-aggregator:2.6
+  - ssh-slaves:1.29.4
+  - ssh-agent:1.17
+  - jdk-tool:1.2
+  - command-launcher:1.3
+  - github-oauth:0.31
+  - google-compute-engine:1.0.8
+  - pegdown-formatter:1.3
+  memory: 500Mi
+  serviceAnnotations:
     service.beta.kubernetes.io/aws-load-balancer-backend-protocol: http
-  ServiceType: ClusterIP
+  serviceType: ClusterIP
 rbac:
-  install: true
+  create: true
 ```
 
-Even though the order is slightly different, we can easily confirm that the values are the same as those we defined in `helm/jenkins-values.yml`. The exception is the `HostName` which was overwritten through the `--set` argument.
+Even though the order is slightly different, we can easily confirm that the values are the same as those we defined in `helm/jenkins-values.yml`. The exception is the `hostName` which was overwritten through the `--set` argument.
 
 Now that we explored how to use Helm to deploy publicly available Charts, we'll turn our attention towards development. Can we leverage the power behind Charts for our applications?
 
 Before we proceed, please delete the Chart we installed as well as the `jenkins` Namespace.
 
 ```bash
-helm delete jenkins --purge
+helm --namespace jenkins delete jenkins
 
-kubectl delete ns jenkins
+kubectl delete namespace jenkins
 ```
 
 ## Creating Helm Charts
@@ -1135,43 +1007,28 @@ We can see that our Chart contains no failures, at least not those based on synt
 Charts can be installed using a Chart repository (e.g., `stable/jenkins`), a local Chart archive (e.g., `my-app-0.1.0.tgz`), an unpacked Chart directory (e.g., `my-app`), or a full URL. So far we used Chart repository to install Jenkins. We'll switch to the local archive option to install `my-app`.
 
 ```bash
-helm install ./my-app-0.1.0.tgz \
-    --name my-app
+helm install my-app ./my-app-0.1.0.tgz
 ```
 
 The output is as follows.
 
 ```
-NAME:   my-app
-LAST DEPLOYED: Thu May 24 13:43:17 2018
+NAME: my-app
+LAST DEPLOYED: Fri Dec 20 19:09:10 2019
 NAMESPACE: default
-STATUS: DEPLOYED
-
-RESOURCES:
-==> v1/Service
-NAME   TYPE      CLUSTER-IP     EXTERNAL-IP PORT(S) AGE
-my-app ClusterIP 100.65.227.236 <none>      80/TCP  1s
-
-==> v1beta2/Deployment
-NAME   DESIRED CURRENT UP-TO-DATE AVAILABLE AGE
-my-app 1       1       1          0         1s
-
-==> v1/Pod(related)
-NAME                    READY STATUS            RESTARTS AGE
-my-app-7f4d66bf86-dns28 0/1   ContainerCreating 0        1s
-
-
+STATUS: deployed
+REVISION: 1
 NOTES:
 1. Get the application URL by running these commands:
-  export POD_NAME=$(kubectl get pods --namespace default -l "app=my-app,release=my-app" -o jsonpath="{.items[0].metadata.name}")
+  export POD_NAME=$(kubectl get pods --namespace default -l "app.kubernetes.io/name=my-app,app.kubernetes.io/instance=my-app" -o jsonpath="{.items[0].metadata.name}")
   echo "Visit http://127.0.0.1:8080 to use your application"
-  kubectl port-forward $POD_NAME 8080:80
+  kubectl --namespace default port-forward $POD_NAME 8080:80
 ```
 
 The sample application is a straightforward one with a Service and a Deployment. There's not much to say about it. We used it only to explore the basic commands for creating and managing Charts. We'll delete everything we did and start over with a more serious example.
 
 ```bash
-helm delete my-app --purge
+helm delete my-app
 
 rm -rf my-app
 
@@ -1656,6 +1513,8 @@ go-demo-3.192.168.99.100.nip.io
 Now we are finally ready to install the Chart. However, we won't use `helm install` as before. We'll use `upgrade` instead.
 
 ```bash
+kubectl create namespace go-demo-3
+
 helm upgrade -i \
     go-demo-3 helm/go-demo-3 \
     --namespace go-demo-3 \
@@ -1674,22 +1533,22 @@ If this command is used in the continuous deployment processes, we would need to
 
 Please note that minishift does not support Ingress (at least not by default). So, it was created, but it has no effect. I thought that it is a better option than to use different commands for OpenShift than for the rest of the flavors. If minishift is your choice, feel free to add `--set ingress.enable=false` to the previous command.
 
-The output of the `upgrade` is the same as if we executed `install` (resources are removed for brevity).
+The output of the `upgrade` is the same as if we executed `install`.
 
 ```
-NAME:   go-demo-3
-LAST DEPLOYED: Fri May 25 14:40:31 2018
+Release "go-demo-3" does not exist. Installing it now.
+NAME: go-demo-3
+LAST DEPLOYED: Fri Dec 20 19:16:44 2019
 NAMESPACE: go-demo-3
-STATUS: DEPLOYED
-
-...
-
+STATUS: deployed
+REVISION: 1
+TEST SUITE: None
 NOTES:
 1. Wait until the application is rolled out:
   kubectl -n go-demo-3 rollout status deployment go-demo-3
 
 2. Test the application by running these commands:
-  curl http://go-demo-3.18.222.53.124.nip.io/demo/hello
+  curl http://go-demo-3.192.168.99.100.nip.io/demo/hello
 ```
 
 W> ## A note to minishift users
@@ -1737,9 +1596,10 @@ When compared with the previous command, the difference is in the tag. This time
 There's probably no need to further validations (e.g., wait for it to roll out and send a `curl` request). All that's left is to remove the Chart and delete the Namespace. We're done with the hands-on exercises.
 
 ```bash
-helm delete go-demo-3 --purge
+helm --namespace go-demo-3 \
+    delete go-demo-3
 
-kubectl delete ns go-demo-3
+kubectl delete namespace go-demo-3
 ```
 
 ## Helm vs. OpenShift Templates

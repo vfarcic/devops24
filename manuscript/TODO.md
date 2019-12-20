@@ -1,3 +1,7 @@
+- [ ] Switch to helm 3
+- [ ] Remove tiller
+- [ ] Update Gists
+
 ## The DevOps 2.4 Toolkit
 
 - [X] 00-preface.md
