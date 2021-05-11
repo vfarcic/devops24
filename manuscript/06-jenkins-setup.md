@@ -1312,7 +1312,7 @@ The output is as follows.
 dependencies:
   - name: jenkins
     version: 1.5.0
-    repository:  https://kubernetes-charts.storage.googleapis.com
+    repository: https://charts.helm.sh/stable
 ```
 
 The `requirements.yaml` file lists all the dependencies of our Chart. Since all we need is Jenkins, it is the only requirement we specified.
@@ -1548,7 +1548,7 @@ Hang tight while we grab the latest from your chart repositories...
 ...Successfully got an update from the "stable" chart repository
 Update Complete. Happy Helming!
 Saving 1 charts
-Downloading jenkins from repo https://kubernetes-charts.storage.googleapis.com
+Downloading jenkins from repo https://charts.helm.sh/stable
 Deleting outdated charts
 ```
 

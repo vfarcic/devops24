@@ -1,3 +1,5 @@
+# Source: https://gist.github.com/e0657623045b43259fe258a146f05e1a
+
 cd k8s-specs
 
 git pull
@@ -48,7 +50,7 @@ git merge upstream/master
 cd ../k8s-specs
 
 helm repo add stable \
-    https://kubernetes-charts.storage.googleapis.com
+    https://charts.helm.sh/stable
 
 helm inspect values stable/chartmuseum
 

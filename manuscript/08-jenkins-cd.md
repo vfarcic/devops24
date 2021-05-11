@@ -313,8 +313,8 @@ The relevant part of the output is as follows.
 ```
 ...
 Saving 2 charts
-Downloading chartmuseum from repo https://kubernetes-charts.storage.googleapis.com
-Downloading jenkins from repo https://kubernetes-charts.storage.googleapis.com
+Downloading chartmuseum from repo https://charts.helm.sh/stable
+Downloading jenkins from repo https://charts.helm.sh/stable
 Deleting outdated charts
 ```
 
@@ -984,7 +984,7 @@ The output of the latter command is as follows.
 
 ```
 NAME            URL
-stable          https://kubernetes-charts.storage.googleapis.com
+stable          https://charts.helm.sh/stable
 local           http://127.0.0.1:8879/charts
 chartmuseum     http://cm.18.219.191.38.nip.io
 ```
@@ -1138,8 +1138,8 @@ The last lines of the output are as follows.
 ```
 ...
 Saving 3 charts
-Downloading chartmuseum from repo https://kubernetes-charts.storage.googleapis.com
-Downloading jenkins from repo https://kubernetes-charts.storage.googleapis.com
+Downloading chartmuseum from repo https://charts.helm.sh/stable
+Downloading jenkins from repo https://charts.helm.sh/stable
 Downloading go-demo-5 from repo http://cm.18.219.191.38.nip.io
 Deleting outdated charts
 ```

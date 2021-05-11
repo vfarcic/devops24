@@ -147,7 +147,7 @@ ChartMuseum is already available in the official Helm repository. We'll add it t
 
 ```bash
 helm repo add stable \
-    https://kubernetes-charts.storage.googleapis.com
+    https://charts.helm.sh/stable
 ```
 
 You should see the output claiming that `"stable" has been added to your repositories`.
